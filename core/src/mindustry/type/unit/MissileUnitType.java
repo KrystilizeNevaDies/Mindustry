@@ -1,15 +1,17 @@
 package mindustry.type.unit;
 
-import mindustry.ai.types.*;
+import mindustry.ai.types.MissileAI;
 import mindustry.gen.*;
-import mindustry.graphics.*;
-import mindustry.type.*;
-import mindustry.world.meta.*;
+import mindustry.graphics.Pal;
+import mindustry.type.UnitType;
+import mindustry.world.meta.Env;
 
-/** Field template for unit types. No new functionality. */
-public class MissileUnitType extends UnitType{
+/**
+ * Field template for unit types. No new functionality.
+ */
+public class MissileUnitType extends UnitType {
 
-    public MissileUnitType(String name){
+    public MissileUnitType(String name) {
         super(name);
 
         playerControllable = false;
@@ -34,6 +36,6 @@ public class MissileUnitType extends UnitType{
         targetPriority = -1f;
         outlineColor = Pal.darkOutline;
         fogRadius = 2f;
-        //TODO weapon configs, etc?
+        // TODO weapon configs, etc?
     }
 }

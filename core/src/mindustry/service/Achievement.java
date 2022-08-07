@@ -1,8 +1,8 @@
 package mindustry.service;
 
-import static mindustry.Vars.*;
+import static mindustry.Vars.service;
 
-public enum Achievement{
+public enum Achievement {
     kill1kEnemies(SStat.unitsDestroyed, 1000),
     kill100kEnemies(SStat.unitsDestroyed, 100_000),
     launch100kItems(SStat.itemsLaunched, 100_000),
@@ -45,7 +45,7 @@ public enum Achievement{
     drown,
     fillCoreAllCampaign,
     hostServer10(SStat.maxPlayersServer, 10),
-    buildMeltdownSpectre, //technically inaccurate
+    buildMeltdownSpectre, // technically inaccurate
     launchItemPad,
     chainRouters,
     circleConveyor,
@@ -59,7 +59,6 @@ public enum Achievement{
     openWiki,
     useAccelerator,
     unlockAllZones,
-
     ;
 
     private final SStat stat;
@@ -68,31 +67,33 @@ public enum Achievement{
 
     public static final Achievement[] all = values();
 
-    /** Creates an achievement that is triggered when this stat reaches a number.*/
-    Achievement(SStat stat, int goal){
+    /**
+     * Creates an achievement that is triggered when this stat reaches a number.
+     */
+    Achievement(SStat stat, int goal) {
         this.stat = stat;
         this.statGoal = goal;
     }
 
-    Achievement(){
+    Achievement() {
         this(null, 0);
     }
 
-    public void complete(){
-        if(!isAchieved()){
+    public void complete() {
+        if (!isAchieved()) {
             service.completeAchievement(name());
             service.storeStats();
         }
     }
 
-    public void checkCompletion(){
-        if(!isAchieved() && stat != null && stat.get() >= statGoal){
+    public void checkCompletion() {
+        if (!isAchieved() && stat != null && stat.get() >= statGoal) {
             complete();
         }
     }
 
-    public boolean isAchieved(){
-        if(completed){
+    public boolean isAchieved() {
+        if (completed) {
             return true;
         }
         return (completed = service.isAchieved(name()));

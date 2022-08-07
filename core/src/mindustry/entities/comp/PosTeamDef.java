@@ -1,9 +1,9 @@
 package mindustry.entities.comp;
 
-import mindustry.annotations.Annotations.*;
+import mindustry.annotations.Annotations.EntityDef;
 import mindustry.gen.*;
 
-//dummy target definition
+// dummy target definition
 @EntityDef(value = Teamc.class, genio = false, isFinal = false)
-public class PosTeamDef{
+public class PosTeamDef {
 }

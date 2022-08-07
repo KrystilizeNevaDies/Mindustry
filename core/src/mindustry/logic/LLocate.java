@@ -1,6 +1,6 @@
 package mindustry.logic;
 
-public enum LLocate{
+public enum LLocate {
     ore,
     building,
     spawn,

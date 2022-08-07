@@ -1,37 +1,39 @@
 package mindustry.ai.types;
 
-import arc.util.*;
-import mindustry.entities.*;
-import mindustry.entities.units.*;
+import arc.util.Nullable;
+import arc.util.Time;
+import mindustry.entities.Units;
+import mindustry.entities.units.AIController;
 import mindustry.gen.*;
-import mindustry.world.blocks.ConstructBlock.*;
+import mindustry.world.blocks.ConstructBlock.ConstructBuild;
 
-public class RepairAI extends AIController{
+public class RepairAI extends AIController {
     public static float retreatDst = 160f, fleeRange = 310f, retreatDelay = Time.toSeconds * 3f;
 
-    @Nullable Teamc avoid;
+    @Nullable
+    Teamc avoid;
     float retreatTimer;
     Building damagedTarget;
 
     @Override
-    public void updateMovement(){
-        if(target instanceof Building){
+    public void updateMovement() {
+        if (target instanceof Building) {
             boolean shoot = false;
 
-            if(target.within(unit, unit.type.range)){
+            if (target.within(unit, unit.type.range)) {
                 unit.aim(target);
                 shoot = true;
             }
 
             unit.controlWeapons(shoot);
-        }else if(target == null){
+        } else if (target == null) {
             unit.controlWeapons(false);
         }
 
-        if(target != null && target instanceof Building b && b.team == unit.team){
-            if(unit.type.circleTarget){
+        if (target != null && target instanceof Building b && b.team == unit.team) {
+            if (unit.type.circleTarget) {
                 circleAttack(120f);
-            }else if(!target.within(unit, unit.type.range * 0.65f)){
+            } else if (!target.within(unit, unit.type.range * 0.65f)) {
                 moveTo(target, unit.type.range * 0.65f);
 
                 unit.lookAt(target);
@@ -39,35 +41,35 @@ public class RepairAI extends AIController{
         }
 
         //not repairing
-        if(!(target instanceof Building)){
-            if(timer.get(timerTarget4, 40)){
+        if (!(target instanceof Building)) {
+            if (timer.get(timerTarget4, 40)) {
                 avoid = target(unit.x, unit.y, fleeRange, true, true);
             }
 
-            if((retreatTimer += Time.delta) >= retreatDelay){
+            if ((retreatTimer += Time.delta) >= retreatDelay) {
                 //fly away from enemy when not doing anything
-                if(avoid != null){
+                if (avoid != null) {
                     var core = unit.closestCore();
-                    if(core != null && !unit.within(core, retreatDst)){
+                    if (core != null && !unit.within(core, retreatDst)) {
                         moveTo(core, retreatDst);
                     }
                 }
             }
-        }else{
+        } else {
             retreatTimer = 0f;
         }
     }
 
     @Override
-    public void updateTargeting(){
-        if(timer.get(timerTarget, 15)){
+    public void updateTargeting() {
+        if (timer.get(timerTarget, 15)) {
             damagedTarget = Units.findDamagedTile(unit.team, unit.x, unit.y);
-            if(damagedTarget instanceof ConstructBuild) damagedTarget = null;
+            if (damagedTarget instanceof ConstructBuild) damagedTarget = null;
         }
 
-        if(damagedTarget == null){
+        if (damagedTarget == null) {
             super.updateTargeting();
-        }else{
+        } else {
             this.target = damagedTarget;
         }
     }

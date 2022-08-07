@@ -2,6 +2,6 @@ package mindustry.world.blocks.distribution;
 
 import mindustry.gen.*;
 
-public interface ChainedBuilding{
+public interface ChainedBuilding {
     Building next();
 }

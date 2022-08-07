@@ -1,30 +1,36 @@
 package mindustry.type.weapons;
 
-import arc.*;
-import arc.graphics.*;
-import arc.graphics.g2d.*;
-import arc.math.*;
-import arc.math.geom.*;
-import arc.scene.ui.layout.*;
-import arc.util.*;
-import mindustry.*;
-import mindustry.content.*;
-import mindustry.core.*;
-import mindustry.entities.*;
-import mindustry.entities.units.*;
+import arc.Core;
+import arc.graphics.Color;
+import arc.graphics.g2d.Draw;
+import arc.graphics.g2d.TextureRegion;
+import arc.math.Angles;
+import arc.math.Mathf;
+import arc.math.geom.Vec2;
+import arc.scene.ui.layout.Table;
+import arc.util.Time;
+import mindustry.Vars;
+import mindustry.content.Fx;
+import mindustry.core.World;
+import mindustry.entities.Effect;
+import mindustry.entities.Sized;
+import mindustry.entities.Units;
+import mindustry.entities.units.WeaponMount;
 import mindustry.gen.*;
-import mindustry.graphics.*;
-import mindustry.type.*;
-import mindustry.world.blocks.units.*;
-import mindustry.world.meta.*;
+import mindustry.graphics.Pal;
+import mindustry.type.UnitType;
+import mindustry.type.Weapon;
+import mindustry.world.blocks.units.RepairTurret;
+import mindustry.world.meta.Stat;
+import mindustry.world.meta.StatUnit;
 
-import static mindustry.Vars.*;
+import static mindustry.Vars.tilesize;
 
 /**
  * Note that this weapon requires a bullet with a positive maxRange.
  * Rotation must be set to true. Fixed repair points are not supported.
- * */
-public class RepairBeamWeapon extends Weapon{
+ */
+public class RepairBeamWeapon extends Weapon {
     public boolean targetBuildings = false, targetUnits = true;
 
     public float repairSpeed = 0.3f;
@@ -42,11 +48,11 @@ public class RepairBeamWeapon extends Weapon{
     public Color healColor = Pal.heal;
     public Effect healEffect = Fx.healBlockFull;
 
-    public RepairBeamWeapon(String name){
+    public RepairBeamWeapon(String name) {
         super(name);
     }
 
-    public RepairBeamWeapon(){
+    public RepairBeamWeapon() {
     }
 
     {
@@ -63,18 +69,18 @@ public class RepairBeamWeapon extends Weapon{
     }
 
     @Override
-    public void addStats(UnitType u, Table w){
+    public void addStats(UnitType u, Table w) {
         w.row();
-        w.add("[lightgray]" + Stat.repairSpeed.localized() + ": " + (mirror ? "2x " : "") + "[white]" + (int)(repairSpeed * 60) + " " + StatUnit.perSecond.localized());
+        w.add("[lightgray]" + Stat.repairSpeed.localized() + ": " + (mirror ? "2x " : "") + "[white]" + (int) (repairSpeed * 60) + " " + StatUnit.perSecond.localized());
     }
 
     @Override
-    public float dps(){
+    public float dps() {
         return 0f;
     }
 
     @Override
-    public void load(){
+    public void load() {
         super.load();
 
         laser = Core.atlas.find("laser-white");
@@ -84,40 +90,40 @@ public class RepairBeamWeapon extends Weapon{
     }
 
     @Override
-    protected Teamc findTarget(Unit unit, float x, float y, float range, boolean air, boolean ground){
-        var out = targetUnits ? Units.closest(unit.team, x, y, range, u -> u != unit && u.damaged()) :  null;
-        if(out != null || !targetBuildings) return out;
+    protected Teamc findTarget(Unit unit, float x, float y, float range, boolean air, boolean ground) {
+        var out = targetUnits ? Units.closest(unit.team, x, y, range, u -> u != unit && u.damaged()) : null;
+        if (out != null || !targetBuildings) return out;
         return Units.findAllyTile(unit.team, x, y, range, Building::damaged);
     }
 
     @Override
-    protected boolean checkTarget(Unit unit, Teamc target, float x, float y, float range){
-        return !(target.within(unit, range + unit.hitSize/2f) && target.team() == unit.team && target instanceof Healthc u && u.damaged() && u.isValid());
+    protected boolean checkTarget(Unit unit, Teamc target, float x, float y, float range) {
+        return !(target.within(unit, range + unit.hitSize / 2f) && target.team() == unit.team && target instanceof Healthc u && u.damaged() && u.isValid());
     }
 
     @Override
-    protected void shoot(Unit unit, WeaponMount mount, float shootX, float shootY, float rotation){
+    protected void shoot(Unit unit, WeaponMount mount, float shootX, float shootY, float rotation) {
         //does nothing, shooting is handled in update()
     }
 
     @Override
-    public void update(Unit unit, WeaponMount mount){
+    public void update(Unit unit, WeaponMount mount) {
         super.update(unit, mount);
 
         float
-        weaponRotation = unit.rotation - 90,
-        wx = unit.x + Angles.trnsx(weaponRotation, x, y),
-        wy = unit.y + Angles.trnsy(weaponRotation, x, y);
+                weaponRotation = unit.rotation - 90,
+                wx = unit.x + Angles.trnsx(weaponRotation, x, y),
+                wy = unit.y + Angles.trnsy(weaponRotation, x, y);
 
-        HealBeamMount heal = (HealBeamMount)mount;
+        HealBeamMount heal = (HealBeamMount) mount;
         boolean canShoot = mount.shoot;
 
-        if(!autoTarget){
+        if (!autoTarget) {
             heal.target = null;
-            if(canShoot){
+            if (canShoot) {
                 heal.lastEnd.set(heal.aimX, heal.aimY);
 
-                if(!rotate && !Angles.within(Angles.angle(wx, wy, heal.aimX, heal.aimY), unit.rotation, shootCone)){
+                if (!rotate && !Angles.within(Angles.angle(wx, wy, heal.aimX, heal.aimY), unit.rotation, shootCone)) {
                     canShoot = false;
                 }
             }
@@ -125,11 +131,11 @@ public class RepairBeamWeapon extends Weapon{
             //limit range
             heal.lastEnd.sub(wx, wy).limit(range()).add(wx, wy);
 
-            if(targetBuildings){
+            if (targetBuildings) {
                 //snap to closest building
                 World.raycastEachWorld(wx, wy, heal.lastEnd.x, heal.lastEnd.y, (x, y) -> {
                     var build = Vars.world.build(x, y);
-                    if(build != null && build.team == unit.team && build.damaged()){
+                    if (build != null && build.team == unit.team && build.damaged()) {
                         heal.target = build;
                         heal.lastEnd.set(x * tilesize, y * tilesize);
                         return true;
@@ -137,7 +143,7 @@ public class RepairBeamWeapon extends Weapon{
                     return false;
                 });
             }
-            if(targetUnits){
+            if (targetUnits) {
                 //TODO does not support healing units manually yet
             }
         }
@@ -145,47 +151,47 @@ public class RepairBeamWeapon extends Weapon{
         heal.strength = Mathf.lerpDelta(heal.strength, Mathf.num(autoTarget ? mount.target != null : canShoot), 0.2f);
 
         //create heal effect periodically
-        if(canShoot && mount.target instanceof Building b && b.damaged() && (heal.effectTimer += Time.delta) >= reload){
+        if (canShoot && mount.target instanceof Building b && b.damaged() && (heal.effectTimer += Time.delta) >= reload) {
             healEffect.at(b.x, b.y, 0f, healColor, b.block);
             heal.effectTimer = 0f;
         }
 
-        if(canShoot && mount.target instanceof Healthc u){
+        if (canShoot && mount.target instanceof Healthc u) {
             float baseAmount = repairSpeed * heal.strength * Time.delta + fractionRepairSpeed * heal.strength * Time.delta * u.maxHealth() / 100f;
             u.heal((u instanceof Building b && b.wasRecentlyDamaged() ? recentDamageMultiplier : 1f) * baseAmount);
         }
     }
 
     @Override
-    public void draw(Unit unit, WeaponMount mount){
+    public void draw(Unit unit, WeaponMount mount) {
         super.draw(unit, mount);
 
-        HealBeamMount heal = (HealBeamMount)mount;
+        HealBeamMount heal = (HealBeamMount) mount;
 
-        if(unit.canShoot()){
+        if (unit.canShoot()) {
             float
-                weaponRotation = unit.rotation - 90,
-                wx = unit.x + Angles.trnsx(weaponRotation, x, y),
-                wy = unit.y + Angles.trnsy(weaponRotation, x, y),
-                z = Draw.z();
-            RepairTurret.drawBeam(wx, wy, unit.rotation + mount.rotation, shootY, unit.id, mount.target == null || controllable ? null : (Sized)mount.target, unit.team, heal.strength,
-            pulseStroke, pulseRadius, beamWidth + Mathf.absin(widthSinScl, widthSinMag), heal.lastEnd, heal.offset, laserColor, laserTopColor,
-            laser, laserEnd, laserTop, laserTopEnd);
+                    weaponRotation = unit.rotation - 90,
+                    wx = unit.x + Angles.trnsx(weaponRotation, x, y),
+                    wy = unit.y + Angles.trnsy(weaponRotation, x, y),
+                    z = Draw.z();
+            RepairTurret.drawBeam(wx, wy, unit.rotation + mount.rotation, shootY, unit.id, mount.target == null || controllable ? null : (Sized) mount.target, unit.team, heal.strength,
+                    pulseStroke, pulseRadius, beamWidth + Mathf.absin(widthSinScl, widthSinMag), heal.lastEnd, heal.offset, laserColor, laserTopColor,
+                    laser, laserEnd, laserTop, laserTopEnd);
             Draw.z(z);
         }
     }
 
     @Override
-    public void init(){
+    public void init() {
         super.init();
         bullet.healPercent = fractionRepairSpeed;
     }
 
-    public static class HealBeamMount extends WeaponMount{
+    public static class HealBeamMount extends WeaponMount {
         public Vec2 offset = new Vec2(), lastEnd = new Vec2();
         public float strength, effectTimer;
 
-        public HealBeamMount(Weapon weapon){
+        public HealBeamMount(Weapon weapon) {
             super(weapon);
         }
     }

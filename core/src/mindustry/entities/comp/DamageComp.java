@@ -1,8 +1,8 @@
 package mindustry.entities.comp;
 
-import mindustry.annotations.Annotations.*;
+import mindustry.annotations.Annotations.Component;
 
 @Component
-abstract class DamageComp{
+abstract class DamageComp {
     float damage;
 }

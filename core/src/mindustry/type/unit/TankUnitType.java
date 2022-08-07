@@ -1,10 +1,10 @@
 package mindustry.type.unit;
 
-import mindustry.world.meta.*;
+import mindustry.world.meta.Env;
 
-public class TankUnitType extends ErekirUnitType{
+public class TankUnitType extends ErekirUnitType {
 
-    public TankUnitType(String name){
+    public TankUnitType(String name) {
         super(name);
 
         squareShape = true;
@@ -14,5 +14,4 @@ public class TankUnitType extends ErekirUnitType{
         envDisabled = Env.none;
         speed = 0.8f;
     }
-
 }

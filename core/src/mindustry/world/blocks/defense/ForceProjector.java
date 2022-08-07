@@ -1,27 +1,39 @@
 package mindustry.world.blocks.defense;
 
-import arc.func.*;
-import arc.graphics.*;
-import arc.graphics.g2d.*;
-import arc.math.*;
-import arc.math.geom.*;
-import arc.util.*;
-import arc.util.io.*;
-import mindustry.annotations.Annotations.*;
-import mindustry.content.*;
-import mindustry.entities.*;
-import mindustry.game.*;
+import arc.func.Cons;
+import arc.graphics.Blending;
+import arc.graphics.Color;
+import arc.graphics.g2d.Draw;
+import arc.graphics.g2d.Fill;
+import arc.graphics.g2d.Lines;
+import arc.graphics.g2d.TextureRegion;
+import arc.math.Mathf;
+import arc.math.geom.Intersector;
+import arc.util.Nullable;
+import arc.util.Time;
+import arc.util.io.Reads;
+import arc.util.io.Writes;
+import mindustry.annotations.Annotations.Load;
+import mindustry.content.Fx;
+import mindustry.entities.Effect;
+import mindustry.game.Team;
 import mindustry.gen.*;
-import mindustry.graphics.*;
-import mindustry.logic.*;
-import mindustry.ui.*;
-import mindustry.world.*;
-import mindustry.world.consumers.*;
-import mindustry.world.meta.*;
+import mindustry.graphics.Layer;
+import mindustry.graphics.Pal;
+import mindustry.logic.LAccess;
+import mindustry.logic.Ranged;
+import mindustry.ui.Bar;
+import mindustry.world.Block;
+import mindustry.world.consumers.Consume;
+import mindustry.world.consumers.ConsumeCoolant;
+import mindustry.world.meta.BlockGroup;
+import mindustry.world.meta.Env;
+import mindustry.world.meta.Stat;
+import mindustry.world.meta.StatUnit;
 
 import static mindustry.Vars.*;
 
-public class ForceProjector extends Block{
+public class ForceProjector extends Block {
     public final int timerUse = timers++;
     public float phaseUseTime = 350f;
 
@@ -38,21 +50,29 @@ public class ForceProjector extends Block{
     public Effect shieldBreakEffect = Fx.shieldBreak;
     public @Load("@-top") TextureRegion topRegion;
 
-    //TODO json support
+    // TODO json support
     public @Nullable Consume itemConsumer, coolantConsumer;
 
     protected static ForceBuild paramEntity;
     protected static Effect paramEffect;
-    protected static final Cons<Bullet> shieldConsumer = bullet -> {
-        if(bullet.team != paramEntity.team && bullet.type.absorbable && Intersector.isInsideHexagon(paramEntity.x, paramEntity.y, paramEntity.realRadius() * 2f, bullet.x, bullet.y)){
-            bullet.absorb();
-            paramEffect.at(bullet);
-            paramEntity.hit = 1f;
-            paramEntity.buildup += bullet.damage;
-        }
-    };
+    protected static final Cons<Bullet> shieldConsumer =
+            bullet -> {
+                if (bullet.team != paramEntity.team
+                        && bullet.type.absorbable
+                        && Intersector.isInsideHexagon(
+                        paramEntity.x,
+                        paramEntity.y,
+                        paramEntity.realRadius() * 2f,
+                        bullet.x,
+                        bullet.y)) {
+                    bullet.absorb();
+                    paramEffect.at(bullet);
+                    paramEntity.hit = 1f;
+                    paramEntity.buildup += bullet.damage;
+                }
+            };
 
-    public ForceProjector(String name){
+    public ForceProjector(String name) {
         super(name);
         update = true;
         solid = true;
@@ -64,45 +84,62 @@ public class ForceProjector extends Block{
         ambientSound = Sounds.shield;
         ambientSoundVolume = 0.08f;
 
-        if(consumeCoolant){
+        if (consumeCoolant) {
             consume(coolantConsumer = new ConsumeCoolant(coolantConsumption)).boost().update(false);
         }
     }
 
     @Override
-    public void init(){
+    public void init() {
         updateClipRadius(radius + phaseRadiusBoost + 3f);
         super.init();
     }
 
     @Override
-    public void setBars(){
+    public void setBars() {
         super.setBars();
-        addBar("shield", (ForceBuild entity) -> new Bar("stat.shieldhealth", Pal.accent, () -> entity.broken ? 0f : 1f - entity.buildup / (shieldHealth + phaseShieldBoost * entity.phaseHeat)).blink(Color.white));
+        addBar(
+                "shield",
+                (ForceBuild entity) ->
+                        new Bar(
+                                "stat.shieldhealth",
+                                Pal.accent,
+                                () ->
+                                        entity.broken
+                                                ? 0f
+                                                : 1f
+                                                - entity.buildup
+                                                / (shieldHealth
+                                                + phaseShieldBoost
+                                                * entity.phaseHeat))
+                                .blink(Color.white));
     }
 
     @Override
-    public boolean outputsItems(){
+    public boolean outputsItems() {
         return false;
     }
 
     @Override
-    public void setStats(){
+    public void setStats() {
         boolean consItems = itemConsumer != null;
 
-        if(consItems) stats.timePeriod = phaseUseTime;
+        if (consItems) stats.timePeriod = phaseUseTime;
         super.setStats();
         stats.add(Stat.shieldHealth, shieldHealth, StatUnit.none);
-        stats.add(Stat.cooldownTime, (int) (shieldHealth / cooldownBrokenBase / 60f), StatUnit.seconds);
+        stats.add(
+                Stat.cooldownTime,
+                (int) (shieldHealth / cooldownBrokenBase / 60f),
+                StatUnit.seconds);
 
-        if(consItems){
+        if (consItems) {
             stats.add(Stat.boostEffect, phaseRadiusBoost / tilesize, StatUnit.blocks);
             stats.add(Stat.boostEffect, phaseShieldBoost, StatUnit.shieldHealth);
         }
     }
 
     @Override
-    public void drawPlace(int x, int y, int rotation, boolean valid){
+    public void drawPlace(int x, int y, int rotation, boolean valid) {
         super.drawPlace(x, y, rotation, valid);
 
         Draw.color(Pal.gray);
@@ -114,112 +151,119 @@ public class ForceProjector extends Block{
         Draw.color();
     }
 
-    public class ForceBuild extends Building implements Ranged{
+    public class ForceBuild extends Building implements Ranged {
         public boolean broken = true;
         public float buildup, radscl, hit, warmup, phaseHeat;
 
         @Override
-        public float range(){
+        public float range() {
             return realRadius();
         }
 
         @Override
-        public boolean shouldAmbientSound(){
+        public boolean shouldAmbientSound() {
             return !broken && realRadius() > 1f;
         }
 
         @Override
-        public void onRemoved(){
+        public void onRemoved() {
             float radius = realRadius();
-            if(!broken && radius > 1f) Fx.forceShrink.at(x, y, radius, team.color);
+            if (!broken && radius > 1f) Fx.forceShrink.at(x, y, radius, team.color);
             super.onRemoved();
         }
 
         @Override
-        public void pickedUp(){
+        public void pickedUp() {
             super.pickedUp();
             radscl = warmup = 0f;
         }
 
         @Override
-        public boolean inFogTo(Team viewer){
+        public boolean inFogTo(Team viewer) {
             return false;
         }
 
         @Override
-        public void updateTile(){
+        public void updateTile() {
             boolean phaseValid = itemConsumer != null && itemConsumer.efficiency(this) > 0;
 
             phaseHeat = Mathf.lerpDelta(phaseHeat, Mathf.num(phaseValid), 0.1f);
 
-            if(phaseValid && !broken && timer(timerUse, phaseUseTime) && efficiency > 0){
+            if (phaseValid && !broken && timer(timerUse, phaseUseTime) && efficiency > 0) {
                 consume();
             }
 
             radscl = Mathf.lerpDelta(radscl, broken ? 0f : warmup, 0.05f);
 
-            if(Mathf.chanceDelta(buildup / shieldHealth * 0.1f)){
+            if (Mathf.chanceDelta(buildup / shieldHealth * 0.1f)) {
                 Fx.reactorsmoke.at(x + Mathf.range(tilesize / 2f), y + Mathf.range(tilesize / 2f));
             }
 
             warmup = Mathf.lerpDelta(warmup, efficiency, 0.1f);
 
-            if(buildup > 0){
+            if (buildup > 0) {
                 float scale = !broken ? cooldownNormal : cooldownBrokenBase;
 
-                //TODO I hate this system
-                if(coolantConsumer != null){
-                    if(coolantConsumer.efficiency(this) > 0){
+                // TODO I hate this system
+                if (coolantConsumer != null) {
+                    if (coolantConsumer.efficiency(this) > 0) {
                         coolantConsumer.update(this);
-                        scale *= (cooldownLiquid * (1f + (liquids.current().heatCapacity - 0.4f) * 0.9f));
+                        scale *=
+                                (cooldownLiquid
+                                        * (1f + (liquids.current().heatCapacity - 0.4f) * 0.9f));
                     }
                 }
 
                 buildup -= delta() * scale;
             }
 
-            if(broken && buildup <= 0){
+            if (broken && buildup <= 0) {
                 broken = false;
             }
 
-            if(buildup >= shieldHealth + phaseShieldBoost * phaseHeat && !broken){
+            if (buildup >= shieldHealth + phaseShieldBoost * phaseHeat && !broken) {
                 broken = true;
                 buildup = shieldHealth;
                 shieldBreakEffect.at(x, y, realRadius(), team.color);
             }
 
-            if(hit > 0f){
+            if (hit > 0f) {
                 hit -= 1f / 5f * Time.delta;
             }
 
             deflectBullets();
         }
 
-        public void deflectBullets(){
+        public void deflectBullets() {
             float realRadius = realRadius();
 
-            if(realRadius > 0 && !broken){
+            if (realRadius > 0 && !broken) {
                 paramEntity = this;
                 paramEffect = absorbEffect;
-                Groups.bullet.intersect(x - realRadius, y - realRadius, realRadius * 2f, realRadius * 2f, shieldConsumer);
+                Groups.bullet.intersect(
+                        x - realRadius,
+                        y - realRadius,
+                        realRadius * 2f,
+                        realRadius * 2f,
+                        shieldConsumer);
             }
         }
 
-        public float realRadius(){
+        public float realRadius() {
             return (radius + phaseHeat * phaseRadiusBoost) * radscl;
         }
 
         @Override
-        public double sense(LAccess sensor){
-            if(sensor == LAccess.heat) return buildup;
+        public double sense(LAccess sensor) {
+            if (sensor == LAccess.heat) return buildup;
             return super.sense(sensor);
         }
 
         @Override
-        public void draw(){
+        public void draw() {
             super.draw();
 
-            if(buildup > 0f){
+            if (buildup > 0f) {
                 Draw.alpha(buildup / shieldHealth * 0.75f);
                 Draw.z(Layer.blockAdditive);
                 Draw.blend(Blending.additive);
@@ -228,21 +272,21 @@ public class ForceProjector extends Block{
                 Draw.z(Layer.block);
                 Draw.reset();
             }
-            
+
             drawShield();
         }
 
-        public void drawShield(){
-            if(!broken){
+        public void drawShield() {
+            if (!broken) {
                 float radius = realRadius();
 
                 Draw.z(Layer.shields);
 
                 Draw.color(team.color, Color.white, Mathf.clamp(hit));
 
-                if(renderer.animateShields){
+                if (renderer.animateShields) {
                     Fill.poly(x, y, 6, radius);
-                }else{
+                } else {
                     Lines.stroke(1.5f);
                     Draw.alpha(0.09f + Mathf.clamp(0.08f * hit));
                     Fill.poly(x, y, 6, radius);
@@ -256,7 +300,7 @@ public class ForceProjector extends Block{
         }
 
         @Override
-        public void write(Writes write){
+        public void write(Writes write) {
             super.write(write);
             write.bool(broken);
             write.f(buildup);
@@ -266,7 +310,7 @@ public class ForceProjector extends Block{
         }
 
         @Override
-        public void read(Reads read, byte revision){
+        public void read(Reads read, byte revision) {
             super.read(read, revision);
             broken = read.bool();
             buildup = read.f();

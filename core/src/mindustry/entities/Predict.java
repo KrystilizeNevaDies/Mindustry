@@ -1,33 +1,35 @@
 package mindustry.entities;
 
-import arc.math.*;
-import arc.math.geom.*;
-import arc.util.*;
+import arc.math.Mathf;
+import arc.math.geom.Position;
+import arc.math.geom.Vec2;
+import arc.util.Time;
 import mindustry.gen.*;
 
 /**
  * Class for predicting shoot angles based on velocities of targets.
  */
-public class Predict{
+public class Predict {
     private static final Vec2 vec = new Vec2();
     private static final Vec2 vresult = new Vec2();
 
     /**
      * Calculates of intercept of a stationary and moving target. Do not call from multiple threads!
-     * @param srcx X of shooter
-     * @param srcy Y of shooter
-     * @param dstx X of target
-     * @param dsty Y of target
+     *
+     * @param srcx  X of shooter
+     * @param srcy  Y of shooter
+     * @param dstx  X of target
+     * @param dsty  Y of target
      * @param dstvx X velocity of target (subtract shooter X velocity if needed)
      * @param dstvy Y velocity of target (subtract shooter Y velocity if needed)
-     * @param v speed of bullet
+     * @param v     speed of bullet
      * @return the intercept location
      */
-    public static Vec2 intercept(float srcx, float srcy, float dstx, float dsty, float dstvx, float dstvy, float v){
+    public static Vec2 intercept(float srcx, float srcy, float dstx, float dsty, float dstvx, float dstvy, float v) {
         dstvx /= Time.delta;
         dstvy /= Time.delta;
         float tx = dstx - srcx,
-        ty = dsty - srcy;
+                ty = dsty - srcy;
 
         // Get quadratic equation components
         float a = dstvx * dstvx + dstvy * dstvy - v * v;
@@ -39,11 +41,11 @@ public class Predict{
 
         // Find smallest positive solution
         Vec2 sol = vresult.set(dstx, dsty);
-        if(ts != null){
+        if (ts != null) {
             float t0 = ts.x, t1 = ts.y;
             float t = Math.min(t0, t1);
-            if(t < 0) t = Math.max(t0, t1);
-            if(t > 0){
+            if (t < 0) t = Math.max(t0, t1);
+            if (t > 0) {
                 sol.set(dstx + dstvx * t, dsty + dstvy * t);
             }
         }
@@ -51,17 +53,17 @@ public class Predict{
         return sol;
     }
 
-    public static Vec2 intercept(Position src, Position dst, float v){
+    public static Vec2 intercept(Position src, Position dst, float v) {
         return intercept(src, dst, 0, 0, v);
     }
 
-    public static Vec2 intercept(Position src, Position dst, float offsetx, float offsety, float v){
+    public static Vec2 intercept(Position src, Position dst, float offsetx, float offsety, float v) {
         float ddx = 0, ddy = 0;
-        if(dst instanceof Hitboxc h){
+        if (dst instanceof Hitboxc h) {
             ddx += h.deltaX();
             ddy += h.deltaY();
         }
-        if(src instanceof Hitboxc h){
+        if (src instanceof Hitboxc h) {
             ddx -= h.deltaX();
             ddy -= h.deltaY();
         }
@@ -71,21 +73,21 @@ public class Predict{
     /**
      * See {@link #intercept(float, float, float, float, float, float, float)}.
      */
-    public static Vec2 intercept(Hitboxc src, Hitboxc dst, float v){
-        return intercept(src.getX(), src.getY(), dst.getX(), dst.getY(), dst.deltaX() - src.deltaX()/(2f* Time.delta), dst.deltaY() - src.deltaX()/(2f* Time.delta), v);
+    public static Vec2 intercept(Hitboxc src, Hitboxc dst, float v) {
+        return intercept(src.getX(), src.getY(), dst.getX(), dst.getY(), dst.deltaX() - src.deltaX() / (2f * Time.delta), dst.deltaY() - src.deltaX() / (2f * Time.delta), v);
     }
 
-    private static Vec2 quad(float a, float b, float c){
+    private static Vec2 quad(float a, float b, float c) {
         Vec2 sol = null;
-        if(Math.abs(a) < 1e-6){
-            if(Math.abs(b) < 1e-6){
+        if (Math.abs(a) < 1e-6) {
+            if (Math.abs(b) < 1e-6) {
                 sol = Math.abs(c) < 1e-6 ? vec.set(0, 0) : null;
-            }else{
+            } else {
                 vec.set(-c / b, -c / b);
             }
-        }else{
+        } else {
             float disc = b * b - 4 * a * c;
-            if(disc >= 0){
+            if (disc >= 0) {
                 disc = Mathf.sqrt(disc);
                 a = 2 * a;
                 sol = vec.set((-b - disc) / a, (-b + disc) / a);

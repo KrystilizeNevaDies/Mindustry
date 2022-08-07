@@ -1,17 +1,21 @@
 package mindustry.entities.bullet;
 
-import arc.*;
-import arc.graphics.*;
-import arc.graphics.g2d.*;
-import arc.math.*;
-import arc.util.*;
-import mindustry.content.*;
-import mindustry.entities.*;
+import arc.Core;
+import arc.graphics.Color;
+import arc.graphics.g2d.Draw;
+import arc.graphics.g2d.TextureRegion;
+import arc.math.Mathf;
+import arc.util.Time;
+import mindustry.content.Fx;
+import mindustry.entities.Damage;
+import mindustry.entities.Effect;
 import mindustry.gen.*;
-import mindustry.graphics.*;
+import mindustry.graphics.Drawf;
 
-/** A continuous bullet type that only damages in a point. */
-public class PointLaserBulletType extends BulletType{
+/**
+ * A continuous bullet type that only damages in a point.
+ */
+public class PointLaserBulletType extends BulletType {
     public String sprite = "point-laser";
     public TextureRegion laser, laserEnd;
 
@@ -19,13 +23,12 @@ public class PointLaserBulletType extends BulletType{
 
     public Effect beamEffect = Fx.colorTrail;
     public float beamEffectInterval = 3f, beamEffectSize = 3.5f;
-
     public float oscScl = 2f, oscMag = 0.3f;
     public float damageInterval = 5f;
 
     public float shake = 0f;
 
-    public PointLaserBulletType(){
+    public PointLaserBulletType() {
         removeAfterPierce = false;
         speed = 0f;
         despawnEffect = Fx.none;
@@ -39,17 +42,17 @@ public class PointLaserBulletType extends BulletType{
         absorbable = false;
         optimalLifeFract = 0.5f;
 
-        //just make it massive, users of this bullet can adjust as necessary
+        // just make it massive, users of this bullet can adjust as necessary
         drawSize = 1000f;
     }
 
     @Override
-    public float estimateDPS(){
+    public float estimateDPS() {
         return damage * 100f / damageInterval * 3f;
     }
 
     @Override
-    public void load(){
+    public void load() {
         super.load();
 
         laser = Core.atlas.find(sprite);
@@ -57,28 +60,35 @@ public class PointLaserBulletType extends BulletType{
     }
 
     @Override
-    public void draw(Bullet b){
+    public void draw(Bullet b) {
         super.draw(b);
 
         Draw.color(color);
-        Drawf.laser(laser, laserEnd, b.x, b.y, b.aimX, b.aimY, b.fslope() * (1f - oscMag + Mathf.absin(Time.time, oscScl, oscMag)));
+        Drawf.laser(
+                laser,
+                laserEnd,
+                b.x,
+                b.y,
+                b.aimX,
+                b.aimY,
+                b.fslope() * (1f - oscMag + Mathf.absin(Time.time, oscScl, oscMag)));
 
         Draw.reset();
     }
 
     @Override
-    public void update(Bullet b){
+    public void update(Bullet b) {
         super.update(b);
 
-        if(b.timer.get(0, damageInterval)){
+        if (b.timer.get(0, damageInterval)) {
             Damage.collidePoint(b, b.team, hitEffect, b.aimX, b.aimY);
         }
 
-        if(b.timer.get(1, beamEffectInterval)){
+        if (b.timer.get(1, beamEffectInterval)) {
             beamEffect.at(b.aimX, b.aimY, beamEffectSize * b.fslope(), hitColor);
         }
 
-        if(shake > 0){
+        if (shake > 0) {
             Effect.shake(shake, shake, b);
         }
     }

@@ -1,30 +1,35 @@
 package mindustry.ui.dialogs;
 
-import arc.*;
-import arc.graphics.g2d.*;
-import arc.scene.style.*;
-import arc.scene.ui.*;
-import arc.scene.ui.ImageButton.*;
-import arc.scene.ui.layout.*;
-import arc.util.*;
-import mindustry.*;
-import mindustry.game.*;
+import arc.Core;
+import arc.graphics.g2d.TextureRegion;
+import arc.scene.style.TextureRegionDrawable;
+import arc.scene.ui.Image;
+import arc.scene.ui.ImageButton;
+import arc.scene.ui.ImageButton.ImageButtonStyle;
+import arc.scene.ui.ScrollPane;
+import arc.scene.ui.layout.Scl;
+import arc.scene.ui.layout.Table;
+import arc.util.Scaling;
+import arc.util.Strings;
+import mindustry.Vars;
+import mindustry.game.Gamemode;
 import mindustry.gen.*;
-import mindustry.graphics.*;
-import mindustry.maps.*;
-import mindustry.ui.*;
+import mindustry.graphics.Pal;
+import mindustry.maps.Map;
+import mindustry.ui.BorderImage;
+import mindustry.ui.Styles;
 
-public class CustomGameDialog extends BaseDialog{
+public class CustomGameDialog extends BaseDialog {
     private MapPlayDialog dialog = new MapPlayDialog();
 
-    public CustomGameDialog(){
+    public CustomGameDialog() {
         super("@customgame");
         addCloseButton();
         shown(this::setup);
         onResize(this::setup);
     }
 
-    void setup(){
+    void setup() {
         clearChildren();
         add(titleTable).growX().row();
         stack(cont, buttons).grow();
@@ -36,21 +41,24 @@ public class CustomGameDialog extends BaseDialog{
         ScrollPane pane = new ScrollPane(maps);
         pane.setFadeScrollBars(false);
 
-        int maxwidth = Math.max((int)(Core.graphics.getWidth() / Scl.scl(210)), 1);
+        int maxwidth = Math.max((int) (Core.graphics.getWidth() / Scl.scl(210)), 1);
         float images = 146f;
 
-        ImageButtonStyle style = new ImageButtonStyle(){{
-            up = Styles.grayPanel;
-            down = Styles.flatOver;
-            over = Styles.flatOver;
-            disabled = Styles.none;
-        }};
+        ImageButtonStyle style =
+                new ImageButtonStyle() {
+                    {
+                        up = Styles.grayPanel;
+                        down = Styles.flatOver;
+                        over = Styles.flatOver;
+                        disabled = Styles.none;
+                    }
+                };
 
         int i = 0;
         maps.defaults().width(170).fillY().top().pad(4f);
-        for(Map map : Vars.maps.all()){
+        for (Map map : Vars.maps.all()) {
 
-            if(i % maxwidth == 0){
+            if (i % maxwidth == 0) {
                 maps.row();
             }
 
@@ -62,15 +70,21 @@ public class CustomGameDialog extends BaseDialog{
             img.remove();
 
             image.row();
-            image.table(t -> {
-                t.left();
-                for(Gamemode mode : Gamemode.all){
-                    TextureRegionDrawable icon = Vars.ui.getIcon("mode" + Strings.capitalize(mode.name()) + "Small");
-                    if(mode.valid(map) && Core.atlas.isFound(icon.getRegion())){
-                        t.image(icon).size(16f).pad(4f);
-                    }
-                }
-            }).left();
+            image.table(
+                            t -> {
+                                t.left();
+                                for (Gamemode mode : Gamemode.all) {
+                                    TextureRegionDrawable icon =
+                                            Vars.ui.getIcon(
+                                                    "mode"
+                                                            + Strings.capitalize(mode.name())
+                                                            + "Small");
+                                    if (mode.valid(map) && Core.atlas.isFound(icon.getRegion())) {
+                                        t.image(icon).size(16f).pad(4f);
+                                    }
+                                }
+                            })
+                    .left();
             image.row();
             image.add(map.name()).pad(1f).growX().wrap().left().get().setEllipsis(true);
             image.row();
@@ -89,7 +103,7 @@ public class CustomGameDialog extends BaseDialog{
             i++;
         }
 
-        if(Vars.maps.all().size == 0){
+        if (Vars.maps.all().size == 0) {
             maps.add("@maps.none").pad(50);
         }
 

@@ -1,29 +1,30 @@
 package mindustry.ai.types;
 
-import arc.math.geom.*;
-import mindustry.*;
-import mindustry.ai.*;
-import mindustry.core.*;
-import mindustry.entities.*;
+import arc.math.geom.Geometry;
+import arc.math.geom.Point2;
+import mindustry.Vars;
+import mindustry.ai.Pathfinder;
+import mindustry.core.World;
+import mindustry.entities.Units;
 import mindustry.gen.*;
-import mindustry.world.*;
-import mindustry.world.blocks.distribution.*;
-import mindustry.world.blocks.liquid.*;
-import mindustry.world.blocks.storage.*;
-import mindustry.world.meta.*;
+import mindustry.world.Tile;
+import mindustry.world.blocks.distribution.Conveyor;
+import mindustry.world.blocks.liquid.Conduit;
+import mindustry.world.blocks.storage.CoreBlock;
+import mindustry.world.meta.BlockGroup;
 
-import static mindustry.Vars.*;
+import static mindustry.Vars.state;
 
-public class SuicideAI extends GroundAI{
+public class SuicideAI extends GroundAI {
     static boolean blockedByBlock;
 
     @Override
-    public void updateUnit(){
-        if(Units.invalidateTarget(target, unit.team, unit.x, unit.y, Float.MAX_VALUE)){
+    public void updateUnit() {
+        if (Units.invalidateTarget(target, unit.team, unit.x, unit.y, Float.MAX_VALUE)) {
             target = null;
         }
 
-        if(retarget()){
+        if (retarget()) {
             target = target(unit.x, unit.y, unit.range(), unit.type.targetAir, unit.type.targetGround);
         }
 
@@ -31,32 +32,32 @@ public class SuicideAI extends GroundAI{
 
         boolean rotate = false, shoot = false, moveToTarget = false;
 
-        if(target == null){
+        if (target == null) {
             target = core;
         }
 
-        if(!Units.invalidateTarget(target, unit, unit.range()) && unit.hasWeapons()){
+        if (!Units.invalidateTarget(target, unit, unit.range()) && unit.hasWeapons()) {
             rotate = true;
             shoot = unit.within(target, unit.type.weapons.first().bullet.range +
-                (target instanceof Building b ? b.block.size * Vars.tilesize / 2f : ((Hitboxc)target).hitSize() / 2f));
+                    (target instanceof Building b ? b.block.size * Vars.tilesize / 2f : ((Hitboxc) target).hitSize() / 2f));
 
             //do not move toward walls or transport blocks
-            if(!(target instanceof Building build && !(build.block instanceof CoreBlock) && (
-                build.block.group == BlockGroup.walls ||
-                build.block.group == BlockGroup.liquids ||
-                build.block.group == BlockGroup.transportation
-            ))){
+            if (!(target instanceof Building build && !(build.block instanceof CoreBlock) && (
+                    build.block.group == BlockGroup.walls ||
+                            build.block.group == BlockGroup.liquids ||
+                            build.block.group == BlockGroup.transportation
+            ))) {
                 blockedByBlock = false;
 
                 //raycast for target
                 boolean blocked = World.raycast(unit.tileX(), unit.tileY(), target.tileX(), target.tileY(), (x, y) -> {
-                    for(Point2 p : Geometry.d4c){
+                    for (Point2 p : Geometry.d4c) {
                         Tile tile = Vars.world.tile(x + p.x, y + p.y);
-                        if(tile != null && tile.build == target) return false;
-                        if(tile != null && tile.build != null && tile.build.team != unit.team()){
+                        if (tile != null && tile.build == target) return false;
+                        if (tile != null && tile.build != null && tile.build.team != unit.team()) {
                             blockedByBlock = true;
                             return true;
-                        }else{
+                        } else {
                             return tile == null || tile.solid();
                         }
                     }
@@ -64,11 +65,11 @@ public class SuicideAI extends GroundAI{
                 });
 
                 //shoot when there's an enemy block in the way
-                if(blockedByBlock){
+                if (blockedByBlock) {
                     shoot = true;
                 }
 
-                if(!blocked){
+                if (!blocked) {
                     moveToTarget = true;
                     //move towards target directly
                     unit.movePref(vec.set(target).sub(unit).limit(unit.speed()));
@@ -76,18 +77,18 @@ public class SuicideAI extends GroundAI{
             }
         }
 
-        if(!moveToTarget){
+        if (!moveToTarget) {
             boolean move = true;
 
             //stop moving toward the drop zone if applicable
-            if(core == null && state.rules.waves && unit.team == state.rules.defaultTeam){
+            if (core == null && state.rules.waves && unit.team == state.rules.defaultTeam) {
                 Tile spawner = getClosestSpawner();
-                if(spawner != null && unit.within(spawner, state.rules.dropZoneRadius + 120f)){
+                if (spawner != null && unit.within(spawner, state.rules.dropZoneRadius + 120f)) {
                     move = false;
                 }
             }
 
-            if(move){
+            if (move) {
                 pathfind(Pathfinder.fieldCore);
             }
         }
@@ -98,8 +99,8 @@ public class SuicideAI extends GroundAI{
     }
 
     @Override
-    public Teamc target(float x, float y, float range, boolean air, boolean ground){
+    public Teamc target(float x, float y, float range, boolean air, boolean ground) {
         return Units.closestTarget(unit.team, x, y, range, u -> u.checkTarget(air, ground), t -> ground &&
-            !(t.block instanceof Conveyor || t.block instanceof Conduit)); //do not target conveyors/conduits
+                !(t.block instanceof Conveyor || t.block instanceof Conduit)); //do not target conveyors/conduits
     }
 }

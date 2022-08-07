@@ -1,11 +1,11 @@
 package mindustry.entities.bullet;
 
 import mindustry.gen.*;
-import mindustry.graphics.*;
+import mindustry.graphics.Pal;
 
-public class MissileBulletType extends BasicBulletType{
+public class MissileBulletType extends BasicBulletType {
 
-    public MissileBulletType(float speed, float damage, String bulletSprite){
+    public MissileBulletType(float speed, float damage, String bulletSprite) {
         super(speed, damage, bulletSprite);
         backColor = Pal.missileYellowBack;
         frontColor = Pal.missileYellow;
@@ -18,11 +18,11 @@ public class MissileBulletType extends BasicBulletType{
         lifetime = 52f;
     }
 
-    public MissileBulletType(float speed, float damage){
+    public MissileBulletType(float speed, float damage) {
         this(speed, damage, "missile");
     }
 
-    public MissileBulletType(){
+    public MissileBulletType() {
         this(1f, 1f, "missile");
     }
 }

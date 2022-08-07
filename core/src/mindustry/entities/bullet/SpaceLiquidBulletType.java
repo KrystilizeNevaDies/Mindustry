@@ -1,16 +1,17 @@
 package mindustry.entities.bullet;
 
-import arc.graphics.g2d.*;
-import arc.math.*;
-import mindustry.content.*;
+import arc.graphics.g2d.Draw;
+import arc.graphics.g2d.Fill;
+import arc.math.Interp;
+import mindustry.content.Fx;
 import mindustry.gen.*;
-import mindustry.type.*;
+import mindustry.type.Liquid;
 
 //this should probably be an effect?
-public class SpaceLiquidBulletType extends BulletType{
+public class SpaceLiquidBulletType extends BulletType {
     public float orbSize = 5.5f;
 
-    public SpaceLiquidBulletType(){
+    public SpaceLiquidBulletType() {
         super(3.5f, 0);
 
         collides = false;
@@ -24,10 +25,10 @@ public class SpaceLiquidBulletType extends BulletType{
     }
 
     @Override
-    public void draw(Bullet b){
+    public void draw(Bullet b) {
         super.draw(b);
 
-        if(!(b.data instanceof Liquid liquid)) return;
+        if (!(b.data instanceof Liquid liquid)) return;
 
         Draw.color(liquid.color);
         Fill.circle(b.x, b.y, Interp.pow3Out.apply(b.fslope()) * orbSize);

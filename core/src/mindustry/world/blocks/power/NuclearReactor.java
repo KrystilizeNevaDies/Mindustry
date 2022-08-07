@@ -1,41 +1,61 @@
 package mindustry.world.blocks.power;
 
-import arc.*;
-import arc.graphics.*;
-import arc.graphics.g2d.*;
-import arc.math.*;
-import arc.struct.*;
-import arc.util.*;
-import arc.util.io.*;
-import mindustry.annotations.Annotations.*;
-import mindustry.content.*;
-import mindustry.game.EventType.*;
+import arc.Events;
+import arc.graphics.Color;
+import arc.graphics.g2d.Draw;
+import arc.graphics.g2d.Fill;
+import arc.graphics.g2d.TextureRegion;
+import arc.math.Mathf;
+import arc.struct.EnumSet;
+import arc.util.Time;
+import arc.util.Tmp;
+import arc.util.io.Reads;
+import arc.util.io.Writes;
+import mindustry.annotations.Annotations.Load;
+import mindustry.content.Fx;
+import mindustry.content.Items;
+import mindustry.game.EventType.Trigger;
 import mindustry.gen.*;
-import mindustry.graphics.*;
-import mindustry.logic.*;
-import mindustry.type.*;
-import mindustry.ui.*;
-import mindustry.world.meta.*;
+import mindustry.graphics.Drawf;
+import mindustry.graphics.Pal;
+import mindustry.logic.LAccess;
+import mindustry.type.Item;
+import mindustry.ui.Bar;
+import mindustry.world.meta.BlockFlag;
+import mindustry.world.meta.Env;
+import mindustry.world.meta.Stat;
+import mindustry.world.meta.StatUnit;
 
-import static mindustry.Vars.*;
+import static mindustry.Vars.tilesize;
 
-public class NuclearReactor extends PowerGenerator{
+public class NuclearReactor extends PowerGenerator {
     public final int timerFuel = timers++;
 
     public Color lightColor = Color.valueOf("7f19ea");
     public Color coolColor = new Color(1, 1, 1, 0f);
     public Color hotColor = Color.valueOf("ff9575a3");
-    /** ticks to consume 1 fuel */
+    /**
+     * ticks to consume 1 fuel
+     */
     public float itemDuration = 120;
-    /** heating per frame * fullness */
+    /**
+     * heating per frame * fullness
+     */
     public float heating = 0.01f;
-    /** threshold at which block starts smoking */
+    /**
+     * threshold at which block starts smoking
+     */
     public float smokeThreshold = 0.3f;
-    /** heat threshold at which lights start flashing */
+    /**
+     * heat threshold at which lights start flashing
+     */
     public float flashThreshold = 0.46f;
 
-    /** heat removed per unit of coolant */
+    /**
+     * heat removed per unit of coolant
+     */
     public float coolantPower = 0.5f;
+
     public float smoothLight;
 
     public Item fuelItem = Items.thorium;
@@ -43,7 +63,7 @@ public class NuclearReactor extends PowerGenerator{
     public @Load("@-top") TextureRegion topRegion;
     public @Load("@-lights") TextureRegion lightsRegion;
 
-    public NuclearReactor(String name){
+    public NuclearReactor(String name) {
         super(name);
         itemCapacity = 30;
         liquidCapacity = 30;
@@ -65,84 +85,96 @@ public class NuclearReactor extends PowerGenerator{
     }
 
     @Override
-    public void setStats(){
+    public void setStats() {
         super.setStats();
 
-        if(hasItems){
+        if (hasItems) {
             stats.add(Stat.productionTime, itemDuration / 60f, StatUnit.seconds);
         }
     }
 
     @Override
-    public void setBars(){
+    public void setBars() {
         super.setBars();
-        addBar("heat", (NuclearReactorBuild entity) -> new Bar("bar.heat", Pal.lightOrange, () -> entity.heat));
+        addBar(
+                "heat",
+                (NuclearReactorBuild entity) ->
+                        new Bar("bar.heat", Pal.lightOrange, () -> entity.heat));
     }
 
-    public class NuclearReactorBuild extends GeneratorBuild{
+    public class NuclearReactorBuild extends GeneratorBuild {
         public float heat;
         public float flash;
 
         @Override
-        public void updateTile(){
+        public void updateTile() {
             int fuel = items.get(fuelItem);
-            float fullness = (float)fuel / itemCapacity;
+            float fullness = (float) fuel / itemCapacity;
             productionEfficiency = fullness;
 
-            if(fuel > 0 && enabled){
+            if (fuel > 0 && enabled) {
                 heat += fullness * heating * Math.min(delta(), 4f);
 
-                if(timer(timerFuel, itemDuration / timeScale)){
+                if (timer(timerFuel, itemDuration / timeScale)) {
                     consume();
                 }
-            }else{
+            } else {
                 productionEfficiency = 0f;
             }
 
-            if(heat > 0){
+            if (heat > 0) {
                 float maxUsed = Math.min(liquids.currentAmount(), heat / coolantPower);
                 heat -= maxUsed * coolantPower;
                 liquids.remove(liquids.current(), maxUsed);
             }
 
-            if(heat > smokeThreshold){
-                float smoke = 1.0f + (heat - smokeThreshold) / (1f - smokeThreshold); //ranges from 1.0 to 2.0
-                if(Mathf.chance(smoke / 20.0 * delta())){
-                    Fx.reactorsmoke.at(x + Mathf.range(size * tilesize / 2f),
-                    y + Mathf.range(size * tilesize / 2f));
+            if (heat > smokeThreshold) {
+                float smoke =
+                        1.0f
+                                + (heat - smokeThreshold)
+                                / (1f - smokeThreshold); // ranges from 1.0 to 2.0
+                if (Mathf.chance(smoke / 20.0 * delta())) {
+                    Fx.reactorsmoke.at(
+                            x + Mathf.range(size * tilesize / 2f),
+                            y + Mathf.range(size * tilesize / 2f));
                 }
             }
 
             heat = Mathf.clamp(heat);
 
-            if(heat >= 0.999f){
+            if (heat >= 0.999f) {
                 Events.fire(Trigger.thoriumReactorOverheat);
                 kill();
             }
         }
 
         @Override
-        public double sense(LAccess sensor){
-            if(sensor == LAccess.heat) return heat;
+        public double sense(LAccess sensor) {
+            if (sensor == LAccess.heat) return heat;
             return super.sense(sensor);
         }
 
         @Override
-        public void createExplosion(){
-            if(items.get(fuelItem) >= 5 && heat >= 0.5f){
+        public void createExplosion() {
+            if (items.get(fuelItem) >= 5 && heat >= 0.5f) {
                 super.createExplosion();
             }
         }
 
         @Override
-        public void drawLight(){
+        public void drawLight() {
             float fract = productionEfficiency;
             smoothLight = Mathf.lerpDelta(smoothLight, fract, 0.08f);
-            Drawf.light(x, y, (90f + Mathf.absin(5, 5f)) * smoothLight, Tmp.c1.set(lightColor).lerp(Color.scarlet, heat), 0.6f * smoothLight);
+            Drawf.light(
+                    x,
+                    y,
+                    (90f + Mathf.absin(5, 5f)) * smoothLight,
+                    Tmp.c1.set(lightColor).lerp(Color.scarlet, heat),
+                    0.6f * smoothLight);
         }
 
         @Override
-        public void draw(){
+        public void draw() {
             super.draw();
 
             Draw.color(coolColor, hotColor, heat);
@@ -152,8 +184,10 @@ public class NuclearReactor extends PowerGenerator{
             Draw.alpha(liquids.currentAmount() / liquidCapacity);
             Draw.rect(topRegion, x, y);
 
-            if(heat > flashThreshold){
-                flash += (1f + ((heat - flashThreshold) / (1f - flashThreshold)) * 5.4f) * Time.delta;
+            if (heat > flashThreshold) {
+                flash +=
+                        (1f + ((heat - flashThreshold) / (1f - flashThreshold)) * 5.4f)
+                                * Time.delta;
                 Draw.color(Color.red, Color.yellow, Mathf.absin(flash, 9f, 1f));
                 Draw.alpha(0.3f);
                 Draw.rect(lightsRegion, x, y);
@@ -163,13 +197,13 @@ public class NuclearReactor extends PowerGenerator{
         }
 
         @Override
-        public void write(Writes write){
+        public void write(Writes write) {
             super.write(write);
             write.f(heat);
         }
 
         @Override
-        public void read(Reads read, byte revision){
+        public void read(Reads read, byte revision) {
             super.read(read, revision);
             heat = read.f();
         }

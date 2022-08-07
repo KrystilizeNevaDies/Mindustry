@@ -1,36 +1,40 @@
 package mindustry.world.draw;
 
-import arc.*;
-import arc.graphics.g2d.*;
+import arc.Core;
+import arc.graphics.g2d.TextureRegion;
 import mindustry.gen.*;
-import mindustry.graphics.*;
-import mindustry.world.*;
+import mindustry.graphics.Drawf;
+import mindustry.world.Block;
 
-public class DrawBlurSpin extends DrawBlock{
+public class DrawBlurSpin extends DrawBlock {
     public TextureRegion region, blurRegion;
     public String suffix = "";
     public float rotateSpeed = 1f, x, y, blurThresh = 0.7f;
 
-    public DrawBlurSpin(String suffix, float speed){
+    public DrawBlurSpin(String suffix, float speed) {
         this.suffix = suffix;
         rotateSpeed = speed;
     }
 
-    public DrawBlurSpin(){
+    public DrawBlurSpin() {
     }
 
     @Override
-    public void draw(Building build){
-        Drawf.spinSprite(build.warmup() > blurThresh ? blurRegion : region, build.x + x, build.y + y, build.totalProgress() * rotateSpeed);
+    public void draw(Building build) {
+        Drawf.spinSprite(
+                build.warmup() > blurThresh ? blurRegion : region,
+                build.x + x,
+                build.y + y,
+                build.totalProgress() * rotateSpeed);
     }
 
     @Override
-    public TextureRegion[] icons(Block block){
+    public TextureRegion[] icons(Block block) {
         return new TextureRegion[]{region};
     }
 
     @Override
-    public void load(Block block){
+    public void load(Block block) {
         region = Core.atlas.find(block.name + suffix);
         blurRegion = Core.atlas.find(block.name + suffix + "-blur");
     }

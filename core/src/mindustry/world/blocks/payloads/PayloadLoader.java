@@ -1,19 +1,23 @@
 package mindustry.world.blocks.payloads;
 
-import arc.*;
-import arc.graphics.g2d.*;
-import arc.math.*;
-import arc.util.*;
-import arc.util.io.*;
-import mindustry.entities.units.*;
+import arc.Core;
+import arc.graphics.g2d.Draw;
+import arc.graphics.g2d.TextureRegion;
+import arc.math.Mathf;
+import arc.util.Eachable;
+import arc.util.io.Reads;
+import arc.util.io.Writes;
+import mindustry.entities.units.BuildPlan;
 import mindustry.gen.*;
-import mindustry.graphics.*;
-import mindustry.type.*;
-import mindustry.ui.*;
+import mindustry.graphics.Layer;
+import mindustry.graphics.Pal;
+import mindustry.type.Item;
+import mindustry.type.Liquid;
+import mindustry.ui.Bar;
 
-import static mindustry.Vars.*;
+import static mindustry.Vars.content;
 
-public class PayloadLoader extends PayloadBlock{
+public class PayloadLoader extends PayloadBlock {
     public final int timerLoad = timers++;
 
     public float loadTime = 2f;
@@ -26,9 +30,9 @@ public class PayloadLoader extends PayloadBlock{
     //initialized in init(), do not touch
     protected float basePowerUse = 0f;
 
-    public PayloadLoader(String name){
+    public PayloadLoader(String name) {
         super(name);
- 
+
         hasItems = true;
         hasLiquids = true;
         hasPower = true;
@@ -41,26 +45,26 @@ public class PayloadLoader extends PayloadBlock{
     }
 
     @Override
-    public TextureRegion[] icons(){
+    public TextureRegion[] icons() {
         return new TextureRegion[]{region, inRegion, outRegion, topRegion};
     }
 
     @Override
-    public boolean outputsItems(){
+    public boolean outputsItems() {
         return false;
     }
 
     @Override
-    public void setBars(){
+    public void setBars() {
         super.setBars();
 
         addBar("progress", (PayloadLoaderBuild build) -> new Bar(() ->
-            Core.bundle.format(build.payload != null && build.payload.block().hasItems ? "bar.items" : "bar.loadprogress",
-                build.payload == null || !build.payload.block().hasItems ? 0 : build.payload.build.items.total()), () -> Pal.items, build::fraction));
+                Core.bundle.format(build.payload != null && build.payload.block().hasItems ? "bar.items" : "bar.loadprogress",
+                        build.payload == null || !build.payload.block().hasItems ? 0 : build.payload.build.items.total()), () -> Pal.items, build::fraction));
     }
 
     @Override
-    public void drawPlanRegion(BuildPlan plan, Eachable<BuildPlan> list){
+    public void drawPlanRegion(BuildPlan plan, Eachable<BuildPlan> list) {
         Draw.rect(region, plan.drawx(), plan.drawy());
         Draw.rect(inRegion, plan.drawx(), plan.drawy(), plan.rotation * 90);
         Draw.rect(outRegion, plan.drawx(), plan.drawy(), plan.rotation * 90);
@@ -68,8 +72,8 @@ public class PayloadLoader extends PayloadBlock{
     }
 
     @Override
-    public void init(){
-        if(loadPowerDynamic){
+    public void init() {
+        if (loadPowerDynamic) {
             basePowerUse = consPower != null ? consPower.usage : 0f;
             consumePowerDynamic((PayloadLoaderBuild loader) -> loader.hasBattery() && !loader.exporting ? maxPowerConsumption + basePowerUse : basePowerUse);
         }
@@ -77,52 +81,52 @@ public class PayloadLoader extends PayloadBlock{
         super.init();
     }
 
-    public class PayloadLoaderBuild extends PayloadBlockBuild<BuildPayload>{
+    public class PayloadLoaderBuild extends PayloadBlockBuild<BuildPayload> {
         public boolean exporting = false;
 
         @Override
-        public boolean acceptPayload(Building source, Payload payload){
+        public boolean acceptPayload(Building source, Payload payload) {
             return super.acceptPayload(source, payload) &&
-                payload.fits(maxBlockSize) &&
-                payload instanceof BuildPayload build && (
-                //item container
-                (build.build.block.hasItems && build.block().unloadable && build.block().itemCapacity >= 10 && build.block().size <= maxBlockSize) ||
-                //liquid container
-                (build.build.block().hasLiquids && build.block().liquidCapacity >= 10f) ||
-                //battery
-                (build.build.block.consPower != null && build.build.block.consPower.buffered)
+                    payload.fits(maxBlockSize) &&
+                    payload instanceof BuildPayload build && (
+                    //item container
+                    (build.build.block.hasItems && build.block().unloadable && build.block().itemCapacity >= 10 && build.block().size <= maxBlockSize) ||
+                            //liquid container
+                            (build.build.block().hasLiquids && build.block().liquidCapacity >= 10f) ||
+                            //battery
+                            (build.build.block.consPower != null && build.build.block.consPower.buffered)
             );
         }
 
         @Override
-        public void handlePayload(Building source, Payload payload){
+        public void handlePayload(Building source, Payload payload) {
             super.handlePayload(source, payload);
             exporting = false;
         }
 
         @Override
-        public boolean acceptItem(Building source, Item item){
+        public boolean acceptItem(Building source, Item item) {
             return items.total() < itemCapacity;
         }
 
         @Override
-        public boolean acceptLiquid(Building source, Liquid liquid){
+        public boolean acceptLiquid(Building source, Liquid liquid) {
             return liquids.current() == liquid || liquids.currentAmount() < 0.2f;
         }
 
         @Override
-        public void draw(){
+        public void draw() {
             Draw.rect(region, x, y);
 
             //draw input
             boolean fallback = true;
-            for(int i = 0; i < 4; i++){
-                if(blends(i) && i != rotation){
+            for (int i = 0; i < 4; i++) {
+                if (blends(i) && i != rotation) {
                     Draw.rect(inRegion, x, y, (i * 90) - 180);
                     fallback = false;
                 }
             }
-            if(fallback) Draw.rect(inRegion, x, y, rotation * 90);
+            if (fallback) Draw.rect(inRegion, x, y, rotation * 90);
 
             Draw.rect(outRegion, x, y, rotdeg());
 
@@ -134,26 +138,26 @@ public class PayloadLoader extends PayloadBlock{
         }
 
         @Override
-        public void updateTile(){
+        public void updateTile() {
             super.updateTile();
-            if(shouldExport()){
+            if (shouldExport()) {
                 moveOutPayload();
-            }else if(moveInPayload()){
+            } else if (moveInPayload()) {
 
                 //load up items
-                if(payload.block().hasItems && items.any()){
-                    if(efficiency > 0.01f && timer(timerLoad, loadTime / efficiency)){
+                if (payload.block().hasItems && items.any()) {
+                    if (efficiency > 0.01f && timer(timerLoad, loadTime / efficiency)) {
                         //load up items a set amount of times
-                        for(int j = 0; j < itemsLoaded && items.any(); j++){
+                        for (int j = 0; j < itemsLoaded && items.any(); j++) {
 
-                            for(int i = 0; i < items.length(); i++){
-                                if(items.get(i) > 0){
+                            for (int i = 0; i < items.length(); i++) {
+                                if (items.get(i) > 0) {
                                     Item item = content.item(i);
-                                    if(payload.build.acceptItem(payload.build, item)){
+                                    if (payload.build.acceptItem(payload.build, item)) {
                                         payload.build.handleItem(payload.build, item);
                                         items.remove(item, 1);
                                         break;
-                                    }else if(payload.block().separateItemCapacity || payload.block().consumesItem(item)){
+                                    } else if (payload.block().separateItemCapacity || payload.block().consumesItem(item)) {
                                         exporting = true;
                                         break;
                                     }
@@ -164,19 +168,19 @@ public class PayloadLoader extends PayloadBlock{
                 }
 
                 //load up liquids
-                if(payload.block().hasLiquids && liquids.currentAmount() >= 0.001f){
+                if (payload.block().hasLiquids && liquids.currentAmount() >= 0.001f) {
                     Liquid liq = liquids.current();
                     float total = liquids.currentAmount();
                     float flow = Math.min(Math.min(liquidsLoaded * edelta(), payload.block().liquidCapacity - payload.build.liquids.get(liq)), total);
                     //TODO potential crash here
-                    if(payload.build.acceptLiquid(payload.build, liq)){
+                    if (payload.build.acceptLiquid(payload.build, liq)) {
                         payload.build.liquids.add(liq, flow);
                         liquids.remove(liq, flow);
                     }
                 }
 
                 //load up power
-                if(hasBattery()){
+                if (hasBattery()) {
                     //base power input that in raw units
                     float powerInput = power.status * (basePowerUse + maxPowerConsumption);
                     //how much is actually usable
@@ -187,7 +191,7 @@ public class PayloadLoader extends PayloadBlock{
                     payload.build.power.status += availableInput / cap * edelta();
 
                     //export if full
-                    if(payload.build.power.status >= 1f){
+                    if (payload.build.power.status >= 1f) {
                         exporting = true;
                         payload.build.power.status = Mathf.clamp(payload.build.power.status);
                     }
@@ -195,41 +199,41 @@ public class PayloadLoader extends PayloadBlock{
             }
         }
 
-        public float fraction(){
+        public float fraction() {
             return payload == null ? 0f :
-                payload.build.items != null ? payload.build.items.total() / (float)payload.build.block.itemCapacity :
-                payload.build.liquids != null ? payload.build.liquids.currentAmount() / payload.block().liquidCapacity :
-                hasBattery() ? payload.build.power.status :
-                0f;
+                    payload.build.items != null ? payload.build.items.total() / (float) payload.build.block.itemCapacity :
+                            payload.build.liquids != null ? payload.build.liquids.currentAmount() / payload.block().liquidCapacity :
+                                    hasBattery() ? payload.build.power.status :
+                                            0f;
         }
 
-        public boolean shouldExport(){
+        public boolean shouldExport() {
             return payload != null && (
-                exporting ||
-                (payload.block().hasLiquids && liquids.currentAmount() >= 0.1f && payload.build.liquids.currentAmount() >= payload.block().liquidCapacity - 0.001f) ||
-                (payload.block().hasItems && items.any() && payload.block().separateItemCapacity && content.items().contains(i -> payload.build.items.get(i) >= payload.block().itemCapacity)) ||
-                (hasBattery() && payload.build.power.status >= 0.999999999f));
+                    exporting ||
+                            (payload.block().hasLiquids && liquids.currentAmount() >= 0.1f && payload.build.liquids.currentAmount() >= payload.block().liquidCapacity - 0.001f) ||
+                            (payload.block().hasItems && items.any() && payload.block().separateItemCapacity && content.items().contains(i -> payload.build.items.get(i) >= payload.block().itemCapacity)) ||
+                            (hasBattery() && payload.build.power.status >= 0.999999999f));
         }
 
-        public boolean hasBattery(){
+        public boolean hasBattery() {
             return payload != null && payload.block().consPower != null && payload.block().consPower.buffered;
         }
 
         @Override
-        public byte version(){
+        public byte version() {
             return 1;
         }
 
         @Override
-        public void write(Writes write){
+        public void write(Writes write) {
             super.write(write);
             write.bool(exporting);
         }
 
         @Override
-        public void read(Reads read, byte revision){
+        public void read(Reads read, byte revision) {
             super.read(read, revision);
-            if(revision >= 1){
+            if (revision >= 1) {
                 exporting = read.bool();
             }
         }

@@ -1,16 +1,24 @@
 package mindustry.ai.types;
 
-import arc.math.*;
-import arc.struct.*;
-import arc.util.*;
-import mindustry.entities.units.*;
+import arc.math.Mathf;
+import arc.struct.ObjectMap;
+import arc.struct.ObjectSet;
+import arc.util.Nullable;
+import arc.util.Time;
+import arc.util.Tmp;
+import mindustry.entities.units.AIController;
+import mindustry.entities.units.BuildPlan;
 import mindustry.gen.*;
-import mindustry.logic.*;
+import mindustry.logic.LUnitControl;
 
-public class LogicAI extends AIController{
-    /** Minimum delay between item transfers. */
+public class LogicAI extends AIController {
+    /**
+     * Minimum delay between item transfers.
+     */
     public static final float transferDelay = 60f * 1.5f;
-    /** Time after which the unit resets its controlled and reverts to a normal unit. */
+    /**
+     * Time after which the unit resets its controlled and reverts to a normal unit.
+     */
     public static final float logicControlTimeout = 60f * 10f;
 
     public LUnitControl control = LUnitControl.idle;
@@ -38,26 +46,26 @@ public class LogicAI extends AIController{
     private ObjectSet<Object> radars = new ObjectSet<>();
 
     @Override
-    public void updateMovement(){
-        if(itemTimer >= 0) itemTimer -= Time.delta;
-        if(payTimer >= 0) payTimer -= Time.delta;
+    public void updateMovement() {
+        if (itemTimer >= 0) itemTimer -= Time.delta;
+        if (payTimer >= 0) payTimer -= Time.delta;
 
-        if(targetTimer > 0f){
+        if (targetTimer > 0f) {
             targetTimer -= Time.delta;
-        }else{
+        } else {
             radars.clear();
             targetTimer = 40f;
         }
 
         //timeout when not controlled by logic for a while
-        if(controlTimer > 0 && controller != null && controller.isValid()){
+        if (controlTimer > 0 && controller != null && controller.isValid()) {
             controlTimer -= Time.delta;
-        }else{
+        } else {
             unit.resetController();
             return;
         }
 
-        switch(control){
+        switch (control) {
             case move -> {
                 moveTo(Tmp.v1.set(moveX, moveY), 1f, 30f);
             }
@@ -69,47 +77,47 @@ public class LogicAI extends AIController{
             }
         }
 
-        if(unit.type.canBoost && !unit.type.flying){
+        if (unit.type.canBoost && !unit.type.flying) {
             unit.elevation = Mathf.approachDelta(unit.elevation, Mathf.num(boost || unit.onSolid() || (unit.isFlying() && !unit.canLand())), unit.type.riseSpeed);
         }
 
         //look where moving if there's nothing to aim at
-        if(!shoot || !unit.type.omniMovement){
+        if (!shoot || !unit.type.omniMovement) {
             unit.lookAt(unit.prefRotation());
-        }else if(unit.hasWeapons() && unit.mounts.length > 0 && !unit.mounts[0].weapon.ignoreRotation){ //if there is, look at the object
+        } else if (unit.hasWeapons() && unit.mounts.length > 0 && !unit.mounts[0].weapon.ignoreRotation) { //if there is, look at the object
             unit.lookAt(unit.mounts[0].aimX, unit.mounts[0].aimY);
         }
     }
 
-    public boolean checkTargetTimer(Object radar){
+    public boolean checkTargetTimer(Object radar) {
         return radars.add(radar);
     }
 
     @Override
-    public boolean checkTarget(Teamc target, float x, float y, float range){
+    public boolean checkTarget(Teamc target, float x, float y, float range) {
         return false;
     }
 
     //always retarget
     @Override
-    public boolean retarget(){
+    public boolean retarget() {
         return true;
     }
 
     @Override
-    public boolean invalid(Teamc target){
+    public boolean invalid(Teamc target) {
         return false;
     }
 
     @Override
-    public boolean shouldShoot(){
+    public boolean shouldShoot() {
         return shoot && !(unit.type.canBoost && boost);
     }
 
     //always aim for the main target
     @Override
-    public Teamc target(float x, float y, float range, boolean air, boolean ground){
-        return switch(aimControl){
+    public Teamc target(float x, float y, float range, boolean air, boolean ground) {
+        return switch (aimControl) {
             case target -> posTarget;
             case targetp -> mainTarget;
             default -> null;

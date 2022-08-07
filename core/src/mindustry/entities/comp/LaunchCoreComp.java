@@ -1,24 +1,33 @@
 package mindustry.entities.comp;
 
-import arc.graphics.g2d.*;
-import arc.math.*;
-import arc.util.*;
-import mindustry.annotations.Annotations.*;
-import mindustry.content.*;
+import arc.graphics.g2d.Draw;
+import arc.graphics.g2d.Fill;
+import arc.graphics.g2d.TextureRegion;
+import arc.math.Interp;
+import arc.math.Mathf;
+import arc.util.Interval;
+import arc.util.Tmp;
+import mindustry.annotations.Annotations.Component;
+import mindustry.annotations.Annotations.EntityDef;
+import mindustry.annotations.Annotations.Import;
+import mindustry.content.Fx;
 import mindustry.gen.*;
-import mindustry.graphics.*;
-import mindustry.world.*;
+import mindustry.graphics.Drawf;
+import mindustry.graphics.Layer;
+import mindustry.graphics.Pal;
+import mindustry.world.Block;
 
 @EntityDef(value = LaunchCorec.class, serialize = false)
 @Component
-abstract class LaunchCoreComp implements Drawc, Timedc{
-    @Import float x, y;
+abstract class LaunchCoreComp implements Drawc, Timedc {
+    @Import
+    float x, y;
 
     transient Interval in = new Interval();
     Block block;
 
     @Override
-    public void draw(){
+    public void draw() {
         float alpha = fout(Interp.pow5Out);
         float scale = (1f - alpha) * 1.4f + 1f;
         float cx = cx(), cy = cy();
@@ -31,11 +40,17 @@ abstract class LaunchCoreComp implements Drawc, Timedc{
         float rad = 0.2f + fslope();
         float rscl = (block.size - 1) * 0.85f;
 
-        Fill.light(cx, cy, 10, 25f * (rad + scale-1f) * rscl, Tmp.c2.set(Pal.engine).a(alpha), Tmp.c1.set(Pal.engine).a(0f));
+        Fill.light(
+                cx,
+                cy,
+                10,
+                25f * (rad + scale - 1f) * rscl,
+                Tmp.c2.set(Pal.engine).a(alpha),
+                Tmp.c1.set(Pal.engine).a(0f));
 
         Draw.alpha(alpha);
-        for(int i = 0; i < 4; i++){
-            Drawf.tri(cx, cy, 6f * rscl, 40f * (rad + scale-1f) * rscl, i * 90f + rotation);
+        for (int i = 0; i < 4; i++) {
+            Drawf.tri(cx, cy, 6f * rscl, 40f * (rad + scale - 1f) * rscl, i * 90f + rotation);
         }
 
         Draw.color();
@@ -57,18 +72,18 @@ abstract class LaunchCoreComp implements Drawc, Timedc{
         Draw.reset();
     }
 
-    float cx(){
+    float cx() {
         return x + fin(Interp.pow2In) * (12f + Mathf.randomSeedRange(id() + 3, 4f));
     }
 
-    float cy(){
+    float cy() {
         return y + fin(Interp.pow5In) * (100f + Mathf.randomSeedRange(id() + 2, 30f));
     }
 
     @Override
-    public void update(){
+    public void update() {
         float r = 4f;
-        if(in.get(3f - fin()*2f)){
+        if (in.get(3f - fin() * 2f)) {
             Fx.rocketSmokeLarge.at(cx() + Mathf.range(r), cy() + Mathf.range(r), fin());
         }
     }

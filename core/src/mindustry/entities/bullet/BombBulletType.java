@@ -2,10 +2,12 @@ package mindustry.entities.bullet;
 
 import mindustry.gen.*;
 
-/** Template class for an unmoving shrinking bullet. */
-public class BombBulletType extends BasicBulletType{
+/**
+ * Template class for an unmoving shrinking bullet.
+ */
+public class BombBulletType extends BasicBulletType {
 
-    public BombBulletType(float damage, float radius, String sprite){
+    public BombBulletType(float damage, float radius, String sprite) {
         super(0.7f, 0, sprite);
         splashDamageRadius = radius;
         splashDamage = damage;
@@ -19,11 +21,11 @@ public class BombBulletType extends BasicBulletType{
         hitSound = Sounds.explosion;
     }
 
-    public BombBulletType(float damage, float radius){
+    public BombBulletType(float damage, float radius) {
         this(damage, radius, "shell");
     }
 
-    public BombBulletType(){
+    public BombBulletType() {
         this(1f, 1f, "shell");
     }
 }

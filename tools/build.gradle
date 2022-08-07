@@ -28,7 +28,7 @@ static int getRGB(Pixmap image, int ix, int iy) {
 }
 
 @groovy.transform.CompileStatic
-static void antialias(File file){
+static void antialias(File file) {
     Pixmap image = new Pixmap(new Fi(file))
     Pixmap out = image.copy()
 
@@ -37,8 +37,8 @@ static void antialias(File file){
     Color suma = new Color()
     int[] p = new int[9]
 
-    for(int x = 0; x < image.width; x++){
-        for(int y = 0; y < image.height; y++){
+    for (int x = 0; x < image.width; x++) {
+        for (int y = 0; y < image.height; y++) {
             int A = getRGB(image, x - 1, y + 1),
                 B = getRGB(image, x, y + 1),
                 C = getRGB(image, x + 1, y + 1),
@@ -51,18 +51,18 @@ static void antialias(File file){
 
             Arrays.fill(p, E)
 
-            if(D == B && D != H && B != F) p[0] = D
-            if((D == B && D != H && B != F && E != C) || (B == F && B != D && F != H && E != A)) p[1] = B
-            if(B == F && B != D && F != H) p[2] = F
-            if((H == D && H != F && D != B && E != A) || (D == B && D != H && B != F && E != G)) p[3] = D
-            if((B == F && B != D && F != H && E != I) || (F == H && F != B && H != D && E != C)) p[5] = F
-            if(H == D && H != F && D != B) p[6] = D
-            if((F == H && F != B && H != D && E != G) || (H == D && H != F && D != B && E != I)) p[7] = H
-            if(F == H && F != B && H != D) p[8] = F
+            if (D == B && D != H && B != F) p[0] = D
+            if ((D == B && D != H && B != F && E != C) || (B == F && B != D && F != H && E != A)) p[1] = B
+            if (B == F && B != D && F != H) p[2] = F
+            if ((H == D && H != F && D != B && E != A) || (D == B && D != H && B != F && E != G)) p[3] = D
+            if ((B == F && B != D && F != H && E != I) || (F == H && F != B && H != D && E != C)) p[5] = F
+            if (H == D && H != F && D != B) p[6] = D
+            if ((F == H && F != B && H != D && E != G) || (H == D && H != F && D != B && E != I)) p[7] = H
+            if (F == H && F != B && H != D) p[8] = F
 
             suma.set(0)
 
-            for(int val : p){
+            for (int val : p) {
                 color.rgba8888(val)
                 color.premultiplyAlpha()
                 suma.r(suma.r + color.r)
@@ -71,13 +71,13 @@ static void antialias(File file){
                 suma.a(suma.a + color.a)
             }
 
-            float fm = suma.a <= 0.001f ? 0f : (float)(1f / suma.a)
+            float fm = suma.a <= 0.001f ? 0f : (float) (1f / suma.a)
             suma.mul(fm, fm, fm, fm)
 
             float total = 0
             sum.set(0)
 
-            for(int val : p){
+            for (int val : p) {
                 color.rgba8888(val)
                 float a = color.a
                 color.lerp(suma, (float) (1f - a))
@@ -88,7 +88,7 @@ static void antialias(File file){
                 total += 1f
             }
 
-            fm = (float)(1f / total)
+            fm = (float) (1f / total)
             sum.mul(fm, fm, fm, fm)
             out.setRaw(x, y, sum.rgba8888())
             sum.set(0)
@@ -101,64 +101,64 @@ static void antialias(File file){
     new Fi(file).writePng(out)
 }
 
-task antialiasImages(){
-    doLast{
-        for(def img : project.getProperty("images").split(",")){
+task antialiasImages() {
+    doLast {
+        for (def img : project.getProperty("images").split(",")) {
             println(project.getProperty("startdir") + "/" + img)
             antialias(new File(project.getProperty("startdir") + "/" + img))
         }
     }
 }
 
-task tileImages(){
-    doLast{
-        for(def img : project.getProperty("images").split(",")){
+task tileImages() {
+    doLast {
+        for (def img : project.getProperty("images").split(",")) {
             println(project.getProperty("startdir") + "/" + img)
             tileImage(new File(project.getProperty("startdir") + "/" + img))
         }
     }
 }
 
-task pack(dependsOn: [classes, configurations.runtimeClasspath]){
+task pack(dependsOn: [classes, configurations.runtimeClasspath]) {
 
-    doLast{
+    doLast {
         //cleanup old sprites
-        delete{
+        delete {
             delete "../core/assets-raw/sprites_out/"
         }
 
         //copy in new sprites
-        copy{
+        copy {
             from "../core/assets-raw/sprites/"
             into "../core/assets-raw/sprites_out/"
         }
 
         //run generation task; generate all needed sprites
         file(genFolder).mkdirs()
-        javaexec{
+        javaexec {
             main = "mindustry.tools.ImagePacker"
             classpath = sourceSets.main.runtimeClasspath
             workingDir = genFolder
         }
 
-        copy{
+        copy {
             from "../core/assets-raw/sprites_out/ui/icons"
             into "../core/assets-raw/sprites_out/ui/"
         }
 
-        delete{
+        delete {
             delete "../core/assets-raw/sprites_out/ui/icons"
         }
 
-        if(enableAA){
+        if (enableAA) {
             ExecutorService executor = Executors.newFixedThreadPool(OS.cores)
             long ms = System.currentTimeMillis()
 
             //antialias everything except UI elements
-            fileTree(dir: new File(rootDir, 'core/assets-raw/sprites_out/').absolutePath, include: "**/*.png").visit{ file ->
-                if(file.isDirectory() || (file.toString().replace("\\", "/").contains("/ui/") && file.toString().startsWith("icon-")) || file.toString().contains(".9.png") || file.toString().contains("aaaa")) return
+            fileTree(dir: new File(rootDir, 'core/assets-raw/sprites_out/').absolutePath, include: "**/*.png").visit { file ->
+                if (file.isDirectory() || (file.toString().replace("\\", "/").contains("/ui/") && file.toString().startsWith("icon-")) || file.toString().contains(".9.png") || file.toString().contains("aaaa")) return
 
-                executor.submit{
+                executor.submit {
                     antialias(file.file)
                 }
             }
@@ -176,18 +176,18 @@ task pack(dependsOn: [classes, configurations.runtimeClasspath]){
         println("\n\nPacking fallback 2048 sprites...\n\n")
 
         //replace config file contents
-        fileTree(dir: '../core/assets-raw/sprites_out/', include: "**/*.json").visit{ file ->
-            if(!file.isDirectory()) file.file.text = file.file.text.replace("4096", "2048")
+        fileTree(dir: '../core/assets-raw/sprites_out/', include: "**/*.json").visit { file ->
+            if (!file.isDirectory()) file.file.text = file.file.text.replace("4096", "2048")
         }
 
         //pack fallback 2048x2048 sprites - disabled when debugging
-        if(!project.hasProperty("args")){
+        if (!project.hasProperty("args")) {
             TexturePacker.process(new File(rootDir, "core/assets-raw/sprites_out/").absolutePath, new File(rootDir, "core/assets/sprites/fallback/").absolutePath, "sprites.aatls")
         }
     }
 }
 
-task genSprites(dependsOn: classes, type: JavaExec){
+task genSprites(dependsOn: classes, type: JavaExec) {
     finalizedBy 'antialiasGen'
 
     mainClass = "mindustry.tools.ImagePacker"
@@ -196,14 +196,14 @@ task genSprites(dependsOn: classes, type: JavaExec){
     workingDir = genFolder
 }
 
-task fontgen(dependsOn: classes, type: JavaExec){
+task fontgen(dependsOn: classes, type: JavaExec) {
     /* icon font pipeline:
      1. take set of pre-defined icons and SVGs
      2. use Fontello API to get a font with these
      3. combine fontello font and standard font, get output font
      4. use json to generate a file with constants for every icon size+type (during annotation processing)
      */
-    doLast{
+    doLast {
         Fi folder = Fi.get("core/assets-raw/fontgen/out/")
         folder.mkdirs()
 
@@ -231,49 +231,49 @@ task fontgen(dependsOn: classes, type: JavaExec){
         //TODO this is broken
 
         Log.info(OS.exec("fontforge", "-script",
-            Fi.get("core/assets-raw/fontgen/merge.pe").absolutePath(),
-            Fi.get("core/assets/fonts/font.woff").absolutePath(),
-            Fi.get("core/assets-raw/fontgen/out/font.woff").absolutePath())
+                Fi.get("core/assets-raw/fontgen/merge.pe").absolutePath(),
+                Fi.get("core/assets/fonts/font.woff").absolutePath(),
+                Fi.get("core/assets-raw/fontgen/out/font.woff").absolutePath())
         )
 
         Log.info("Done.")
     }
 }
 
-task icongen(dependsOn: classes, type: JavaExec){
+task icongen(dependsOn: classes, type: JavaExec) {
     mainClass = "mindustry.tools.IconConverter"
     classpath = sourceSets.main.runtimeClasspath
     standardInput = System.in
     workingDir = "../core/assets-raw"
 }
 
-task updateScripts(dependsOn: classes, type: JavaExec){
+task updateScripts(dependsOn: classes, type: JavaExec) {
     mainClass = "mindustry.tools.ScriptMainGenerator"
     classpath = sourceSets.main.runtimeClasspath
     standardInput = System.in
     workingDir = "../"
 }
 
-task updateBundles{
-    doLast{
+task updateBundles {
+    doLast {
         def uniEscape = { String string ->
             StringBuilder outBuffer = new StringBuilder()
             int len = string.length()
-            for(int i = 0; i < len; i++){
+            for (int i = 0; i < len; i++) {
                 char ch = string.charAt(i)
-                if((ch > 61) && (ch < 127)){
-                    outBuffer.append(ch == (char)'\\' ? "\\\\" : ch)
+                if ((ch > 61) && (ch < 127)) {
+                    outBuffer.append(ch == (char) '\\' ? "\\\\" : ch)
                     continue
                 }
 
-                if(ch >= 0xE000 && ch <= 0xF8FF){
-                    String hex = Integer.toHexString((int)ch)
+                if (ch >= 0xE000 && ch <= 0xF8FF) {
+                    String hex = Integer.toHexString((int) ch)
                     outBuffer.append("\\u")
-                    for(int j = 0; j < 4 - hex.length(); j++){
+                    for (int j = 0; j < 4 - hex.length(); j++) {
                         outBuffer.append('0')
                     }
                     outBuffer.append(hex)
-                }else{
+                } else {
                     outBuffer.append(ch)
                 }
             }
@@ -288,7 +288,7 @@ task updateBundles{
         Log.info("Updating bundles...")
 
         Fi.get("core/assets/bundles").walk(child -> {
-            if(child.name().equals("bundle.properties") || child.toString().contains("output")) return
+            if (child.name().equals("bundle.properties") || child.toString().contains("output")) return
 
             Log.info("| @", child.nameWithoutExtension())
 
@@ -298,12 +298,12 @@ task updateBundles{
             ObjectMap<String, String> comments = new ObjectMap<>()
             StringBuilder curComment = new StringBuilder()
 
-            for(String line : Seq.with(child.readString().split("\n", -1))){
-                if(line.startsWith("#") || line.isEmpty()){
+            for (String line : Seq.with(child.readString().split("\n", -1))) {
+                if (line.startsWith("#") || line.isEmpty()) {
                     curComment.append(line).append("\n")
-                }else if(line.contains("=")){
+                } else if (line.contains("=")) {
                     String lastKey = line.substring(0, line.indexOf("=")).trim()
-                    if(curComment.length() != 0){
+                    if (curComment.length() != 0) {
                         comments.put(lastKey, curComment.toString())
                         curComment.setLength(0)
                     }
@@ -314,23 +314,23 @@ task updateBundles{
             PropertiesUtils.load(other, child.reader())
             removals.clear()
 
-            for(String key : other.orderedKeys()){
-                if(!base.containsKey(key) && key.contains(".details")){
+            for (String key : other.orderedKeys()) {
+                if (!base.containsKey(key) && key.contains(".details")) {
                     extras.put(key, other.get(key))
-                }else if(!base.containsKey(key)){
+                } else if (!base.containsKey(key)) {
                     removals.add(key)
                     Log.info("&lr- Removing unused key '@'...", key)
                 }
             }
-            if(removals.size > 0) Log.info("&lr@ keys removed.", removals.size)
-            for(String s : removals){
+            if (removals.size > 0) Log.info("&lr@ keys removed.", removals.size)
+            for (String s : removals) {
                 other.remove(s)
             }
 
             int added = 0
 
-            for(String key : base.orderedKeys()){
-                if(other.get(key) == null || other.get(key).trim().isEmpty()){
+            for (String key : base.orderedKeys()) {
+                if (other.get(key) == null || other.get(key).trim().isEmpty()) {
                     other.put(key, base.get(key))
                     added++
                     Log.info("&lc- Adding missing key '@'...", key)
@@ -342,13 +342,13 @@ task updateBundles{
                             (key + " =" + (value.trim().isEmpty() ? "" : " ") + uniEscape(value)).replace("\n", "\\n") + "\n"
             Fi output = child.sibling("output/" + child.name())
 
-            if(added > 0) Log.info("&lc@ keys added.", added)
-            if(removals.size + added > 0) Log.info("Writing bundle to @", output)
+            if (added > 0) Log.info("&lc@ keys added.", added)
+            if (removals.size + added > 0) Log.info("Writing bundle to @", output)
             StringBuilder result = new StringBuilder()
 
             //add everything ordered
-            for(String key : base.orderedKeys().copy().add(extras.keys().toSeq())){
-                if(other.get(key) == null) continue
+            for (String key : base.orderedKeys().copy().add(extras.keys().toSeq())) {
+                if (other.get(key) == null) continue
 
                 result.append(processor.get(key, other.get(key)))
                 other.remove(key)

@@ -1,28 +1,37 @@
 package mindustry.world.blocks.distribution;
 
-import arc.audio.*;
-import arc.graphics.g2d.*;
-import arc.math.*;
-import arc.math.geom.*;
-import arc.struct.*;
-import arc.util.*;
-import arc.util.io.*;
-import arc.util.pooling.Pool.*;
-import arc.util.pooling.*;
-import mindustry.annotations.Annotations.*;
-import mindustry.content.*;
-import mindustry.entities.*;
-import mindustry.entities.bullet.*;
+import arc.audio.Sound;
+import arc.graphics.g2d.Draw;
+import arc.graphics.g2d.Lines;
+import arc.graphics.g2d.TextureRegion;
+import arc.math.Angles;
+import arc.math.Mathf;
+import arc.math.geom.Point2;
+import arc.struct.OrderedSet;
+import arc.util.Time;
+import arc.util.Tmp;
+import arc.util.io.Reads;
+import arc.util.io.Writes;
+import arc.util.pooling.Pool.Poolable;
+import arc.util.pooling.Pools;
+import mindustry.annotations.Annotations.Load;
+import mindustry.content.Fx;
+import mindustry.entities.Effect;
+import mindustry.entities.bullet.MassDriverBolt;
 import mindustry.gen.*;
-import mindustry.graphics.*;
-import mindustry.logic.*;
-import mindustry.type.*;
-import mindustry.world.*;
-import mindustry.world.meta.*;
+import mindustry.graphics.Drawf;
+import mindustry.graphics.Layer;
+import mindustry.graphics.Pal;
+import mindustry.logic.LAccess;
+import mindustry.type.Item;
+import mindustry.world.Block;
+import mindustry.world.meta.Env;
+import mindustry.world.meta.Stat;
+import mindustry.world.meta.StatUnit;
 
 import static mindustry.Vars.*;
 
-public class MassDriver extends Block{
+public class MassDriver extends Block {
     public float range;
     public float rotateSpeed = 5f;
     public float translation = 7f;
@@ -39,7 +48,7 @@ public class MassDriver extends Block{
     public float shake = 3f;
     public @Load("@-base") TextureRegion baseRegion;
 
-    public MassDriver(String name){
+    public MassDriver(String name) {
         super(name);
         update = true;
         solid = true;
@@ -56,7 +65,7 @@ public class MassDriver extends Block{
     }
 
     @Override
-    public void setStats(){
+    public void setStats() {
         super.setStats();
 
         stats.add(Stat.shootRange, range / tilesize, StatUnit.blocks);
@@ -64,27 +73,27 @@ public class MassDriver extends Block{
     }
 
     @Override
-    public TextureRegion[] icons(){
+    public TextureRegion[] icons() {
         return new TextureRegion[]{baseRegion, region};
     }
 
     @Override
-    public void drawPlace(int x, int y, int rotation, boolean valid){
+    public void drawPlace(int x, int y, int rotation, boolean valid) {
         super.drawPlace(x, y, rotation, valid);
 
         Drawf.dashCircle(x * tilesize, y * tilesize, range, Pal.accent);
 
         //check if a mass driver is selected while placing this driver
-        if(!control.input.config.isShown()) return;
+        if (!control.input.config.isShown()) return;
         Building selected = control.input.config.getSelected();
-        if(selected == null || selected.block != this || !selected.within(x * tilesize, y * tilesize, range)) return;
+        if (selected == null || selected.block != this || !selected.within(x * tilesize, y * tilesize, range)) return;
 
         //if so, draw a dotted line towards it while it is in range
         float sin = Mathf.absin(Time.time, 6f, 1f);
         Tmp.v1.set(x * tilesize + offset, y * tilesize + offset).sub(selected.x, selected.y).limit((size / 2f + 1) * tilesize + sin + 0.5f);
         float x2 = x * tilesize - Tmp.v1.x, y2 = y * tilesize - Tmp.v1.y,
-            x1 = selected.x + Tmp.v1.x, y1 = selected.y + Tmp.v1.y;
-        int segs = (int)(selected.dst(x * tilesize, y * tilesize) / tilesize);
+                x1 = selected.x + Tmp.v1.x, y1 = selected.y + Tmp.v1.y;
+        int segs = (int) (selected.dst(x * tilesize, y * tilesize) / tilesize);
 
         Lines.stroke(4f, Pal.gray);
         Lines.dashLine(x1, y1, x2, y2, segs);
@@ -93,18 +102,18 @@ public class MassDriver extends Block{
         Draw.reset();
     }
 
-    public static class DriverBulletData implements Poolable{
+    public static class DriverBulletData implements Poolable {
         public MassDriverBuild from, to;
         public int[] items = new int[content.items().size];
 
         @Override
-        public void reset(){
+        public void reset() {
             from = null;
             to = null;
         }
     }
 
-    public class MassDriverBuild extends Building{
+    public class MassDriverBuild extends Building {
         public int link = -1;
         public float rotation = 90;
         public float reloadCounter = 0f;
@@ -112,85 +121,85 @@ public class MassDriver extends Block{
         //TODO use queue? this array usually holds about 3 shooters max anyway
         public OrderedSet<Building> waitingShooters = new OrderedSet<>();
 
-        public Building currentShooter(){
+        public Building currentShooter() {
             return waitingShooters.isEmpty() ? null : waitingShooters.first();
         }
 
         @Override
-        public void updateTile(){
+        public void updateTile() {
             Building link = world.build(this.link);
             boolean hasLink = linkValid();
 
-            if(hasLink){
+            if (hasLink) {
                 this.link = link.pos();
             }
 
             //reload regardless of state
-            if(reloadCounter > 0f){
+            if (reloadCounter > 0f) {
                 reloadCounter = Mathf.clamp(reloadCounter - edelta() / reload);
             }
 
             var current = currentShooter();
 
             //cleanup waiting shooters that are not valid
-            if(current != null && !shooterValid(current)){
+            if (current != null && !shooterValid(current)) {
                 waitingShooters.remove(current);
             }
 
             //switch states
-            if(state == DriverState.idle){
+            if (state == DriverState.idle) {
                 //start accepting when idle and there's space
-                if(!waitingShooters.isEmpty() && (itemCapacity - items.total() >= minDistribute)){
+                if (!waitingShooters.isEmpty() && (itemCapacity - items.total() >= minDistribute)) {
                     state = DriverState.accepting;
-                }else if(hasLink){ //switch to shooting if there's a valid link.
+                } else if (hasLink) { //switch to shooting if there's a valid link.
                     state = DriverState.shooting;
                 }
             }
 
             //dump when idle or accepting
-            if(state == DriverState.idle || state == DriverState.accepting){
+            if (state == DriverState.idle || state == DriverState.accepting) {
                 dumpAccumulate();
             }
 
             //skip when there's no power
-            if(efficiency <= 0f){
+            if (efficiency <= 0f) {
                 return;
             }
 
-            if(state == DriverState.accepting){
+            if (state == DriverState.accepting) {
                 //if there's nothing shooting at this, bail - OR, items full
-                if(currentShooter() == null || (itemCapacity - items.total() < minDistribute)){
+                if (currentShooter() == null || (itemCapacity - items.total() < minDistribute)) {
                     state = DriverState.idle;
                     return;
                 }
 
                 //align to shooter rotation
                 rotation = Angles.moveToward(rotation, angleTo(currentShooter()), rotateSpeed * efficiency);
-            }else if(state == DriverState.shooting){
+            } else if (state == DriverState.shooting) {
                 //if there's nothing to shoot at OR someone wants to shoot at this thing, bail
-                if(!hasLink || (!waitingShooters.isEmpty() && (itemCapacity - items.total() >= minDistribute))){
+                if (!hasLink || (!waitingShooters.isEmpty() && (itemCapacity - items.total() >= minDistribute))) {
                     state = DriverState.idle;
                     return;
                 }
 
                 float targetRotation = angleTo(link);
 
-                if(
-                items.total() >= minDistribute && //must shoot minimum amount of items
-                link.block.itemCapacity - link.items.total() >= minDistribute //must have minimum amount of space
-                ){
-                    MassDriverBuild other = (MassDriverBuild)link;
+                if (
+                        items.total() >= minDistribute && //must shoot minimum amount of items
+                                link.block.itemCapacity - link.items.total() >= minDistribute //must have minimum amount of space
+                ) {
+                    MassDriverBuild other = (MassDriverBuild) link;
                     other.waitingShooters.add(this);
 
-                    if(reloadCounter <= 0.0001f){
+                    if (reloadCounter <= 0.0001f) {
 
                         //align to target location
                         rotation = Angles.moveToward(rotation, targetRotation, rotateSpeed * efficiency);
 
                         //fire when it's the first in the queue and angles are ready.
-                        if(other.currentShooter() == this &&
-                        other.state == DriverState.accepting &&
-                        Angles.near(rotation, targetRotation, 2f) && Angles.near(other.rotation, targetRotation + 180f, 2f)){
+                        if (other.currentShooter() == this &&
+                                other.state == DriverState.accepting &&
+                                Angles.near(rotation, targetRotation, 2f) && Angles.near(other.rotation, targetRotation + 180f, 2f)) {
                             //actually fire
                             fire(other);
                             float timeToArrive = Math.min(bulletLifetime, dst(other) / bulletSpeed);
@@ -208,39 +217,39 @@ public class MassDriver extends Block{
         }
 
         @Override
-        public double sense(LAccess sensor){
-            if(sensor == LAccess.progress) return Mathf.clamp(1f - reloadCounter / reload);
+        public double sense(LAccess sensor) {
+            if (sensor == LAccess.progress) return Mathf.clamp(1f - reloadCounter / reload);
             return super.sense(sensor);
         }
 
         @Override
-        public void draw(){
+        public void draw() {
             Draw.rect(baseRegion, x, y);
 
             Draw.z(Layer.turret);
 
             Drawf.shadow(region,
-            x + Angles.trnsx(rotation + 180f, reloadCounter * knockback) - (size / 2),
-            y + Angles.trnsy(rotation + 180f, reloadCounter * knockback) - (size / 2), rotation - 90);
+                    x + Angles.trnsx(rotation + 180f, reloadCounter * knockback) - (size / 2),
+                    y + Angles.trnsy(rotation + 180f, reloadCounter * knockback) - (size / 2), rotation - 90);
             Draw.rect(region,
-            x + Angles.trnsx(rotation + 180f, reloadCounter * knockback),
-            y + Angles.trnsy(rotation + 180f, reloadCounter * knockback), rotation - 90);
+                    x + Angles.trnsx(rotation + 180f, reloadCounter * knockback),
+                    y + Angles.trnsy(rotation + 180f, reloadCounter * knockback), rotation - 90);
         }
 
         @Override
-        public void drawConfigure(){
+        public void drawConfigure() {
             float sin = Mathf.absin(Time.time, 6f, 1f);
 
             Draw.color(Pal.accent);
             Lines.stroke(1f);
             Drawf.circles(x, y, (tile.block().size / 2f + 1) * tilesize + sin - 2f, Pal.accent);
 
-            for(var shooter : waitingShooters){
+            for (var shooter : waitingShooters) {
                 Drawf.circles(shooter.x, shooter.y, (tile.block().size / 2f + 1) * tilesize + sin - 2f, Pal.place);
                 Drawf.arrow(shooter.x, shooter.y, x, y, size * tilesize + sin, 4f + sin, Pal.place);
             }
 
-            if(linkValid()){
+            if (linkValid()) {
                 Building target = world.build(link);
                 Drawf.circles(target.x, target.y, (target.block().size / 2f + 1) * tilesize + sin - 2f, Pal.place);
                 Drawf.arrow(x, y, target.x, target.y, size * tilesize + sin, 4f + sin);
@@ -250,17 +259,17 @@ public class MassDriver extends Block{
         }
 
         @Override
-        public boolean onConfigureBuildTapped(Building other){
-            if(this == other){
-                if(link == -1) deselect();
+        public boolean onConfigureBuildTapped(Building other) {
+            if (this == other) {
+                if (link == -1) deselect();
                 configure(-1);
                 return false;
             }
 
-            if(link == other.pos()){
+            if (link == other.pos()) {
                 configure(-1);
                 return false;
-            }else if(other.block == block && other.dst(tile) <= range && other.team == team){
+            } else if (other.block == block && other.dst(tile) <= range && other.team == team) {
                 configure(other.pos());
                 return false;
             }
@@ -269,12 +278,12 @@ public class MassDriver extends Block{
         }
 
         @Override
-        public boolean acceptItem(Building source, Item item){
+        public boolean acceptItem(Building source, Item item) {
             //mass drivers that output only cannot accept items
             return items.total() < itemCapacity && linkValid();
         }
 
-        protected void fire(MassDriverBuild target){
+        protected void fire(MassDriverBuild target) {
             //reset reload, use power.
             reloadCounter = 1f;
 
@@ -282,7 +291,7 @@ public class MassDriver extends Block{
             data.from = this;
             data.to = target;
             int totalUsed = 0;
-            for(int i = 0; i < content.items().size; i++){
+            for (int i = 0; i < content.items().size; i++) {
                 int maxTransfer = Math.min(items.get(content.item(i)), tile.block().itemCapacity - totalUsed);
                 data.items[i] = maxTransfer;
                 totalUsed += maxTransfer;
@@ -292,28 +301,28 @@ public class MassDriver extends Block{
             float angle = tile.angleTo(target);
 
             bullet.create(this, team,
-                x + Angles.trnsx(angle, translation), y + Angles.trnsy(angle, translation),
-                angle, -1f, bulletSpeed, bulletLifetime, data);
+                    x + Angles.trnsx(angle, translation), y + Angles.trnsy(angle, translation),
+                    angle, -1f, bulletSpeed, bulletLifetime, data);
 
             shootEffect.at(x + Angles.trnsx(angle, translation), y + Angles.trnsy(angle, translation), angle);
             smokeEffect.at(x + Angles.trnsx(angle, translation), y + Angles.trnsy(angle, translation), angle);
 
             Effect.shake(shake, shake, this);
-            
+
             shootSound.at(tile, Mathf.random(0.9f, 1.1f));
         }
 
-        public void handlePayload(Bullet bullet, DriverBulletData data){
+        public void handlePayload(Bullet bullet, DriverBulletData data) {
             int totalItems = items.total();
 
             //add all the items possible
-            for(int i = 0; i < data.items.length; i++){
+            for (int i = 0; i < data.items.length; i++) {
                 int maxAdd = Math.min(data.items[i], itemCapacity * 2 - totalItems);
                 items.add(content.item(i), maxAdd);
                 data.items[i] -= maxAdd;
                 totalItems += maxAdd;
 
-                if(totalItems >= itemCapacity * 2){
+                if (totalItems >= itemCapacity * 2) {
                     break;
                 }
             }
@@ -325,31 +334,31 @@ public class MassDriver extends Block{
             bullet.remove();
         }
 
-        protected boolean shooterValid(Building other){
+        protected boolean shooterValid(Building other) {
             return other instanceof MassDriverBuild entity && other.isValid() && other.efficiency > 0 && entity.block == block && entity.link == pos() && within(other, range);
         }
 
-        protected boolean linkValid(){
-            if(link == -1) return false;
+        protected boolean linkValid() {
+            if (link == -1) return false;
             return world.build(this.link) instanceof MassDriverBuild other && other.block == block && other.team == team && within(other, range);
         }
 
         @Override
-        public Point2 config(){
-            if(tile == null) return null;
+        public Point2 config() {
+            if (tile == null) return null;
             return Point2.unpack(link).sub(tile.x, tile.y);
         }
 
         @Override
-        public void write(Writes write){
+        public void write(Writes write) {
             super.write(write);
             write.i(link);
             write.f(rotation);
-            write.b((byte)state.ordinal());
+            write.b((byte) state.ordinal());
         }
 
         @Override
-        public void read(Reads read, byte revision){
+        public void read(Reads read, byte revision) {
             super.read(read, revision);
             link = read.i();
             rotation = read.f();
@@ -357,7 +366,7 @@ public class MassDriver extends Block{
         }
     }
 
-    public enum DriverState{
+    public enum DriverState {
         idle, //nothing is shooting at this mass driver and it does not have any target
         accepting, //currently getting shot at, unload items
         shooting;

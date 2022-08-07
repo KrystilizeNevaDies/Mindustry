@@ -2,27 +2,25 @@ package mindustry.entities.units;
 
 import mindustry.gen.*;
 
-public interface UnitController{
+public interface UnitController {
     void unit(Unit unit);
+
     Unit unit();
 
-    default void hit(Bullet bullet){
-
+    default void hit(Bullet bullet) {
     }
 
-    default boolean isValidController(){
+    default boolean isValidController() {
         return true;
     }
 
-    default void updateUnit(){
-
+    default void updateUnit() {
     }
 
-    default void removed(Unit unit){
-
+    default void removed(Unit unit) {
     }
 
-    default boolean isBeingControlled(Unit player){
+    default boolean isBeingControlled(Unit player) {
         return false;
     }
 }

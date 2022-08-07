@@ -1,9 +1,9 @@
 package mindustry.logic;
 
-import mindustry.game.*;
+import mindustry.game.Team;
 import mindustry.gen.*;
 
-public enum RadarTarget{
+public enum RadarTarget {
     any((team, other) -> true),
     enemy((team, other) -> team != other.team && other.team != Team.derelict),
     ally((team, other) -> team == other.team),
@@ -17,11 +17,11 @@ public enum RadarTarget{
 
     public static final RadarTarget[] all = values();
 
-    RadarTarget(RadarTargetFunc func){
+    RadarTarget(RadarTargetFunc func) {
         this.func = func;
     }
 
-    public interface RadarTargetFunc{
+    public interface RadarTargetFunc {
         boolean get(Team team, Unit other);
     }
 }

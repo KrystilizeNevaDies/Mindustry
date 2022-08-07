@@ -1,130 +1,146 @@
 package mindustry.world.blocks.payloads;
 
-import arc.*;
-import arc.graphics.*;
-import arc.graphics.g2d.*;
-import arc.math.*;
-import arc.scene.style.*;
-import arc.util.*;
-import arc.util.io.*;
-import mindustry.*;
-import mindustry.core.*;
-import mindustry.ctype.*;
-import mindustry.entities.EntityCollisions.*;
-import mindustry.entities.*;
-import mindustry.game.EventType.*;
+import arc.Events;
+import arc.graphics.Color;
+import arc.graphics.g2d.Draw;
+import arc.graphics.g2d.TextureRegion;
+import arc.math.Interp;
+import arc.math.Mathf;
+import arc.scene.style.TextureRegionDrawable;
+import arc.util.Nullable;
+import arc.util.Time;
+import arc.util.Tmp;
+import arc.util.io.Writes;
+import mindustry.Vars;
+import mindustry.core.World;
+import mindustry.ctype.UnlockableContent;
+import mindustry.entities.EntityCollisions.SolidPred;
+import mindustry.entities.Units;
+import mindustry.game.EventType.UnitUnloadEvent;
 import mindustry.gen.*;
-import mindustry.type.*;
+import mindustry.type.ItemStack;
 
-import static mindustry.Vars.*;
+import static mindustry.Vars.headless;
 
-public class UnitPayload implements Payload{
+public class UnitPayload implements Payload {
     public static final float overlayDuration = 40f;
 
     public Unit unit;
     public float overlayTime = 0f;
     public @Nullable TextureRegion overlayRegion;
 
-    public UnitPayload(Unit unit){
+    public UnitPayload(Unit unit) {
         this.unit = unit;
     }
 
-    /** Flashes a red overlay region. */
-    public void showOverlay(TextureRegion icon){
+    /**
+     * Flashes a red overlay region.
+     */
+    public void showOverlay(TextureRegion icon) {
         overlayRegion = icon;
         overlayTime = 1f;
     }
 
-    /** Flashes a red overlay region. */
-    public void showOverlay(TextureRegionDrawable icon){
-        if(icon == null || headless) return;
+    /**
+     * Flashes a red overlay region.
+     */
+    public void showOverlay(TextureRegionDrawable icon) {
+        if (icon == null || headless) return;
         showOverlay(icon.getRegion());
     }
 
     @Override
-    public void update(@Nullable Unit unitHolder, @Nullable Building buildingHolder){
+    public void update(@Nullable Unit unitHolder, @Nullable Building buildingHolder) {
         unit.type.updatePayload(unit, unitHolder, buildingHolder);
     }
 
     @Override
-    public UnlockableContent content(){
+    public UnlockableContent content() {
         return unit.type;
     }
 
     @Override
-    public ItemStack[] requirements(){
+    public ItemStack[] requirements() {
         return unit.type.getTotalRequirements();
     }
 
     @Override
-    public float buildTime(){
+    public float buildTime() {
         return unit.type.getBuildTime();
     }
 
     @Override
-    public void write(Writes write){
+    public void write(Writes write) {
         write.b(payloadUnit);
         write.b(unit.classId());
         unit.write(write);
     }
 
     @Override
-    public void set(float x, float y, float rotation){
+    public void set(float x, float y, float rotation) {
         unit.set(x, y);
         unit.rotation = rotation;
     }
 
     @Override
-    public float x(){
+    public float x() {
         return unit.x;
     }
 
     @Override
-    public float y(){
+    public float y() {
         return unit.y;
     }
 
     @Override
-    public float rotation(){
+    public float rotation() {
         return unit.rotation;
     }
 
     @Override
-    public float size(){
+    public float size() {
         return unit.hitSize;
     }
 
     @Override
-    public boolean dump(){
-        //TODO should not happen
-        if(unit.type == null) return true;
+    public boolean dump() {
+        // TODO should not happen
+        if (unit.type == null) return true;
 
-        if(!Units.canCreate(unit.team, unit.type)){
+        if (!Units.canCreate(unit.team, unit.type)) {
             overlayTime = 1f;
             overlayRegion = null;
             return false;
         }
 
-        //check if unit can be dumped here
+        // check if unit can be dumped here
         SolidPred solid = unit.solidity();
-        if(solid != null){
+        if (solid != null) {
             Tmp.v1.trns(unit.rotation, 1f);
 
             int tx = World.toTile(unit.x + Tmp.v1.x), ty = World.toTile(unit.y + Tmp.v1.y);
 
-            //cannot dump on solid blocks
-            if(solid.solid(tx, ty)) return false;
+            // cannot dump on solid blocks
+            if (solid.solid(tx, ty)) return false;
         }
 
-        //cannot dump when there's a lot of overlap going on
-        if(!unit.type.flying && Units.count(unit.x, unit.y, unit.physicSize(), o -> o.isGrounded() && (o.type.allowLegStep == unit.type.allowLegStep)) > 0){
+        // cannot dump when there's a lot of overlap going on
+        if (!unit.type.flying
+                && Units.count(
+                unit.x,
+                unit.y,
+                unit.physicSize(),
+                o ->
+                        o.isGrounded()
+                                && (o.type.allowLegStep == unit.type.allowLegStep))
+                > 0) {
             return false;
         }
 
-        //no client dumping
-        if(Vars.net.client()) return true;
+        // no client dumping
+        if (Vars.net.client()) return true;
 
-        //prevents stacking
+        // prevents stacking
         unit.vel.add(Mathf.range(0.5f), Mathf.range(0.5f));
         unit.add();
         unit.unloaded();
@@ -134,23 +150,23 @@ public class UnitPayload implements Payload{
     }
 
     @Override
-    public void drawShadow(float alpha){
-        //TODO should not happen
-        if(unit.type == null) return;
+    public void drawShadow(float alpha) {
+        // TODO should not happen
+        if (unit.type == null) return;
 
         unit.type.drawSoftShadow(unit, alpha);
     }
 
     @Override
-    public void draw(){
-        //TODO should not happen
-        if(unit.type == null) return;
+    public void draw() {
+        // TODO should not happen
+        if (unit.type == null) return;
 
-        //TODO this would be more accurate but has all sorts of associated problems (?)
-        if(false){
+        // TODO this would be more accurate but has all sorts of associated problems (?)
+        if (false) {
             float e = unit.elevation;
             unit.elevation = 0f;
-            //avoids drawing mining or building
+            // avoids drawing mining or building
             unit.type.draw(unit);
             unit.elevation = e;
             return;
@@ -160,8 +176,8 @@ public class UnitPayload implements Payload{
         Draw.rect(unit.type.fullIcon, unit.x, unit.y, unit.rotation - 90);
         unit.type.drawCell(unit);
 
-        //draw warning
-        if(overlayTime > 0){
+        // draw warning
+        if (overlayTime > 0) {
             var region = overlayRegion == null ? Icon.warning.getRegion() : overlayRegion;
             Draw.color(Color.scarlet);
             Draw.alpha(0.8f * Interp.exp5Out.apply(overlayTime));
@@ -171,12 +187,12 @@ public class UnitPayload implements Payload{
 
             Draw.reset();
 
-            overlayTime = Math.max(overlayTime - Time.delta/overlayDuration, 0f);
+            overlayTime = Math.max(overlayTime - Time.delta / overlayDuration, 0f);
         }
     }
 
     @Override
-    public TextureRegion icon(){
+    public TextureRegion icon() {
         return unit.type.fullIcon;
     }
 }

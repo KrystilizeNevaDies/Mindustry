@@ -1,28 +1,39 @@
 package mindustry.world.blocks.distribution;
 
-import arc.*;
-import arc.graphics.*;
-import arc.graphics.g2d.*;
-import arc.math.*;
-import arc.math.geom.*;
-import arc.struct.*;
-import arc.util.*;
-import arc.util.io.*;
-import mindustry.annotations.Annotations.*;
-import mindustry.content.*;
-import mindustry.entities.*;
-import mindustry.entities.units.*;
+import arc.Core;
+import arc.graphics.Color;
+import arc.graphics.g2d.Draw;
+import arc.graphics.g2d.TextureRegion;
+import arc.math.Mathf;
+import arc.math.geom.Geometry;
+import arc.math.geom.Point2;
+import arc.struct.Seq;
+import arc.util.Eachable;
+import arc.util.Nullable;
+import arc.util.Tmp;
+import arc.util.io.Reads;
+import arc.util.io.Writes;
+import mindustry.annotations.Annotations.Load;
+import mindustry.content.Blocks;
+import mindustry.entities.TargetPriority;
+import mindustry.entities.units.BuildPlan;
 import mindustry.gen.*;
-import mindustry.graphics.*;
-import mindustry.input.*;
-import mindustry.type.*;
-import mindustry.world.*;
-import mindustry.world.blocks.*;
-import mindustry.world.meta.*;
+import mindustry.graphics.Layer;
+import mindustry.input.Placement;
+import mindustry.type.Item;
+import mindustry.world.Block;
+import mindustry.world.Edges;
+import mindustry.world.Tile;
+import mindustry.world.blocks.Autotiler;
+import mindustry.world.meta.BlockGroup;
+import mindustry.world.meta.Env;
+import mindustry.world.meta.Stat;
+import mindustry.world.meta.StatUnit;
 
-import static mindustry.Vars.*;
+import static mindustry.Vars.itemSize;
+import static mindustry.Vars.tilesize;
 
-public class Duct extends Block implements Autotiler{
+public class Duct extends Block implements Autotiler {
     public float speed = 5f;
     public boolean armored = false;
     public Color transparentColor = new Color(0.4f, 0.4f, 0.4f, 0.1f);
@@ -30,7 +41,7 @@ public class Duct extends Block implements Autotiler{
     public @Load(value = "@-top-#", length = 5) TextureRegion[] topRegions;
     public @Load(value = "@-bottom-#", length = 5, fallback = "duct-bottom-#") TextureRegion[] botRegions;
 
-    public Duct(String name){
+    public Duct(String name) {
         super(name);
 
         group = BlockGroup.transportation;
@@ -50,17 +61,17 @@ public class Duct extends Block implements Autotiler{
     }
 
     @Override
-    public void setStats(){
+    public void setStats() {
         super.setStats();
 
         stats.add(Stat.itemsMoved, 60f / speed, StatUnit.itemsSecond);
     }
 
     @Override
-    public void drawPlanRegion(BuildPlan plan, Eachable<BuildPlan> list){
+    public void drawPlanRegion(BuildPlan plan, Eachable<BuildPlan> list) {
         int[] bits = getTiling(plan, list);
 
-        if(bits == null) return;
+        if (bits == null) return;
 
         Draw.scl(bits[1], bits[2]);
         Draw.alpha(0.5f);
@@ -71,35 +82,35 @@ public class Duct extends Block implements Autotiler{
     }
 
     @Override
-    public boolean blendsArmored(Tile tile, int rotation, int otherx, int othery, int otherrot, Block otherblock){
+    public boolean blendsArmored(Tile tile, int rotation, int otherx, int othery, int otherrot, Block otherblock) {
         return Point2.equals(tile.x + Geometry.d4(rotation).x, tile.y + Geometry.d4(rotation).y, otherx, othery)
-            || ((!otherblock.rotatedOutput(otherx, othery) && Edges.getFacingEdge(otherblock, otherx, othery, tile) != null &&
-            Edges.getFacingEdge(otherblock, otherx, othery, tile).relativeTo(tile) == rotation) ||
+                || ((!otherblock.rotatedOutput(otherx, othery) && Edges.getFacingEdge(otherblock, otherx, othery, tile) != null &&
+                Edges.getFacingEdge(otherblock, otherx, othery, tile).relativeTo(tile) == rotation) ||
 
-            ((otherblock.rotatedOutput(otherx, othery)) && (otherblock instanceof Duct) && Point2.equals(otherx + Geometry.d4(otherrot).x, othery + Geometry.d4(otherrot).y, tile.x, tile.y)));
+                ((otherblock.rotatedOutput(otherx, othery)) && (otherblock instanceof Duct) && Point2.equals(otherx + Geometry.d4(otherrot).x, othery + Geometry.d4(otherrot).y, tile.x, tile.y)));
     }
 
     @Override
-    public boolean blends(Tile tile, int rotation, int otherx, int othery, int otherrot, Block otherblock){
-        if(!armored){
+    public boolean blends(Tile tile, int rotation, int otherx, int othery, int otherrot, Block otherblock) {
+        if (!armored) {
             return (otherblock.outputsItems() || (lookingAt(tile, rotation, otherx, othery, otherblock) && otherblock.hasItems))
-            && lookingAtEither(tile, rotation, otherx, othery, otherrot, otherblock);
-        }else{
+                    && lookingAtEither(tile, rotation, otherx, othery, otherrot, otherblock);
+        } else {
             return (otherblock.outputsItems() && blendsArmored(tile, rotation, otherx, othery, otherrot, otherblock)) || (lookingAt(tile, rotation, otherx, othery, otherblock) && otherblock.hasItems);
         }
     }
 
     @Override
-    public TextureRegion[] icons(){
+    public TextureRegion[] icons() {
         return new TextureRegion[]{Core.atlas.find("duct-bottom"), topRegions[0]};
     }
 
     @Override
-    public void handlePlacementLine(Seq<BuildPlan> plans){
-        Placement.calculateBridges(plans, (DuctBridge)Blocks.ductBridge, false, b -> b instanceof Duct);
+    public void handlePlacementLine(Seq<BuildPlan> plans) {
+        Placement.calculateBridges(plans, (DuctBridge) Blocks.ductBridge, false, b -> b instanceof Duct);
     }
 
-    public class DuctBuild extends Building{
+    public class DuctBuild extends Building {
         public float progress;
         public @Nullable Item current;
         public int recDir = 0;
@@ -108,25 +119,25 @@ public class Duct extends Block implements Autotiler{
         public @Nullable DuctBuild nextc;
 
         @Override
-        public void draw(){
+        public void draw() {
             float rotation = rotdeg();
             int r = this.rotation;
 
             //draw extra ducts facing this one for tiling purposes
-            for(int i = 0; i < 4; i++){
-                if((blending & (1 << i)) != 0){
+            for (int i = 0; i < 4; i++) {
+                if ((blending & (1 << i)) != 0) {
                     int dir = r - i;
-                    float rot = i == 0 ? rotation : (dir)*90;
-                    drawAt(x + Geometry.d4x(dir) * tilesize*0.75f, y + Geometry.d4y(dir) * tilesize*0.75f, 0, rot, i != 0 ? SliceMode.bottom : SliceMode.top);
+                    float rot = i == 0 ? rotation : (dir) * 90;
+                    drawAt(x + Geometry.d4x(dir) * tilesize * 0.75f, y + Geometry.d4y(dir) * tilesize * 0.75f, 0, rot, i != 0 ? SliceMode.bottom : SliceMode.top);
                 }
             }
 
             //draw item
-            if(current != null){
+            if (current != null) {
                 Draw.z(Layer.blockUnder + 0.1f);
                 Tmp.v1.set(Geometry.d4x(recDir) * tilesize / 2f, Geometry.d4y(recDir) * tilesize / 2f)
-                .lerp(Geometry.d4x(r) * tilesize / 2f, Geometry.d4y(r) * tilesize / 2f,
-                Mathf.clamp((progress + 1f) / 2f));
+                        .lerp(Geometry.d4x(r) * tilesize / 2f, Geometry.d4y(r) * tilesize / 2f,
+                                Mathf.clamp((progress + 1f) / 2f));
 
                 Draw.rect(current.fullIcon, x + Tmp.v1.x, y + Tmp.v1.y, itemSize, itemSize);
             }
@@ -137,11 +148,11 @@ public class Duct extends Block implements Autotiler{
         }
 
         @Override
-        public void payloadDraw(){
+        public void payloadDraw() {
             Draw.rect(fullIcon, x, y);
         }
 
-        protected void drawAt(float x, float y, int bits, float rotation, SliceMode slice){
+        protected void drawAt(float x, float y, int bits, float rotation, SliceMode slice) {
             Draw.z(Layer.blockUnder);
             Draw.rect(sliced(botRegions[bits], slice), x, y, rotation);
 
@@ -153,51 +164,51 @@ public class Duct extends Block implements Autotiler{
         }
 
         @Override
-        public void updateTile(){
+        public void updateTile() {
             progress += edelta() / speed * 2f;
 
-            if(current != null && next != null){
-                if(progress >= (1f - 1f/speed) && moveForward(current)){
+            if (current != null && next != null) {
+                if (progress >= (1f - 1f / speed) && moveForward(current)) {
                     items.remove(current, 1);
                     current = null;
-                    progress %= (1f - 1f/speed);
+                    progress %= (1f - 1f / speed);
                 }
-            }else{
+            } else {
                 progress = 0;
             }
 
-            if(current == null && items.total() > 0){
+            if (current == null && items.total() > 0) {
                 current = items.first();
             }
         }
 
         @Override
-        public boolean acceptItem(Building source, Item item){
+        public boolean acceptItem(Building source, Item item) {
             return current == null && items.total() == 0 &&
-                (armored ?
-                    //armored acceptance
-                    ((source.block.rotate && source.front() == this && source.block.hasItems && source.block.isDuct) ||
-                    Edges.getFacingEdge(source.tile(), tile).relativeTo(tile) == rotation) :
-                    //standard acceptance - do not accept from front
-                    !(source.block.rotate && next == source) && Math.abs(Edges.getFacingEdge(source.tile, tile).relativeTo(tile.x, tile.y) - rotation) != 2
-                );
+                    (armored ?
+                            //armored acceptance
+                            ((source.block.rotate && source.front() == this && source.block.hasItems && source.block.isDuct) ||
+                                    Edges.getFacingEdge(source.tile(), tile).relativeTo(tile) == rotation) :
+                            //standard acceptance - do not accept from front
+                            !(source.block.rotate && next == source) && Math.abs(Edges.getFacingEdge(source.tile, tile).relativeTo(tile.x, tile.y) - rotation) != 2
+                    );
         }
 
         @Override
-        public int removeStack(Item item, int amount){
+        public int removeStack(Item item, int amount) {
             int removed = super.removeStack(item, amount);
-            if(item == current) current = null;
+            if (item == current) current = null;
             return removed;
         }
 
         @Override
-        public void handleStack(Item item, int amount, Teamc source){
+        public void handleStack(Item item, int amount, Teamc source) {
             super.handleStack(item, amount, source);
             current = item;
         }
 
         @Override
-        public void handleItem(Building source, Item item){
+        public void handleItem(Building source, Item item) {
             current = item;
             progress = -1f;
             recDir = relativeToEdge(source.tile);
@@ -206,7 +217,7 @@ public class Duct extends Block implements Autotiler{
         }
 
         @Override
-        public void onProximityUpdate(){
+        public void onProximityUpdate() {
             super.onProximityUpdate();
 
             int[] bits = buildBlending(tile, rotation, null, true);
@@ -219,20 +230,20 @@ public class Duct extends Block implements Autotiler{
         }
 
         @Override
-        public byte version(){
+        public byte version() {
             return 1;
         }
 
         @Override
-        public void write(Writes write){
+        public void write(Writes write) {
             super.write(write);
             write.b(recDir);
         }
 
         @Override
-        public void read(Reads read, byte revision){
+        public void read(Reads read, byte revision) {
             super.read(read, revision);
-            if(revision >= 1){
+            if (revision >= 1) {
                 recDir = read.b();
             }
             current = items.first();

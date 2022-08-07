@@ -1,23 +1,29 @@
 package mindustry.world.blocks.production;
 
-import arc.*;
-import arc.graphics.g2d.*;
-import arc.math.*;
-import arc.util.*;
-import arc.util.io.*;
-import mindustry.annotations.Annotations.*;
+import arc.Core;
+import arc.graphics.g2d.Draw;
+import arc.graphics.g2d.TextureRegion;
+import arc.math.Mathf;
+import arc.util.Nullable;
+import arc.util.Structs;
+import arc.util.io.Reads;
+import arc.util.io.Writes;
+import mindustry.annotations.Annotations.Load;
 import mindustry.gen.*;
-import mindustry.graphics.*;
-import mindustry.logic.*;
-import mindustry.type.*;
-import mindustry.world.*;
-import mindustry.world.consumers.*;
-import mindustry.world.meta.*;
+import mindustry.graphics.Drawf;
+import mindustry.logic.LAccess;
+import mindustry.type.Item;
+import mindustry.type.ItemStack;
+import mindustry.world.Block;
+import mindustry.world.consumers.ConsumeItems;
+import mindustry.world.meta.Stat;
+import mindustry.world.meta.StatUnit;
+import mindustry.world.meta.StatValues;
 
 /**
  * Extracts a random list of items from an input item and an input liquid.
  */
-public class Separator extends Block{
+public class Separator extends Block {
     protected @Nullable ConsumeItems consItems;
 
     public ItemStack[] results;
@@ -27,7 +33,7 @@ public class Separator extends Block{
     public @Load("@-spinner") TextureRegion spinnerRegion;
     public float spinnerSpeed = 3f;
 
-    public Separator(String name){
+    public Separator(String name) {
         super(name);
         update = true;
         solid = true;
@@ -37,42 +43,44 @@ public class Separator extends Block{
     }
 
     @Override
-    public void setStats(){
+    public void setStats() {
         stats.timePeriod = craftTime;
         super.setStats();
 
-        stats.add(Stat.output, StatValues.items(item -> Structs.contains(results, i -> i.item == item)));
+        stats.add(
+                Stat.output,
+                StatValues.items(item -> Structs.contains(results, i -> i.item == item)));
         stats.add(Stat.productionTime, craftTime / 60f, StatUnit.seconds);
     }
 
     @Override
-    public void init(){
+    public void init() {
         super.init();
         consItems = findConsumer(c -> c instanceof ConsumeItems);
     }
 
-    public class SeparatorBuild extends Building{
+    public class SeparatorBuild extends Building {
         public float progress;
         public float totalProgress;
         public float warmup;
         public int seed;
 
         @Override
-        public void created(){
+        public void created() {
             seed = Mathf.randomSeed(tile.pos(), 0, Integer.MAX_VALUE - 1);
         }
 
         @Override
-        public boolean shouldAmbientSound(){
+        public boolean shouldAmbientSound() {
             return efficiency > 0;
         }
 
         @Override
-        public boolean shouldConsume(){
+        public boolean shouldConsume() {
             int total = items.total();
-            //very inefficient way of allowing separators to ignore input buffer storage
-            if(consItems != null){
-                for(ItemStack stack : consItems.items){
+            // very inefficient way of allowing separators to ignore input buffer storage
+            if (consItems != null) {
+                for (ItemStack stack : consItems.items) {
                     total -= items.get(stack.item);
                 }
             }
@@ -80,39 +88,45 @@ public class Separator extends Block{
         }
 
         @Override
-        public void draw(){
+        public void draw() {
             super.draw();
 
-            Drawf.liquid(liquidRegion, x, y, liquids.currentAmount() / liquidCapacity, liquids.current().color);
+            Drawf.liquid(
+                    liquidRegion,
+                    x,
+                    y,
+                    liquids.currentAmount() / liquidCapacity,
+                    liquids.current().color);
 
-            if(Core.atlas.isFound(spinnerRegion)){
+            if (Core.atlas.isFound(spinnerRegion)) {
                 Draw.rect(spinnerRegion, x, y, totalProgress * spinnerSpeed);
             }
         }
 
         @Override
-        public void updateTile(){
+        public void updateTile() {
             totalProgress += warmup * delta();
 
-            if(efficiency > 0){
+            if (efficiency > 0) {
                 progress += getProgressIncrease(craftTime);
                 warmup = Mathf.lerpDelta(warmup, 1f, 0.02f);
-            }else{
+            } else {
                 warmup = Mathf.lerpDelta(warmup, 0f, 0.02f);
             }
 
-            if(progress >= 1f){
+            if (progress >= 1f) {
                 progress %= 1f;
                 int sum = 0;
-                for(ItemStack stack : results) sum += stack.amount;
+                for (ItemStack stack : results) sum += stack.amount;
 
                 int i = Mathf.randomSeed(seed++, 0, sum - 1);
                 int count = 0;
                 Item item = null;
 
-                //guaranteed desync since items are random - won't be fixed and probably isn't too important
-                for(ItemStack stack : results){
-                    if(i >= count && i < count + stack.amount){
+                // guaranteed desync since items are random - won't be fixed and probably isn't too
+                // important
+                for (ItemStack stack : results) {
+                    if (i >= count && i < count + stack.amount) {
                         item = stack.item;
                         break;
                     }
@@ -121,34 +135,34 @@ public class Separator extends Block{
 
                 consume();
 
-                if(item != null && items.get(item) < itemCapacity){
+                if (item != null && items.get(item) < itemCapacity) {
                     offload(item);
                 }
             }
 
-            if(timer(timerDump, dumpTime)){
+            if (timer(timerDump, dumpTime)) {
                 dump();
             }
         }
 
         @Override
-        public double sense(LAccess sensor){
-            if(sensor == LAccess.progress) return progress;
+        public double sense(LAccess sensor) {
+            if (sensor == LAccess.progress) return progress;
             return super.sense(sensor);
         }
 
         @Override
-        public boolean canDump(Building to, Item item){
+        public boolean canDump(Building to, Item item) {
             return !consumesItem(item);
         }
 
         @Override
-        public byte version(){
+        public byte version() {
             return 1;
         }
 
         @Override
-        public void write(Writes write){
+        public void write(Writes write) {
             super.write(write);
             write.f(progress);
             write.f(warmup);
@@ -156,11 +170,11 @@ public class Separator extends Block{
         }
 
         @Override
-        public void read(Reads read, byte revision){
+        public void read(Reads read, byte revision) {
             super.read(read, revision);
             progress = read.f();
             warmup = read.f();
-            if(revision == 1) seed = read.i();
+            if (revision == 1) seed = read.i();
         }
     }
 }

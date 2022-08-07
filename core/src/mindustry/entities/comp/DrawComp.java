@@ -1,16 +1,15 @@
 package mindustry.entities.comp;
 
-import mindustry.annotations.Annotations.*;
+import mindustry.annotations.Annotations.Component;
 import mindustry.gen.*;
 
 @Component
-abstract class DrawComp implements Posc{
+abstract class DrawComp implements Posc {
 
-    float clipSize(){
+    float clipSize() {
         return Float.MAX_VALUE;
     }
 
-    void draw(){
-
+    void draw() {
     }
 }

@@ -1,44 +1,50 @@
 package mindustry.world.blocks.environment;
 
-import arc.graphics.g2d.*;
-import arc.math.*;
-import arc.util.*;
-import mindustry.world.*;
+import arc.graphics.g2d.Draw;
+import arc.graphics.g2d.TextureRegion;
+import arc.math.Mathf;
+import arc.util.Tmp;
+import mindustry.world.Tile;
 
-import static mindustry.Vars.*;
+import static mindustry.Vars.tilesize;
 
-public class StaticTree extends StaticWall{
+public class StaticTree extends StaticWall {
 
-    public StaticTree(String name){
+    public StaticTree(String name) {
         super(name);
         variants = 0;
     }
 
     @Override
-    public void drawBase(Tile tile){
-        TextureRegion reg = variants > 0 ? variantRegions[Mathf.randomSeed(tile.pos(), 0, Math.max(0, variantRegions.length - 1))] : region;
+    public void drawBase(Tile tile) {
+        TextureRegion reg =
+                variants > 0
+                        ? variantRegions[
+                        Mathf.randomSeed(
+                                tile.pos(), 0, Math.max(0, variantRegions.length - 1))]
+                        : region;
 
         TextureRegion r = Tmp.tr1;
         r.set(reg);
-        int crop = (r.width - tilesize*4) / 2;
+        int crop = (r.width - tilesize * 4) / 2;
         float ox = 0;
         float oy = 0;
 
-        for(int i = 0; i < 4; i++){
-            if(tile.nearby(i) != null && tile.nearby(i).block() instanceof StaticWall){
+        for (int i = 0; i < 4; i++) {
+            if (tile.nearby(i) != null && tile.nearby(i).block() instanceof StaticWall) {
 
-                if(i == 0){
+                if (i == 0) {
                     r.setWidth(r.width - crop);
-                    ox -= crop /2f;
-                }else if(i == 1){
+                    ox -= crop / 2f;
+                } else if (i == 1) {
                     r.setY(r.getY() + crop);
-                    oy -= crop /2f;
-                }else if(i == 2){
+                    oy -= crop / 2f;
+                } else if (i == 2) {
                     r.setX(r.getX() + crop);
-                    ox += crop /2f;
-                }else{
+                    ox += crop / 2f;
+                } else {
                     r.setHeight(r.height - crop);
-                    oy += crop /2f;
+                    oy += crop / 2f;
                 }
             }
         }

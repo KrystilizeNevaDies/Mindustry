@@ -1,34 +1,40 @@
 package mindustry.entities.abilities;
 
-import arc.math.*;
-import arc.util.*;
-import mindustry.*;
+import arc.math.Mathf;
+import arc.util.Tmp;
+import mindustry.Vars;
 import mindustry.gen.*;
-import mindustry.type.*;
+import mindustry.type.UnitType;
 
-/** Spawns a certain amount of units upon death. */
-public class SpawnDeathAbility extends Ability{
+/**
+ * Spawns a certain amount of units upon death.
+ */
+public class SpawnDeathAbility extends Ability {
     public UnitType type;
     public int amount = 1, randAmount = 0;
-    /** Random spread of units away from the spawned. */
+    /**
+     * Random spread of units away from the spawned.
+     */
     public float spread = 8f;
-    /** If true, units spawned face outwards from the middle. */
+    /**
+     * If true, units spawned face outwards from the middle.
+     */
     public boolean faceOutwards = true;
 
-    public SpawnDeathAbility(UnitType type, int amount, float spread){
+    public SpawnDeathAbility(UnitType type, int amount, float spread) {
         this.type = type;
         this.amount = amount;
         this.spread = spread;
     }
 
-    public SpawnDeathAbility(){
+    public SpawnDeathAbility() {
     }
 
     @Override
-    public void death(Unit unit){
-        if(!Vars.net.client()){
+    public void death(Unit unit) {
+        if (!Vars.net.client()) {
             int spawned = amount + Mathf.random(randAmount);
-            for(int i = 0; i < spawned; i++){
+            for (int i = 0; i < spawned; i++) {
                 Tmp.v1.rnd(Mathf.random(spread));
                 var u = type.spawn(unit.team, unit.x + Tmp.v1.x, unit.y + Tmp.v1.y);
 

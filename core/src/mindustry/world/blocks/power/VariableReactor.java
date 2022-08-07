@@ -1,26 +1,36 @@
 package mindustry.world.blocks.power;
 
-import arc.*;
-import arc.graphics.*;
-import arc.graphics.g2d.*;
-import arc.math.*;
-import arc.util.*;
-import arc.util.io.*;
-import mindustry.annotations.Annotations.*;
-import mindustry.content.*;
-import mindustry.entities.*;
-import mindustry.entities.effect.*;
+import arc.Core;
+import arc.graphics.Blending;
+import arc.graphics.Color;
+import arc.graphics.g2d.Draw;
+import arc.graphics.g2d.TextureRegion;
+import arc.math.Mathf;
+import arc.util.Time;
+import arc.util.io.Reads;
+import arc.util.io.Writes;
+import mindustry.annotations.Annotations.Load;
+import mindustry.content.Fx;
+import mindustry.content.Liquids;
+import mindustry.entities.Effect;
+import mindustry.entities.effect.MultiEffect;
+import mindustry.entities.effect.WrapEffect;
 import mindustry.gen.*;
-import mindustry.graphics.*;
-import mindustry.ui.*;
-import mindustry.world.blocks.heat.*;
+import mindustry.graphics.Layer;
+import mindustry.graphics.Pal;
+import mindustry.ui.Bar;
+import mindustry.world.blocks.heat.HeatConsumer;
 
-import static mindustry.Vars.*;
+import static mindustry.Vars.state;
+import static mindustry.Vars.tilesize;
 
-public class VariableReactor extends PowerGenerator{
+public class VariableReactor extends PowerGenerator {
     public float maxHeat = 100f;
-    /** How quickly instability moves towards 1, per frame. */
+    /**
+     * How quickly instability moves towards 1, per frame.
+     */
     public float unstableSpeed = 1f / 60f / 3f;
+
     public float warmupSpeed = 0.1f;
     public Effect effect = Fx.fluxVapor;
     public float effectChance = 0.05f;
@@ -31,15 +41,16 @@ public class VariableReactor extends PowerGenerator{
 
     public @Load("@-lights") TextureRegion lightsRegion;
 
-    public VariableReactor(String name){
+    public VariableReactor(String name) {
         super(name);
         powerProduction = 20f;
         rebuildable = false;
 
-
         explosionRadius = 12;
         explosionDamage = 1000;
-        explodeEffect = new MultiEffect(Fx.bigShockwave, new WrapEffect(Fx.titanSmoke, Color.valueOf("e3ae6f")));
+        explodeEffect =
+                new MultiEffect(
+                        Fx.bigShockwave, new WrapEffect(Fx.titanSmoke, Color.valueOf("e3ae6f")));
         explodeSound = Sounds.explosionbig;
 
         explosionPuddles = 70;
@@ -49,97 +60,122 @@ public class VariableReactor extends PowerGenerator{
     }
 
     @Override
-    public void setBars(){
+    public void setBars() {
         super.setBars();
 
-        addBar("instability", (VariableReactorBuild entity) -> new Bar("bar.instability", Pal.sap, () -> entity.instability));
+        addBar(
+                "instability",
+                (VariableReactorBuild entity) ->
+                        new Bar("bar.instability", Pal.sap, () -> entity.instability));
 
-        addBar("heat", (VariableReactorBuild entity) ->
-            new Bar(() ->
-            Core.bundle.format("bar.heatpercent", (int)entity.heat, (int)(Mathf.clamp(entity.heat / maxHeat) * 100)),
-            () -> Pal.lightOrange,
-            () -> entity.heat / maxHeat));
+        addBar(
+                "heat",
+                (VariableReactorBuild entity) ->
+                        new Bar(
+                                () ->
+                                        Core.bundle.format(
+                                                "bar.heatpercent",
+                                                (int) entity.heat,
+                                                (int) (Mathf.clamp(entity.heat / maxHeat) * 100)),
+                                () -> Pal.lightOrange,
+                                () -> entity.heat / maxHeat));
     }
 
-    //TODO: draw warmup fraction on block?
-    public class VariableReactorBuild extends GeneratorBuild implements HeatConsumer{
+    // TODO: draw warmup fraction on block?
+    public class VariableReactorBuild extends GeneratorBuild implements HeatConsumer {
         public float[] sideHeat = new float[4];
         public float heat = 0f, instability, totalProgress, warmup, flash;
 
         @Override
-        public void updateTile(){
+        public void updateTile() {
             heat = calculateHeat(sideHeat);
 
             productionEfficiency = Mathf.clamp(heat / maxHeat);
             warmup = Mathf.lerpDelta(warmup, productionEfficiency > 0 ? 1f : 0f, warmupSpeed);
 
-            if(instability >= 1f){
+            if (instability >= 1f) {
                 kill();
             }
 
             totalProgress += productionEfficiency * Time.delta;
 
-            if(Mathf.chanceDelta(effectChance * warmup)){
+            if (Mathf.chanceDelta(effectChance * warmup)) {
                 effect.at(x, y, effectColor);
             }
         }
 
         @Override
-        public void draw(){
+        public void draw() {
             super.draw();
 
-            if(instability > flashThreshold){
-                if(!state.isPaused()) flash += (1f + ((instability - flashThreshold) / (1f - flashThreshold)) * flashSpeed) * Time.delta;
+            if (instability > flashThreshold) {
+                if (!state.isPaused())
+                    flash +=
+                            (1f
+                                    + ((instability - flashThreshold)
+                                    / (1f - flashThreshold))
+                                    * flashSpeed)
+                                    * Time.delta;
                 Draw.z(Layer.blockAdditive);
                 Draw.blend(Blending.additive);
                 Draw.color(flashColor1, flashColor2, Mathf.absin(flash, 8f, 1f));
-                Draw.alpha(flashAlpha * Mathf.clamp((instability - flashThreshold) / (1f - flashThreshold) * 4f));
+                Draw.alpha(
+                        flashAlpha
+                                * Mathf.clamp(
+                                (instability - flashThreshold)
+                                        / (1f - flashThreshold)
+                                        * 4f));
                 Draw.rect(lightsRegion, x, y);
                 Draw.blend();
             }
         }
 
         @Override
-        public float totalProgress(){
+        public float totalProgress() {
             return totalProgress;
         }
 
         @Override
-        public float warmup(){
+        public float warmup() {
             return warmup;
         }
 
         @Override
-        public void updateEfficiencyMultiplier(){
-            //at this stage efficiency = how much coolant is provided
+        public void updateEfficiencyMultiplier() {
+            // at this stage efficiency = how much coolant is provided
 
-            //target efficiency value
+            // target efficiency value
             float target = Mathf.clamp(heat / maxHeat);
 
-            //fraction of coolant provided (from what is needed)
+            // fraction of coolant provided (from what is needed)
             float efficiencyMet = Mathf.clamp(Mathf.zero(target) ? 1f : efficiency / target);
             boolean met = efficiencyMet >= 0.99999f;
 
-            //if all requirements are met, instability moves toward 0 at 50% of speed
-            //if requirements are not meant, instability approaches 1 at a speed scaled by how much efficiency is *not* met
-            instability = Mathf.approachDelta(instability, met ? 0f : 1f, met ? 0.5f : unstableSpeed * (1f - efficiencyMet));
+            // if all requirements are met, instability moves toward 0 at 50% of speed
+            // if requirements are not meant, instability approaches 1 at a speed scaled by how much
+            // efficiency is *not* met
+            instability =
+                    Mathf.approachDelta(
+                            instability,
+                            met ? 0f : 1f,
+                            met ? 0.5f : unstableSpeed * (1f - efficiencyMet));
 
-            //now scale efficiency by target, so it consumes less depending on heat
+            // now scale efficiency by target, so it consumes less depending on heat
             efficiency *= target;
         }
 
         @Override
-        public float[] sideHeat(){
+        public float[] sideHeat() {
             return sideHeat;
         }
 
         @Override
-        public float heatRequirement(){
+        public float heatRequirement() {
             return maxHeat;
         }
 
         @Override
-        public void write(Writes write){
+        public void write(Writes write) {
             super.write(write);
 
             write.f(heat);
@@ -148,7 +184,7 @@ public class VariableReactor extends PowerGenerator{
         }
 
         @Override
-        public void read(Reads read, byte revision){
+        public void read(Reads read, byte revision) {
             super.read(read, revision);
 
             heat = read.f();

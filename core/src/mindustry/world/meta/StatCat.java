@@ -1,37 +1,37 @@
 package mindustry.world.meta;
 
-import arc.*;
-import arc.struct.*;
+import arc.Core;
+import arc.struct.Seq;
 
-/** A specific category for a stat. */
-public class StatCat implements Comparable<StatCat>{
+/**
+ * A specific category for a stat.
+ */
+public class StatCat implements Comparable<StatCat> {
     public static final Seq<StatCat> all = new Seq<>();
 
-    public static final StatCat
-
-    general = new StatCat("general"),
-    power = new StatCat("power"),
-    liquids = new StatCat("liquids"),
-    items = new StatCat("items"),
-    crafting = new StatCat("crafting"),
-    function = new StatCat("function"),
-    optional = new StatCat("optional");
+    public static final StatCat general = new StatCat("general"),
+            power = new StatCat("power"),
+            liquids = new StatCat("liquids"),
+            items = new StatCat("items"),
+            crafting = new StatCat("crafting"),
+            function = new StatCat("function"),
+            optional = new StatCat("optional");
 
     public final String name;
     public final int id;
 
-    public StatCat(String name){
+    public StatCat(String name) {
         this.name = name;
         id = all.size;
         all.add(this);
     }
 
-    public String localized(){
+    public String localized() {
         return Core.bundle.get("category." + name);
     }
 
     @Override
-    public int compareTo(StatCat o){
+    public int compareTo(StatCat o) {
         return id - o.id;
     }
 }

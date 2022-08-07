@@ -1,30 +1,44 @@
 package mindustry;
 
-import arc.*;
-import arc.assets.*;
-import arc.assets.loaders.*;
-import arc.audio.*;
-import arc.files.*;
-import arc.graphics.*;
-import arc.graphics.g2d.*;
-import arc.math.*;
+import arc.ApplicationCore;
+import arc.ApplicationListener;
+import arc.Core;
+import arc.Events;
+import arc.assets.AssetDescriptor;
+import arc.assets.AssetManager;
+import arc.assets.Loadable;
+import arc.assets.loaders.MusicLoader;
+import arc.assets.loaders.SoundLoader;
+import arc.audio.Music;
+import arc.audio.Sound;
+import arc.files.Fi;
+import arc.graphics.Gl;
+import arc.graphics.Texture;
+import arc.graphics.g2d.Draw;
+import arc.graphics.g2d.PixmapPacker;
+import arc.graphics.g2d.SortedSpriteBatch;
+import arc.graphics.g2d.TextureAtlas;
+import arc.math.Mathf;
 import arc.util.*;
-import mindustry.ai.*;
+import mindustry.ai.BaseRegistry;
 import mindustry.core.*;
-import mindustry.ctype.*;
-import mindustry.game.EventType.*;
-import mindustry.game.*;
+import mindustry.ctype.Content;
+import mindustry.game.EventType.ClientCreateEvent;
+import mindustry.game.EventType.ClientLoadEvent;
+import mindustry.game.Schematics;
 import mindustry.gen.*;
-import mindustry.graphics.*;
-import mindustry.maps.*;
-import mindustry.mod.*;
-import mindustry.net.*;
-import mindustry.ui.*;
+import mindustry.graphics.LoadRenderer;
+import mindustry.maps.Map;
+import mindustry.maps.MapPreviewLoader;
+import mindustry.mod.Mod;
+import mindustry.mod.Mods;
+import mindustry.net.Net;
+import mindustry.ui.Fonts;
 
 import static arc.Core.*;
 import static mindustry.Vars.*;
 
-public abstract class ClientLauncher extends ApplicationCore implements Platform{
+public abstract class ClientLauncher extends ApplicationCore implements Platform {
     private static final int loadingFPS = 20;
 
     private long lastTime;
@@ -33,9 +47,9 @@ public abstract class ClientLauncher extends ApplicationCore implements Platform
     private LoadRenderer loader;
 
     @Override
-    public void setup(){
+    public void setup() {
         String dataDir = OS.env("MINDUSTRY_DATA_DIR");
-        if(dataDir != null){
+        if (dataDir != null) {
             Core.settings.setDataDirectory(files.absolute(dataDir));
         }
 
@@ -54,9 +68,10 @@ public abstract class ClientLauncher extends ApplicationCore implements Platform
         Log.info("[GL] Version: @", graphics.getGLVersion());
         Log.info("[GL] Max texture size: @", maxTextureSize);
         Log.info("[GL] Using @ context.", gl30 != null ? "OpenGL 3" : "OpenGL 2");
-        if(maxTextureSize < 4096) Log.warn("[GL] Your maximum texture size is below the recommended minimum of 4096. This will cause severe performance issues.");
+        if (maxTextureSize < 4096)
+            Log.warn("[GL] Your maximum texture size is below the recommended minimum of 4096. This will cause severe performance issues.");
         Log.info("[JAVA] Version: @", OS.javaVersion);
-        if(Core.app.isAndroid()){
+        if (Core.app.isAndroid()) {
             Log.info("[ANDROID] API level: @", Core.app.getVersion());
         }
         long ram = Runtime.getRuntime().maxMemory();
@@ -73,25 +88,25 @@ public abstract class ClientLauncher extends ApplicationCore implements Platform
         assets.setLoader(Texture.class, "." + mapExtension, new MapPreviewLoader());
 
         tree = new FileTree();
-        assets.setLoader(Sound.class, new SoundLoader(tree){
+        assets.setLoader(Sound.class, new SoundLoader(tree) {
             @Override
-            public void loadAsync(AssetManager manager, String fileName, Fi file, SoundParameter parameter){
+            public void loadAsync(AssetManager manager, String fileName, Fi file, SoundParameter parameter) {
 
             }
 
             @Override
-            public Sound loadSync(AssetManager manager, String fileName, Fi file, SoundParameter parameter){
-                if(parameter != null && parameter.sound != null){
+            public Sound loadSync(AssetManager manager, String fileName, Fi file, SoundParameter parameter) {
+                if (parameter != null && parameter.sound != null) {
                     mainExecutor.submit(() -> parameter.sound.load(file));
 
                     return parameter.sound;
-                }else{
+                } else {
                     Sound sound = new Sound();
 
                     mainExecutor.submit(() -> {
-                        try{
+                        try {
                             sound.load(file);
-                        }catch(Throwable t){
+                        } catch (Throwable t) {
                             Log.err("Error loading sound: " + file, t);
                         }
                     });
@@ -100,31 +115,31 @@ public abstract class ClientLauncher extends ApplicationCore implements Platform
                 }
             }
         });
-        assets.setLoader(Music.class, new MusicLoader(tree){
+        assets.setLoader(Music.class, new MusicLoader(tree) {
             @Override
-            public void loadAsync(AssetManager manager, String fileName, Fi file, MusicParameter parameter){
+            public void loadAsync(AssetManager manager, String fileName, Fi file, MusicParameter parameter) {
 
             }
 
             @Override
-            public Music loadSync(AssetManager manager, String fileName, Fi file, MusicParameter parameter){
-                if(parameter != null && parameter.music != null){
+            public Music loadSync(AssetManager manager, String fileName, Fi file, MusicParameter parameter) {
+                if (parameter != null && parameter.music != null) {
                     mainExecutor.submit(() -> {
-                        try{
+                        try {
                             parameter.music.load(file);
-                        }catch(Throwable t){
+                        } catch (Throwable t) {
                             Log.err("Error loading music: " + file, t);
                         }
                     });
 
                     return parameter.music;
-                }else{
+                } else {
                     Music music = new Music();
 
                     mainExecutor.submit(() -> {
-                        try{
+                        try {
                             music.load(file);
-                        }catch(Throwable t){
+                        } catch (Throwable t) {
                             Log.err("Error loading music: " + file, t);
                         }
                     });
@@ -163,7 +178,8 @@ public abstract class ClientLauncher extends ApplicationCore implements Platform
         });
 
         assets.load(mods);
-        assets.loadRun("mergeUI", PixmapPacker.class, () -> {}, () -> Fonts.mergeFontAtlas(atlas));
+        assets.loadRun("mergeUI", PixmapPacker.class, () -> {
+        }, () -> Fonts.mergeFontAtlas(atlas));
 
         add(logic = new Logic());
         add(control = new Control());
@@ -175,41 +191,42 @@ public abstract class ClientLauncher extends ApplicationCore implements Platform
         assets.load(schematics);
 
         assets.loadRun("contentinit", ContentLoader.class, () -> content.init(), () -> content.load());
-        assets.loadRun("baseparts", BaseRegistry.class, () -> {}, () -> bases.load());
+        assets.loadRun("baseparts", BaseRegistry.class, () -> {
+        }, () -> bases.load());
     }
 
     @Override
-    public void add(ApplicationListener module){
+    public void add(ApplicationListener module) {
         super.add(module);
 
         //autoload modules when necessary
-        if(module instanceof Loadable l){
+        if (module instanceof Loadable l) {
             assets.load(l);
         }
     }
 
     @Override
-    public void resize(int width, int height){
-        if(assets == null) return;
+    public void resize(int width, int height) {
+        if (assets == null) return;
 
-        if(!finished){
+        if (!finished) {
             Draw.proj().setOrtho(0, 0, width, height);
-        }else{
+        } else {
             super.resize(width, height);
         }
     }
 
     @Override
-    public void update(){
-        if(!finished){
-            if(loader != null){
+    public void update() {
+        if (!finished) {
+            if (loader != null) {
                 loader.draw();
             }
-            if(assets.update(1000 / loadingFPS)){
+            if (assets.update(1000 / loadingFPS)) {
                 loader.dispose();
                 loader = null;
                 Log.info("Total time to load: @ms", Time.timeSinceMillis(beginTime));
-                for(ApplicationListener listener : modules){
+                for (ApplicationListener listener : modules) {
                     listener.init();
                 }
                 mods.eachClass(Mod::init);
@@ -224,7 +241,7 @@ public abstract class ClientLauncher extends ApplicationCore implements Platform
                     finishLaunch();
                 }))));
             }
-        }else{
+        } else {
             asyncCore.begin();
 
             super.update();
@@ -234,11 +251,11 @@ public abstract class ClientLauncher extends ApplicationCore implements Platform
 
         int targetfps = Core.settings.getInt("fpscap", 120);
 
-        if(targetfps > 0 && targetfps <= 240){
+        if (targetfps > 0 && targetfps <= 240) {
             long target = (1000 * 1000000) / targetfps; //target in nanos
             long elapsed = Time.timeSinceNanos(lastTime);
-            if(elapsed < target){
-                Threads.sleep((target - elapsed) / 1000000, (int)((target - elapsed) % 1000000));
+            if (elapsed < target) {
+                Threads.sleep((target - elapsed) / 1000000, (int) ((target - elapsed) % 1000000));
             }
         }
 
@@ -246,31 +263,31 @@ public abstract class ClientLauncher extends ApplicationCore implements Platform
     }
 
     @Override
-    public void exit(){
+    public void exit() {
         //on graceful exit, finish the launch normally.
         Vars.finishLaunch();
     }
 
     @Override
-    public void init(){
+    public void init() {
         setup();
     }
 
     @Override
-    public void resume(){
-        if(finished){
+    public void resume() {
+        if (finished) {
             super.resume();
         }
     }
 
     @Override
-    public void pause(){
+    public void pause() {
         //when the user tabs out on mobile, the exit() event doesn't fire reliably - in that case, just assume they're about to kill the app
         //this isn't 100% reliable but it should work for most cases
-        if(mobile){
+        if (mobile) {
             Vars.finishLaunch();
         }
-        if(finished){
+        if (finished) {
             super.pause();
         }
     }

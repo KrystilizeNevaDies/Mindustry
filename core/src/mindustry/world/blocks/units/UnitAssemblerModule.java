@@ -1,27 +1,33 @@
 package mindustry.world.blocks.units;
 
-import arc.graphics.g2d.*;
-import arc.util.*;
-import mindustry.*;
-import mindustry.annotations.Annotations.*;
-import mindustry.entities.units.*;
-import mindustry.game.*;
+import arc.graphics.g2d.Draw;
+import arc.graphics.g2d.TextureRegion;
+import arc.util.Eachable;
+import arc.util.Nullable;
+import mindustry.Vars;
+import mindustry.annotations.Annotations.Load;
+import mindustry.entities.units.BuildPlan;
+import mindustry.game.Team;
 import mindustry.gen.*;
-import mindustry.graphics.*;
-import mindustry.world.*;
-import mindustry.world.blocks.payloads.*;
-import mindustry.world.blocks.units.UnitAssembler.*;
-import mindustry.world.meta.*;
+import mindustry.graphics.Drawf;
+import mindustry.graphics.Layer;
+import mindustry.graphics.Pal;
+import mindustry.world.Tile;
+import mindustry.world.blocks.payloads.Payload;
+import mindustry.world.blocks.payloads.PayloadBlock;
+import mindustry.world.blocks.units.UnitAssembler.UnitAssemblerBuild;
+import mindustry.world.meta.BlockFlag;
+import mindustry.world.meta.Stat;
 
 import static mindustry.Vars.*;
 
-public class UnitAssemblerModule extends PayloadBlock{
+public class UnitAssemblerModule extends PayloadBlock {
     public @Load("@-side1") TextureRegion sideRegion1;
     public @Load("@-side2") TextureRegion sideRegion2;
 
     public int tier = 1;
 
-    public UnitAssemblerModule(String name){
+    public UnitAssemblerModule(String name) {
         super(name);
         rotate = true;
         rotateDraw = false;
@@ -29,70 +35,76 @@ public class UnitAssemblerModule extends PayloadBlock{
     }
 
     @Override
-    public void setStats(){
+    public void setStats() {
         super.setStats();
 
         stats.add(Stat.moduleTier, tier);
     }
 
     @Override
-    public void drawPlace(int x, int y, int rotation, boolean valid){
+    public void drawPlace(int x, int y, int rotation, boolean valid) {
         super.drawPlace(x, y, rotation, valid);
 
         var link = getLink(player.team(), x, y, rotation);
-        if(link != null){
+        if (link != null) {
             link.block.drawPlace(link.tile.x, link.tile.y, link.rotation, true);
         }
     }
 
     @Override
-    public boolean canPlaceOn(Tile tile, Team team, int rotation){
+    public boolean canPlaceOn(Tile tile, Team team, int rotation) {
         return getLink(team, tile.x, tile.y, rotation) != null;
     }
 
     @Override
-    public void drawPlanRegion(BuildPlan plan, Eachable<BuildPlan> list){
+    public void drawPlanRegion(BuildPlan plan, Eachable<BuildPlan> list) {
         Draw.rect(region, plan.drawx(), plan.drawy());
-        Draw.rect(plan.rotation >= 2 ? sideRegion2 : sideRegion1, plan.drawx(), plan.drawy(), plan.rotation * 90);
+        Draw.rect(
+                plan.rotation >= 2 ? sideRegion2 : sideRegion1,
+                plan.drawx(),
+                plan.drawy(),
+                plan.rotation * 90);
         Draw.rect(topRegion, plan.drawx(), plan.drawy());
     }
 
     @Override
-    public TextureRegion[] icons(){
+    public TextureRegion[] icons() {
         return new TextureRegion[]{region, sideRegion1, topRegion};
     }
 
-    public @Nullable UnitAssemblerBuild getLink(Team team, int x, int y, int rotation){
-        var results = Vars.indexer.getFlagged(team, BlockFlag.unitAssembler).<UnitAssemblerBuild>as();
+    public @Nullable UnitAssemblerBuild getLink(Team team, int x, int y, int rotation) {
+        var results =
+                Vars.indexer.getFlagged(team, BlockFlag.unitAssembler).<UnitAssemblerBuild>as();
 
-        return results.find(b -> b.moduleFits(this, x * tilesize + offset, y * tilesize + offset, rotation));
+        return results.find(
+                b -> b.moduleFits(this, x * tilesize + offset, y * tilesize + offset, rotation));
     }
 
-    public class UnitAssemblerModuleBuild extends PayloadBlockBuild<Payload>{
+    public class UnitAssemblerModuleBuild extends PayloadBlockBuild<Payload> {
         public UnitAssemblerBuild link;
         public int lastChange = -2;
 
-        public void findLink(){
-            if(link != null){
+        public void findLink() {
+            if (link != null) {
                 link.removeModule(this);
             }
             link = getLink(team, tile.x, tile.y, rotation);
-            if(link != null){
+            if (link != null) {
                 link.updateModules(this);
             }
         }
 
-        public int tier(){
+        public int tier() {
             return tier;
         }
 
         @Override
-        public void draw(){
+        public void draw() {
             Draw.rect(region, x, y);
 
-            //draw input conveyors
-            for(int i = 0; i < 4; i++){
-                if(blends(i) && i != rotation){
+            // draw input conveyors
+            for (int i = 0; i < 4; i++) {
+                if (blends(i) && i != rotation) {
                     Draw.rect(inRegion, x, y, (i * 90) - 180);
                 }
             }
@@ -107,39 +119,43 @@ public class UnitAssemblerModule extends PayloadBlock{
         }
 
         @Override
-        public boolean acceptPayload(Building source, Payload payload){
+        public boolean acceptPayload(Building source, Payload payload) {
             return link != null && this.payload == null && link.acceptPayload(this, payload);
         }
 
         @Override
-        public void drawSelect(){
-            //TODO draw area?
-            if(link != null){
+        public void drawSelect() {
+            // TODO draw area?
+            if (link != null) {
                 Drawf.selected(link, Pal.accent);
             }
         }
 
         @Override
-        public void onRemoved(){
+        public void onRemoved() {
             super.onRemoved();
 
-            if(link != null){
+            if (link != null) {
                 link.removeModule(this);
             }
         }
 
         @Override
-        public void updateTile(){
-            if(lastChange != world.tileChanges){
+        public void updateTile() {
+            if (lastChange != world.tileChanges) {
                 lastChange = world.tileChanges;
                 findLink();
             }
 
-            if(moveInPayload() && link != null && link.moduleFits(block, x, y, rotation) && !link.wasOccupied && link.acceptPayload(this, payload) && efficiency > 0){
+            if (moveInPayload()
+                    && link != null
+                    && link.moduleFits(block, x, y, rotation)
+                    && !link.wasOccupied
+                    && link.acceptPayload(this, payload)
+                    && efficiency > 0) {
                 link.yeetPayload(payload);
                 payload = null;
             }
         }
-
     }
 }

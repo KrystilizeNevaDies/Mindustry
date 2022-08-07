@@ -1,11 +1,13 @@
 package mindustry.input;
 
-import arc.*;
-import arc.KeyBinds.*;
-import arc.input.InputDevice.*;
-import arc.input.*;
+import arc.Core;
+import arc.KeyBinds.Axis;
+import arc.KeyBinds.KeyBind;
+import arc.KeyBinds.KeybindValue;
+import arc.input.InputDevice.DeviceType;
+import arc.input.KeyCode;
 
-public enum Binding implements KeyBind{
+public enum Binding implements KeyBind {
     move_x(new Axis(KeyCode.a, KeyCode.d), "general"),
     move_y(new Axis(KeyCode.s, KeyCode.w)),
     mouse_move(KeyCode.mouseBack),
@@ -76,22 +78,22 @@ public enum Binding implements KeyBind{
     private final KeybindValue defaultValue;
     private final String category;
 
-    Binding(KeybindValue defaultValue, String category){
+    Binding(KeybindValue defaultValue, String category) {
         this.defaultValue = defaultValue;
         this.category = category;
     }
 
-    Binding(KeybindValue defaultValue){
+    Binding(KeybindValue defaultValue) {
         this(defaultValue, null);
     }
 
     @Override
-    public KeybindValue defaultValue(DeviceType type){
+    public KeybindValue defaultValue(DeviceType type) {
         return defaultValue;
     }
 
     @Override
-    public String category(){
+    public String category() {
         return category;
     }
 }

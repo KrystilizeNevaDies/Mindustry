@@ -1,21 +1,30 @@
 package mindustry.editor;
 
-import arc.graphics.*;
-import arc.graphics.g2d.*;
-import arc.math.*;
-import arc.scene.ui.*;
-import arc.scene.ui.layout.*;
-import arc.struct.*;
-import arc.util.*;
-import arc.util.pooling.*;
-import mindustry.*;
-import mindustry.game.*;
+import arc.graphics.Color;
+import arc.graphics.g2d.Draw;
+import arc.graphics.g2d.Font;
+import arc.graphics.g2d.GlyphLayout;
+import arc.graphics.g2d.Lines;
+import arc.math.Mathf;
+import arc.scene.ui.Button;
+import arc.scene.ui.ButtonGroup;
+import arc.scene.ui.layout.Scl;
+import arc.scene.ui.layout.Table;
+import arc.struct.ObjectSet;
+import arc.struct.OrderedSet;
+import arc.struct.Seq;
+import arc.util.Align;
+import arc.util.Tmp;
+import arc.util.pooling.Pools;
+import mindustry.Vars;
+import mindustry.game.SpawnGroup;
 import mindustry.gen.*;
-import mindustry.graphics.*;
-import mindustry.type.*;
-import mindustry.ui.*;
+import mindustry.graphics.Pal;
+import mindustry.type.UnitType;
+import mindustry.ui.Fonts;
+import mindustry.ui.Styles;
 
-public class WaveGraph extends Table{
+public class WaveGraph extends Table {
     public Seq<SpawnGroup> groups = new Seq<>();
     public int from = 0, to = 20;
 
@@ -27,7 +36,7 @@ public class WaveGraph extends Table{
     private Table colors;
     private ObjectSet<UnitType> hidden = new ObjectSet<>();
 
-    public WaveGraph(){
+    public WaveGraph() {
         background(Tex.pane);
 
         rect((x, y, width, height) -> {
@@ -38,9 +47,9 @@ public class WaveGraph extends Table{
 
             lay.setText(font, "1");
 
-            int maxY = switch(mode){
+            int maxY = switch (mode) {
                 case counts -> nextStep(max);
-                case health -> nextStep((int)maxHealth);
+                case health -> nextStep((int) maxHealth);
                 case totals -> nextStep(maxTotal);
             };
 
@@ -50,14 +59,14 @@ public class WaveGraph extends Table{
             float graphX = x + offsetX, graphY = y + offsetY, graphW = width - offsetX, graphH = height - offsetY;
             float spacing = graphW / (values.length - 1);
 
-            if(mode == Mode.counts){
-                for(UnitType type : used.orderedItems()){
+            if (mode == Mode.counts) {
+                for (UnitType type : used.orderedItems()) {
                     Draw.color(color(type));
                     Draw.alpha(parentAlpha);
 
                     Lines.beginLine();
 
-                    for(int i = 0; i < values.length; i++){
+                    for (int i = 0; i < values.length; i++) {
                         int val = values[i][type.id];
                         float cx = graphX + i * spacing, cy = graphY + val * graphH / maxY;
                         Lines.linePoint(cx, cy);
@@ -65,13 +74,13 @@ public class WaveGraph extends Table{
 
                     Lines.endLine();
                 }
-            }else if(mode == Mode.totals){
+            } else if (mode == Mode.totals) {
                 Lines.beginLine();
 
                 Draw.color(Pal.accent);
-                for(int i = 0; i < values.length; i++){
+                for (int i = 0; i < values.length; i++) {
                     int sum = 0;
-                    for(UnitType type : used.orderedItems()){
+                    for (UnitType type : used.orderedItems()) {
                         sum += values[i][type.id];
                     }
 
@@ -80,13 +89,13 @@ public class WaveGraph extends Table{
                 }
 
                 Lines.endLine();
-            }else if(mode == Mode.health){
+            } else if (mode == Mode.health) {
                 Lines.beginLine();
 
                 Draw.color(Pal.health);
-                for(int i = 0; i < values.length; i++){
+                for (int i = 0; i < values.length; i++) {
                     float sum = 0;
-                    for(UnitType type : used.orderedItems()){
+                    for (UnitType type : used.orderedItems()) {
                         sum += (type.health) * values[i][type.id];
                     }
 
@@ -105,7 +114,7 @@ public class WaveGraph extends Table{
             Draw.color(Color.lightGray);
             Draw.alpha(0.1f);
 
-            for(int i = 0; i < maxY; i += markSpace){
+            for (int i = 0; i < maxY; i += markSpace) {
                 float cy = graphY + i * graphH / maxY, cx = graphX;
 
                 Lines.line(cx, cy, cx + graphW, cy);
@@ -119,11 +128,11 @@ public class WaveGraph extends Table{
             float len = Scl.scl(4f);
             font.setColor(Color.lightGray);
 
-            for(int i = 0; i < values.length; i++){
+            for (int i = 0; i < values.length; i++) {
                 float cy = y + fh, cx = graphX + graphW / (values.length - 1) * i;
 
                 Lines.line(cx, cy, cx, cy + len);
-                if(i == values.length / 2){
+                if (i == values.length / 2) {
                     font.draw("" + (i + from + 1), cx, cy - Scl.scl(2f), Align.center);
                 }
             }
@@ -144,7 +153,7 @@ public class WaveGraph extends Table{
             t.left();
             ButtonGroup<Button> group = new ButtonGroup<>();
 
-            for(Mode m : Mode.all){
+            for (Mode m : Mode.all) {
                 t.button("@wavemode." + m.name(), Styles.fullTogglet, () -> {
                     mode = m;
                 }).group(group).height(35f).update(b -> b.setChecked(m == mode)).width(130f);
@@ -152,21 +161,21 @@ public class WaveGraph extends Table{
         }).growX();
     }
 
-    public void rebuild(){
+    public void rebuild() {
         values = new int[to - from + 1][Vars.content.units().size];
         used.clear();
         max = maxTotal = 1;
         maxHealth = 1f;
 
-        for(int i = from; i <= to; i++){
+        for (int i = from; i <= to; i++) {
             int index = i - from;
             float healthsum = 0f;
             int sum = 0;
 
-            for(SpawnGroup spawn : groups){
+            for (SpawnGroup spawn : groups) {
                 int spawned = spawn.getSpawned(i);
                 values[index][spawn.type.id] += spawned;
-                if(spawned > 0){
+                if (spawned > 0) {
                     used.add(spawn.type);
                 }
                 max = Math.max(max, values[index][spawn.type.id]);
@@ -182,55 +191,55 @@ public class WaveGraph extends Table{
         colors.clear();
         colors.left();
         colors.button("@waves.units.hide", Styles.flatt, () -> {
-            if(hidden.size == usedCopy.size){
+            if (hidden.size == usedCopy.size) {
                 hidden.clear();
-            }else{
+            } else {
                 hidden.addAll(usedCopy);
             }
 
             used.clear();
             used.addAll(usedCopy);
-            for(UnitType o : hidden) used.remove(o);
+            for (UnitType o : hidden) used.remove(o);
         }).update(b -> b.setText(hidden.size == usedCopy.size ? "@waves.units.show" : "@waves.units.hide")).height(32f).width(130f);
         colors.pane(t -> {
             t.left();
-            for(UnitType type : used){
+            for (UnitType type : used) {
                 t.button(b -> {
                     Color tcolor = color(type).cpy();
                     b.image().size(32f).update(i -> i.setColor(b.isChecked() ? Tmp.c1.set(tcolor).mul(0.5f) : tcolor)).get().act(1);
                     b.image(type.uiIcon).size(32f).padRight(20).update(i -> i.setColor(b.isChecked() ? Color.gray : Color.white)).get().act(1);
                     b.margin(0f);
                 }, Styles.fullTogglet, () -> {
-                    if(!hidden.add(type)){
+                    if (!hidden.add(type)) {
                         hidden.remove(type);
                     }
 
                     used.clear();
                     used.addAll(usedCopy);
-                    for(UnitType o : hidden) used.remove(o);
+                    for (UnitType o : hidden) used.remove(o);
                 }).update(b -> b.setChecked(hidden.contains(type)));
             }
         }).scrollY(false);
 
-        for(UnitType type : hidden){
+        for (UnitType type : hidden) {
             used.remove(type);
         }
     }
 
-    Color color(UnitType type){
-        return Tmp.c1.fromHsv(type.id / (float)Vars.content.units().size * 360f, 0.7f, 1f);
+    Color color(UnitType type) {
+        return Tmp.c1.fromHsv(type.id / (float) Vars.content.units().size * 360f, 0.7f, 1f);
     }
 
-    int nextStep(float value){
+    int nextStep(float value) {
         int order = 1;
-        while(order < value){
-            if(order * 2 > value){
+        while (order < value) {
+            if (order * 2 > value) {
                 return order * 2;
             }
-            if(order * 5 > value){
+            if (order * 5 > value) {
                 return order * 5;
             }
-            if(order * 10 > value){
+            if (order * 10 > value) {
                 return order * 10;
             }
             order *= 10;
@@ -238,7 +247,7 @@ public class WaveGraph extends Table{
         return order;
     }
 
-    enum Mode{
+    enum Mode {
         counts, totals, health;
 
         static Mode[] all = values();

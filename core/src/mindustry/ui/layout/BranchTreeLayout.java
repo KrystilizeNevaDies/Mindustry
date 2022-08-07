@@ -1,12 +1,12 @@
 package mindustry.ui.layout;
 
-import arc.math.geom.*;
-import arc.struct.*;
+import arc.math.geom.Rect;
+import arc.struct.FloatSeq;
 
 /**
  * Algorithm taken from <a href="https://github.com/abego/treelayout">TreeLayout</a>.
  */
-public class BranchTreeLayout implements TreeLayout{
+public class BranchTreeLayout implements TreeLayout {
     public TreeLocation rootLocation = TreeLocation.top;
     public TreeAlignment alignment = TreeAlignment.awayFromRoot;
     public float gapBetweenLevels = 10;
@@ -19,127 +19,129 @@ public class BranchTreeLayout implements TreeLayout{
     private float boundsBottom = Float.MIN_VALUE;
 
     @Override
-    public void layout(TreeNode root){
+    public void layout(TreeNode root) {
         firstWalk(root, null);
         calcSizeOfLevels(root, 0);
         secondWalk(root, -root.prelim, 0, 0);
     }
 
-    private float getWidthOrHeightOfNode(TreeNode treeNode, boolean returnWidth){
+    private float getWidthOrHeightOfNode(TreeNode treeNode, boolean returnWidth) {
         return returnWidth ? treeNode.width : treeNode.height;
     }
 
-    private float getNodeThickness(TreeNode treeNode){
+    private float getNodeThickness(TreeNode treeNode) {
         return getWidthOrHeightOfNode(treeNode, !isLevelChangeInYAxis());
     }
 
-    private float getNodeSize(TreeNode treeNode){
+    private float getNodeSize(TreeNode treeNode) {
         return getWidthOrHeightOfNode(treeNode, isLevelChangeInYAxis());
     }
 
-    private boolean isLevelChangeInYAxis(){
+    private boolean isLevelChangeInYAxis() {
         return rootLocation == TreeLocation.top || rootLocation == TreeLocation.bottom;
     }
 
-    private int getLevelChangeSign(){
+    private int getLevelChangeSign() {
         return rootLocation == TreeLocation.bottom || rootLocation == TreeLocation.right ? -1 : 1;
     }
 
-    private void updateBounds(TreeNode node, float centerX, float centerY){
+    private void updateBounds(TreeNode node, float centerX, float centerY) {
         float width = node.width;
         float height = node.height;
         float left = centerX - width / 2;
         float right = centerX + width / 2;
         float top = centerY - height / 2;
         float bottom = centerY + height / 2;
-        if(boundsLeft > left){
+        if (boundsLeft > left) {
             boundsLeft = left;
         }
-        if(boundsRight < right){
+        if (boundsRight < right) {
             boundsRight = right;
         }
-        if(boundsTop > top){
+        if (boundsTop > top) {
             boundsTop = top;
         }
-        if(boundsBottom < bottom){
+        if (boundsBottom < bottom) {
             boundsBottom = bottom;
         }
     }
 
-    public Rect getBounds(){
-        return new Rect(boundsLeft, boundsBottom, boundsRight - boundsLeft, boundsTop - boundsBottom);
+    public Rect getBounds() {
+        return new Rect(
+                boundsLeft, boundsBottom, boundsRight - boundsLeft, boundsTop - boundsBottom);
     }
 
-    private void calcSizeOfLevels(TreeNode node, int level){
+    private void calcSizeOfLevels(TreeNode node, int level) {
         float oldSize;
-        if(sizeOfLevel.size <= level){
+        if (sizeOfLevel.size <= level) {
             sizeOfLevel.add(0);
             oldSize = 0;
-        }else{
+        } else {
             oldSize = sizeOfLevel.get(level);
         }
 
         float size = getNodeThickness(node);
-        if(oldSize < size){
+        if (oldSize < size) {
             sizeOfLevel.set(level, size);
         }
 
-        if(!node.isLeaf()){
-            for(TreeNode child : node.children){
+        if (!node.isLeaf()) {
+            for (TreeNode child : node.children) {
                 calcSizeOfLevels(child, level + 1);
             }
         }
     }
 
-    public int getLevelCount(){
+    public int getLevelCount() {
         return sizeOfLevel.size;
     }
 
-    public float getGapBetweenNodes(TreeNode a, TreeNode b){
+    public float getGapBetweenNodes(TreeNode a, TreeNode b) {
         return gapBetweenNodes;
     }
 
-    public float getSizeOfLevel(int level){
-        if(!(level >= 0)) throw new IllegalArgumentException("level must be >= 0");
-        if(!(level < getLevelCount())) throw new IllegalArgumentException("level must be < levelCount");
+    public float getSizeOfLevel(int level) {
+        if (!(level >= 0)) throw new IllegalArgumentException("level must be >= 0");
+        if (!(level < getLevelCount()))
+            throw new IllegalArgumentException("level must be < levelCount");
 
         return sizeOfLevel.get(level);
     }
 
-    private TreeNode getAncestor(TreeNode node){
+    private TreeNode getAncestor(TreeNode node) {
         return node.ancestor != null ? node.ancestor : node;
     }
 
-    private float getDistance(TreeNode v, TreeNode w){
+    private float getDistance(TreeNode v, TreeNode w) {
         float sizeOfNodes = getNodeSize(v) + getNodeSize(w);
 
         return sizeOfNodes / 2 + getGapBetweenNodes(v, w);
     }
 
-    private TreeNode nextLeft(TreeNode v){
+    private TreeNode nextLeft(TreeNode v) {
         return v.isLeaf() ? v.thread : v.children[0];
     }
 
-    private TreeNode nextRight(TreeNode v){
+    private TreeNode nextRight(TreeNode v) {
         return v.isLeaf() ? v.thread : v.children[v.children.length - 1];
     }
 
-    private int getNumber(TreeNode node, TreeNode parentNode){
-        if(node.number == -1){
+    private int getNumber(TreeNode node, TreeNode parentNode) {
+        if (node.number == -1) {
             int number = 1;
-            for(TreeNode child : parentNode.children){
+            for (TreeNode child : parentNode.children) {
                 child.number = number++;
             }
         }
         return node.number;
     }
 
-    private TreeNode ancestor(TreeNode vIMinus, TreeNode parentOfV, TreeNode defaultAncestor){
+    private TreeNode ancestor(TreeNode vIMinus, TreeNode parentOfV, TreeNode defaultAncestor) {
         TreeNode ancestor = getAncestor(vIMinus);
         return ancestor.parent == parentOfV ? ancestor : defaultAncestor;
     }
 
-    private void moveSubtree(TreeNode wMinus, TreeNode wPlus, TreeNode parent, float shift){
+    private void moveSubtree(TreeNode wMinus, TreeNode wPlus, TreeNode parent, float shift) {
         int subtrees = getNumber(wPlus, parent) - getNumber(wMinus, parent);
         wPlus.change = wPlus.change - shift / subtrees;
         wPlus.shift = wPlus.shift + shift;
@@ -148,8 +150,9 @@ public class BranchTreeLayout implements TreeLayout{
         wPlus.mode = wPlus.mode + shift;
     }
 
-    private TreeNode apportion(TreeNode v, TreeNode defaultAncestor, TreeNode leftSibling, TreeNode parentOfV){
-        if(leftSibling == null){
+    private TreeNode apportion(
+            TreeNode v, TreeNode defaultAncestor, TreeNode leftSibling, TreeNode parentOfV) {
+        if (leftSibling == null) {
             return defaultAncestor;
         }
 
@@ -167,19 +170,19 @@ public class BranchTreeLayout implements TreeLayout{
         TreeNode nextRightVIMinus = nextRight(vIMinus);
         TreeNode nextLeftVIPlus = nextLeft(vIPlus);
 
-        while(nextRightVIMinus != null && nextLeftVIPlus != null){
+        while (nextRightVIMinus != null && nextLeftVIPlus != null) {
             vIMinus = nextRightVIMinus;
             vIPlus = nextLeftVIPlus;
             vOMinus = nextLeft(vOMinus);
             vOPlus = nextRight(vOPlus);
             vOPlus.ancestor = v;
-            float shift = (vIMinus.prelim + sIMinus)
-            - (vIPlus.prelim + sIPlus)
-            + getDistance(vIMinus, vIPlus);
+            float shift =
+                    (vIMinus.prelim + sIMinus)
+                            - (vIPlus.prelim + sIPlus)
+                            + getDistance(vIMinus, vIPlus);
 
-            if(shift > 0){
-                moveSubtree(ancestor(vIMinus, parentOfV, defaultAncestor),
-                v, parentOfV, shift);
+            if (shift > 0) {
+                moveSubtree(ancestor(vIMinus, parentOfV, defaultAncestor), v, parentOfV, shift);
                 sIPlus = sIPlus + shift;
                 sOPlus = sOPlus + shift;
             }
@@ -192,12 +195,12 @@ public class BranchTreeLayout implements TreeLayout{
             nextLeftVIPlus = nextLeft(vIPlus);
         }
 
-        if(nextRightVIMinus != null && nextRight(vOPlus) == null){
+        if (nextRightVIMinus != null && nextRight(vOPlus) == null) {
             vOPlus.thread = nextRightVIMinus;
             vOPlus.mode += sIMinus - sOPlus;
         }
 
-        if(nextLeftVIPlus != null && nextLeft(vOMinus) == null){
+        if (nextLeftVIPlus != null && nextLeft(vOMinus) == null) {
             vOMinus.thread = nextLeftVIPlus;
             vOMinus.mode += sIPlus - sOMinus;
             defaultAncestor = v;
@@ -205,11 +208,11 @@ public class BranchTreeLayout implements TreeLayout{
         return defaultAncestor;
     }
 
-    private void executeShifts(TreeNode v){
+    private void executeShifts(TreeNode v) {
         float shift = 0;
         float change = 0;
 
-        for(int i = v.children.length - 1; i >= 0; i--){
+        for (int i = v.children.length - 1; i >= 0; i--) {
             TreeNode w = v.children[i];
             change = change + w.change;
             w.prelim += shift;
@@ -218,32 +221,32 @@ public class BranchTreeLayout implements TreeLayout{
         }
     }
 
-    private void firstWalk(TreeNode v, TreeNode leftSibling){
-        if(v.isLeaf()){
-            if(leftSibling != null){
+    private void firstWalk(TreeNode v, TreeNode leftSibling) {
+        if (v.isLeaf()) {
+            if (leftSibling != null) {
                 v.prelim = leftSibling.prelim + getDistance(v, leftSibling);
             }
 
-        }else{
+        } else {
             TreeNode defaultAncestor = v.children[0];
             TreeNode previousChild = null;
-            for(TreeNode w : v.children){
+            for (TreeNode w : v.children) {
                 firstWalk(w, previousChild);
                 defaultAncestor = apportion(w, defaultAncestor, previousChild, v);
                 previousChild = w;
             }
             executeShifts(v);
             float midpoint = (v.children[0].prelim + v.children[v.children.length - 1].prelim) / 2f;
-            if(leftSibling != null){
+            if (leftSibling != null) {
                 v.prelim = leftSibling.prelim + getDistance(v, leftSibling);
                 v.mode = v.prelim - midpoint;
-            }else{
+            } else {
                 v.prelim = midpoint;
             }
         }
     }
 
-    private void secondWalk(TreeNode v, float m, int level, float levelStart){
+    private void secondWalk(TreeNode v, float m, int level, float levelStart) {
         float levelChangeSign = getLevelChangeSign();
         boolean levelChangeOnYAxis = isLevelChangeInYAxis();
         float levelSize = getSizeOfLevel(level);
@@ -251,15 +254,15 @@ public class BranchTreeLayout implements TreeLayout{
         float x = v.prelim + m;
 
         float y;
-        if(alignment == TreeAlignment.center){
+        if (alignment == TreeAlignment.center) {
             y = levelStart + levelChangeSign * (levelSize / 2);
-        }else if(alignment == TreeAlignment.towardsRoot){
+        } else if (alignment == TreeAlignment.towardsRoot) {
             y = levelStart + levelChangeSign * (getNodeThickness(v) / 2);
-        }else{
+        } else {
             y = levelStart + levelSize - levelChangeSign * (getNodeThickness(v) / 2);
         }
 
-        if(!levelChangeOnYAxis){
+        if (!levelChangeOnYAxis) {
             float t = x;
             x = y;
             y = t;
@@ -269,21 +272,24 @@ public class BranchTreeLayout implements TreeLayout{
         v.y = y;
         updateBounds(v, x, y);
 
-        if(!v.isLeaf()){
-            float nextLevelStart = levelStart
-            + (levelSize + gapBetweenLevels)
-            * levelChangeSign;
-            for(TreeNode w : v.children){
+        if (!v.isLeaf()) {
+            float nextLevelStart = levelStart + (levelSize + gapBetweenLevels) * levelChangeSign;
+            for (TreeNode w : v.children) {
                 secondWalk(w, m + v.mode, level + 1, nextLevelStart);
             }
         }
     }
 
-    public enum TreeLocation{
-        top, left, bottom, right
+    public enum TreeLocation {
+        top,
+        left,
+        bottom,
+        right
     }
 
-    public enum TreeAlignment{
-        center, towardsRoot, awayFromRoot
+    public enum TreeAlignment {
+        center,
+        towardsRoot,
+        awayFromRoot
     }
 }

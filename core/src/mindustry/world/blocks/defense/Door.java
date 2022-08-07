@@ -1,24 +1,28 @@
 package mindustry.world.blocks.defense;
 
-import arc.Graphics.*;
-import arc.Graphics.Cursor.*;
-import arc.audio.*;
-import arc.graphics.g2d.*;
-import arc.math.*;
-import arc.math.geom.*;
-import arc.struct.*;
-import arc.util.*;
-import arc.util.io.*;
-import mindustry.annotations.Annotations.*;
-import mindustry.content.*;
-import mindustry.entities.*;
-import mindustry.entities.units.*;
+import arc.Graphics.Cursor;
+import arc.Graphics.Cursor.SystemCursor;
+import arc.audio.Sound;
+import arc.graphics.g2d.Draw;
+import arc.graphics.g2d.TextureRegion;
+import arc.math.Mathf;
+import arc.math.geom.Rect;
+import arc.struct.Queue;
+import arc.struct.Seq;
+import arc.util.Eachable;
+import arc.util.io.Reads;
+import arc.util.io.Writes;
+import mindustry.annotations.Annotations.Load;
+import mindustry.content.Fx;
+import mindustry.entities.Effect;
+import mindustry.entities.Units;
+import mindustry.entities.units.BuildPlan;
 import mindustry.gen.*;
-import mindustry.logic.*;
+import mindustry.logic.LAccess;
 
 import static mindustry.Vars.*;
 
-public class Door extends Wall{
+public class Door extends Wall {
     protected final static Rect rect = new Rect();
     protected final static Queue<DoorBuild> doorQueue = new Queue<>();
 
@@ -28,7 +32,7 @@ public class Door extends Wall{
     public Sound doorSound = Sounds.door;
     public @Load("@-open") TextureRegion openRegion;
 
-    public Door(String name){
+    public Door(String name) {
         super(name);
         solid = false;
         solidifes = true;
@@ -38,9 +42,9 @@ public class Door extends Wall{
             doorSound.at(base);
             base.effect();
 
-            for(DoorBuild entity : base.chained){
+            for (DoorBuild entity : base.chained) {
                 //skip doors with things in them
-                if((Units.anyEntities(entity.tile) && !open) || entity.open == open){
+                if ((Units.anyEntities(entity.tile) && !open) || entity.open == open) {
                     continue;
                 }
 
@@ -51,43 +55,43 @@ public class Door extends Wall{
     }
 
     @Override
-    public TextureRegion getPlanRegion(BuildPlan plan, Eachable<BuildPlan> list){
+    public TextureRegion getPlanRegion(BuildPlan plan, Eachable<BuildPlan> list) {
         return plan.config == Boolean.TRUE ? openRegion : region;
     }
 
-    public class DoorBuild extends Building{
+    public class DoorBuild extends Building {
         public boolean open = false;
         public Seq<DoorBuild> chained = new Seq<>();
 
         @Override
-        public void onProximityAdded(){
+        public void onProximityAdded() {
             super.onProximityAdded();
             updateChained();
         }
 
         @Override
-        public void onProximityRemoved(){
+        public void onProximityRemoved() {
             super.onProximityRemoved();
 
-            for(Building b : proximity){
-                if(b instanceof DoorBuild d){
+            for (Building b : proximity) {
+                if (b instanceof DoorBuild d) {
                     d.updateChained();
                 }
             }
         }
 
         @Override
-        public double sense(LAccess sensor){
-            if(sensor == LAccess.enabled) return open ? 1 : 0;
+        public double sense(LAccess sensor) {
+            if (sensor == LAccess.enabled) return open ? 1 : 0;
             return super.sense(sensor);
         }
 
         @Override
-        public void control(LAccess type, double p1, double p2, double p3, double p4){
-            if(type == LAccess.enabled){
+        public void control(LAccess type, double p1, double p2, double p3, double p4) {
+            if (type == LAccess.enabled) {
                 boolean shouldOpen = !Mathf.zero(p1);
 
-                if(net.client() || open == shouldOpen || (Units.anyEntities(tile) && !shouldOpen) || !origin().timer(timerToggle, 80f)){
+                if (net.client() || open == shouldOpen || (Units.anyEntities(tile) && !shouldOpen) || !origin().timer(timerToggle, 80f)) {
                     return;
                 }
 
@@ -95,25 +99,25 @@ public class Door extends Wall{
             }
         }
 
-        public DoorBuild origin(){
+        public DoorBuild origin() {
             return chained.isEmpty() ? this : chained.first();
         }
 
-        public void effect(){
+        public void effect() {
             (open ? closefx : openfx).at(this, size);
         }
 
-        public void updateChained(){
+        public void updateChained() {
             chained = new Seq<>();
             doorQueue.clear();
             doorQueue.add(this);
 
-            while(!doorQueue.isEmpty()){
+            while (!doorQueue.isEmpty()) {
                 var next = doorQueue.removeLast();
                 chained.add(next);
 
-                for(var b : next.proximity){
-                    if(b instanceof DoorBuild d && d.chained != chained){
+                for (var b : next.proximity) {
+                    if (b instanceof DoorBuild d && d.chained != chained) {
                         d.chained = chained;
                         doorQueue.addFirst(d);
                     }
@@ -122,23 +126,23 @@ public class Door extends Wall{
         }
 
         @Override
-        public void draw(){
+        public void draw() {
             Draw.rect(open ? openRegion : region, x, y);
         }
 
         @Override
-        public Cursor getCursor(){
+        public Cursor getCursor() {
             return interactable(player.team()) ? SystemCursor.hand : SystemCursor.arrow;
         }
 
         @Override
-        public boolean checkSolid(){
+        public boolean checkSolid() {
             return !open;
         }
 
         @Override
-        public void tapped(){
-            if((Units.anyEntities(tile) && open) || !origin().timer(timerToggle, 60f)){
+        public void tapped() {
+            if ((Units.anyEntities(tile) && open) || !origin().timer(timerToggle, 60f)) {
                 return;
             }
 
@@ -146,18 +150,18 @@ public class Door extends Wall{
         }
 
         @Override
-        public Boolean config(){
+        public Boolean config() {
             return open;
         }
 
         @Override
-        public void write(Writes write){
+        public void write(Writes write) {
             super.write(write);
             write.bool(open);
         }
 
         @Override
-        public void read(Reads read, byte revision){
+        public void read(Reads read, byte revision) {
             super.read(read, revision);
             open = read.bool();
         }

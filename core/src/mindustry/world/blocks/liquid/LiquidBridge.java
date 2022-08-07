@@ -1,12 +1,13 @@
 package mindustry.world.blocks.liquid;
 
 import mindustry.gen.*;
-import mindustry.world.blocks.distribution.*;
-import mindustry.world.meta.*;
+import mindustry.world.blocks.distribution.ItemBridge;
+import mindustry.world.meta.BlockGroup;
+import mindustry.world.meta.Env;
 
-public class LiquidBridge extends ItemBridge{
+public class LiquidBridge extends ItemBridge {
 
-    public LiquidBridge(String name){
+    public LiquidBridge(String name) {
         super(name);
         hasItems = false;
         hasLiquids = true;
@@ -16,17 +17,17 @@ public class LiquidBridge extends ItemBridge{
         envEnabled = Env.any;
     }
 
-    public class LiquidBridgeBuild extends ItemBridgeBuild{
+    public class LiquidBridgeBuild extends ItemBridgeBuild {
 
         @Override
-        public void updateTransport(Building other){
-            if(warmup >= 0.25f){
+        public void updateTransport(Building other) {
+            if (warmup >= 0.25f) {
                 moved |= moveLiquid(other, liquids.current()) > 0.05f;
             }
         }
 
         @Override
-        public void doDump(){
+        public void doDump() {
             dumpLiquid(liquids.current(), 1f);
         }
     }

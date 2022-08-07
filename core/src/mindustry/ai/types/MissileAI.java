@@ -1,20 +1,20 @@
 package mindustry.ai.types;
 
-import arc.math.*;
-import arc.util.*;
-import mindustry.entities.units.*;
+import arc.math.Mathf;
+import arc.util.Nullable;
+import mindustry.entities.units.AIController;
 import mindustry.gen.*;
 
-public class MissileAI extends AIController{
+public class MissileAI extends AIController {
     public @Nullable Unit shooter;
 
     @Override
-    public void updateMovement(){
+    public void updateMovement() {
         unloadPayloads();
 
         float time = unit instanceof TimedKillc t ? t.time() : 1000000f;
 
-        if(time >= unit.type.homingDelay && shooter != null){
+        if (time >= unit.type.homingDelay && shooter != null) {
             unit.lookAt(shooter.aimX, shooter.aimY);
         }
 
@@ -24,13 +24,13 @@ public class MissileAI extends AIController{
         var build = unit.buildOn();
 
         //kill instantly on enemy building contact
-        if(build != null && build.team != unit.team && (build == target || !build.block.underBullets)){
+        if (build != null && build.team != unit.team && (build == target || !build.block.underBullets)) {
             unit.kill();
         }
     }
 
     @Override
-    public boolean retarget(){
+    public boolean retarget() {
         //more frequent retarget due to high speed. TODO won't this lag?
         return timer.get(timerTarget, 4f);
     }

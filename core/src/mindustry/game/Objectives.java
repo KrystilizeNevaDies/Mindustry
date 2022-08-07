@@ -1,129 +1,154 @@
 package mindustry.game;
 
-import arc.*;
-import arc.scene.ui.layout.*;
-import mindustry.ctype.*;
-import mindustry.type.*;
+import arc.Core;
+import arc.scene.ui.layout.Table;
+import mindustry.ctype.UnlockableContent;
+import mindustry.type.Item;
+import mindustry.type.Planet;
+import mindustry.type.Sector;
+import mindustry.type.SectorPreset;
 
-/** Holds objective classes. */
-public class Objectives{
+/**
+ * Holds objective classes.
+ */
+public class Objectives {
 
-    public static class Research implements Objective{
+    public static class Research implements Objective {
         public UnlockableContent content;
 
-        public Research(UnlockableContent content){
+        public Research(UnlockableContent content) {
             this.content = content;
         }
 
-        protected Research(){}
+        protected Research() {
+        }
 
         @Override
-        public boolean complete(){
+        public boolean complete() {
             return content.unlocked();
         }
 
         @Override
-        public String display(){
-            return Core.bundle.format("requirement.research",
-                (content.techNode == null || content.techNode.parent == null || content.techNode.parent.content.unlocked()) && !(content instanceof Item) ?
-                    (content.emoji() + " " + content.localizedName) : "???");
+        public String display() {
+            return Core.bundle.format(
+                    "requirement.research",
+                    (content.techNode == null
+                            || content.techNode.parent == null
+                            || content.techNode.parent.content.unlocked())
+                            && !(content instanceof Item)
+                            ? (content.emoji() + " " + content.localizedName)
+                            : "???");
         }
     }
 
-    public static class Produce implements Objective{
+    public static class Produce implements Objective {
         public UnlockableContent content;
 
-        public Produce(UnlockableContent content){
+        public Produce(UnlockableContent content) {
             this.content = content;
         }
 
-        protected Produce(){}
+        protected Produce() {
+        }
 
         @Override
-        public boolean complete(){
+        public boolean complete() {
             return content.unlocked();
         }
 
         @Override
-        public String display(){
-            return Core.bundle.format("requirement.produce",
-                content.unlocked() ? (content.emoji() + " " + content.localizedName) : "???");
+        public String display() {
+            return Core.bundle.format(
+                    "requirement.produce",
+                    content.unlocked() ? (content.emoji() + " " + content.localizedName) : "???");
         }
     }
 
-    public static class SectorComplete implements Objective{
+    public static class SectorComplete implements Objective {
         public SectorPreset preset;
 
-        public SectorComplete(SectorPreset zone){
+        public SectorComplete(SectorPreset zone) {
             this.preset = zone;
         }
 
-        protected SectorComplete(){}
-
-        @Override
-        public boolean complete(){
-            return preset.sector.save != null && preset.sector.isCaptured() && preset.sector.hasBase();
+        protected SectorComplete() {
         }
 
         @Override
-        public String display(){
+        public boolean complete() {
+            return preset.sector.save != null
+                    && preset.sector.isCaptured()
+                    && preset.sector.hasBase();
+        }
+
+        @Override
+        public String display() {
             return Core.bundle.format("requirement.capture", preset.localizedName);
         }
     }
 
-    public static class OnSector implements Objective{
+    public static class OnSector implements Objective {
         public SectorPreset preset;
 
-        public OnSector(SectorPreset zone){
+        public OnSector(SectorPreset zone) {
             this.preset = zone;
         }
 
-        protected OnSector(){}
+        protected OnSector() {
+        }
 
         @Override
-        public boolean complete(){
+        public boolean complete() {
             return preset.sector.hasBase();
         }
 
         @Override
-        public String display(){
+        public String display() {
             return Core.bundle.format("requirement.onsector", preset.localizedName);
         }
     }
 
-    public static class OnPlanet implements Objective{
+    public static class OnPlanet implements Objective {
         public Planet planet;
 
-        public OnPlanet(Planet planet){
+        public OnPlanet(Planet planet) {
             this.planet = planet;
         }
 
-        protected OnPlanet(){}
+        protected OnPlanet() {
+        }
 
         @Override
-        public boolean complete(){
+        public boolean complete() {
             return planet.sectors.contains(Sector::hasBase);
         }
 
         @Override
-        public String display(){
+        public String display() {
             return Core.bundle.format("requirement.onplanet", planet.localizedName);
         }
     }
 
-    /** Defines a specific objective for a game. */
-    public interface Objective{
+    /**
+     * Defines a specific objective for a game.
+     */
+    public interface Objective {
 
-        /** @return whether this objective is met. */
+        /**
+         * @return whether this objective is met.
+         */
         boolean complete();
 
-        /** @return the string displayed when this objective is completed, in imperative form.
-         * e.g. when the objective is 'complete 10 waves', this would display "complete 10 waves". */
+        /**
+         * @return the string displayed when this objective is completed, in imperative form. e.g.
+         * when the objective is 'complete 10 waves', this would display "complete 10 waves".
+         */
         String display();
 
-        /** Build a display for this zone requirement.*/
-        default void build(Table table){
-
+        /**
+         * Build a display for this zone requirement.
+         */
+        default void build(Table table) {
         }
     }
 }

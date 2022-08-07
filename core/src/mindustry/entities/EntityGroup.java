@@ -1,19 +1,26 @@
 package mindustry.entities;
 
-import arc.*;
-import arc.func.*;
-import arc.math.geom.*;
-import arc.struct.*;
-import arc.util.*;
+import arc.Core;
+import arc.func.Boolf;
+import arc.func.Cons;
+import arc.math.geom.QuadTree;
+import arc.math.geom.Rect;
+import arc.struct.IntMap;
+import arc.struct.IntSet;
+import arc.struct.Seq;
+import arc.util.Nullable;
 import mindustry.gen.*;
 
-import java.util.*;
+import java.util.Comparator;
+import java.util.Iterator;
 
-import static mindustry.Vars.*;
+import static mindustry.Vars.collisions;
 
-/** Represents a group of a certain type of entity.*/
+/**
+ * Represents a group of a certain type of entity.
+ */
 @SuppressWarnings("unchecked")
-public class EntityGroup<T extends Entityc> implements Iterable<T>{
+public class EntityGroup<T extends Entityc> implements Iterable<T> {
     private static int lastId = 0;
 
     private final Seq<T> array;
@@ -26,202 +33,212 @@ public class EntityGroup<T extends Entityc> implements Iterable<T>{
 
     private int index;
 
-    public static int nextId(){
+    public static int nextId() {
         return lastId++;
     }
 
-    /** Makes sure the next ID counter is higher than this number, so future entities cannot possibly use this ID. */
-    public static void checkNextId(int id){
+    /**
+     * Makes sure the next ID counter is higher than this number, so future entities cannot possibly
+     * use this ID.
+     */
+    public static void checkNextId(int id) {
         lastId = Math.max(lastId, id + 1);
     }
 
-    public EntityGroup(Class<T> type, boolean spatial, boolean mapping){
+    public EntityGroup(Class<T> type, boolean spatial, boolean mapping) {
         array = new Seq<>(false, 32, type);
 
-        if(spatial){
+        if (spatial) {
             tree = new QuadTree<>(new Rect(0, 0, 0, 0));
         }
 
-        if(mapping){
+        if (mapping) {
             map = new IntMap<>();
         }
     }
 
-    /** @return entities with colliding IDs, or an empty array. */
-    public Seq<T> checkIDCollisions(){
+    /**
+     * @return entities with colliding IDs, or an empty array.
+     */
+    public Seq<T> checkIDCollisions() {
         Seq<T> out = new Seq<>();
         IntSet ints = new IntSet();
-        each(u -> {
-            if(!ints.add(u.id())){
-                out.add(u);
-            }
-        });
+        each(
+                u -> {
+                    if (!ints.add(u.id())) {
+                        out.add(u);
+                    }
+                });
         return out;
     }
 
-    public void sort(Comparator<? super T> comp){
+    public void sort(Comparator<? super T> comp) {
         array.sort(comp);
     }
 
-    public void collide(){
-        collisions.collide((EntityGroup<? extends Hitboxc>)this);
+    public void collide() {
+        collisions.collide((EntityGroup<? extends Hitboxc>) this);
     }
 
-    public void updatePhysics(){
-        collisions.updatePhysics((EntityGroup<? extends Hitboxc>)this);
+    public void updatePhysics() {
+        collisions.updatePhysics((EntityGroup<? extends Hitboxc>) this);
     }
 
-    public void update(){
-        for(index = 0; index < array.size; index++){
+    public void update() {
+        for (index = 0; index < array.size; index++) {
             array.items[index].update();
         }
     }
 
-    public Seq<T> copy(Seq<T> arr){
+    public Seq<T> copy(Seq<T> arr) {
         arr.addAll(array);
         return arr;
     }
 
-    public void each(Cons<T> cons){
-        for(index = 0; index < array.size; index++){
+    public void each(Cons<T> cons) {
+        for (index = 0; index < array.size; index++) {
             cons.get(array.items[index]);
         }
     }
 
-    public void each(Boolf<T> filter, Cons<T> cons){
-        for(index = 0; index < array.size; index++){
-            if(filter.get(array.items[index])) cons.get(array.items[index]);
+    public void each(Boolf<T> filter, Cons<T> cons) {
+        for (index = 0; index < array.size; index++) {
+            if (filter.get(array.items[index])) cons.get(array.items[index]);
         }
     }
 
-    public void draw(Cons<T> cons){
+    public void draw(Cons<T> cons) {
         Core.camera.bounds(viewport);
 
-        for(index = 0; index < array.size; index++){
-            Drawc draw = (Drawc)array.items[index];
+        for (index = 0; index < array.size; index++) {
+            Drawc draw = (Drawc) array.items[index];
             float clip = draw.clipSize();
-            if(viewport.overlaps(draw.x() - clip/2f, draw.y() - clip/2f, clip, clip)){
-                cons.get((T)draw);
+            if (viewport.overlaps(draw.x() - clip / 2f, draw.y() - clip / 2f, clip, clip)) {
+                cons.get((T) draw);
             }
         }
     }
 
-    public boolean useTree(){
+    public boolean useTree() {
         return map != null;
     }
 
-    public boolean mappingEnabled(){
+    public boolean mappingEnabled() {
         return map != null;
     }
 
     @Nullable
-    public T getByID(int id){
-        if(map == null) throw new RuntimeException("Mapping is not enabled for group " + id + "!");
+    public T getByID(int id) {
+        if (map == null) throw new RuntimeException("Mapping is not enabled for group " + id + "!");
         return map.get(id);
     }
 
-    public void removeByID(int id){
-        if(map == null) throw new RuntimeException("Mapping is not enabled for group " + id + "!");
+    public void removeByID(int id) {
+        if (map == null) throw new RuntimeException("Mapping is not enabled for group " + id + "!");
         T t = map.get(id);
-        if(t != null){ //remove if present in map already
+        if (t != null) { // remove if present in map already
             t.remove();
         }
     }
 
-    public void intersect(float x, float y, float width, float height, Cons<? super T> out){
-        //don't waste time for empty groups
-        if(isEmpty()) return;
+    public void intersect(float x, float y, float width, float height, Cons<? super T> out) {
+        // don't waste time for empty groups
+        if (isEmpty()) return;
         tree.intersect(x, y, width, height, out);
     }
 
-    public Seq<T> intersect(float x, float y, float width, float height){
+    public Seq<T> intersect(float x, float y, float width, float height) {
         intersectArray.clear();
-        //don't waste time for empty groups
-        if(isEmpty()) return intersectArray;
+        // don't waste time for empty groups
+        if (isEmpty()) return intersectArray;
         tree.intersect(intersectRect.set(x, y, width, height), intersectArray);
         return intersectArray;
     }
 
-    public QuadTree tree(){
-        if(tree == null) throw new RuntimeException("This group does not support quadtrees! Enable quadtrees when creating it.");
+    public QuadTree tree() {
+        if (tree == null)
+            throw new RuntimeException(
+                    "This group does not support quadtrees! Enable quadtrees when creating it.");
         return tree;
     }
 
-    /** Resizes the internal quadtree, if it is enabled.*/
-    public void resize(float x, float y, float w, float h){
-        if(tree != null){
+    /**
+     * Resizes the internal quadtree, if it is enabled.
+     */
+    public void resize(float x, float y, float w, float h) {
+        if (tree != null) {
             tree = new QuadTree<>(new Rect(x, y, w, h));
         }
     }
 
-    public boolean isEmpty(){
+    public boolean isEmpty() {
         return array.size == 0;
     }
 
-    public T index(int i){
+    public T index(int i) {
         return array.get(i);
     }
 
-    public int size(){
+    public int size() {
         return array.size;
     }
 
-    public boolean contains(Boolf<T> pred){
+    public boolean contains(Boolf<T> pred) {
         return array.contains(pred);
     }
 
-    public int count(Boolf<T> pred){
+    public int count(Boolf<T> pred) {
         return array.count(pred);
     }
 
-    public void add(T type){
-        if(type == null) throw new RuntimeException("Cannot add a null entity!");
+    public void add(T type) {
+        if (type == null) throw new RuntimeException("Cannot add a null entity!");
         array.add(type);
 
-        if(mappingEnabled()){
+        if (mappingEnabled()) {
             map.put(type.id(), type);
         }
     }
 
-    public void remove(T type){
-        if(clearing) return;
-        if(type == null) throw new RuntimeException("Cannot remove a null entity!");
+    public void remove(T type) {
+        if (clearing) return;
+        if (type == null) throw new RuntimeException("Cannot remove a null entity!");
         int idx = array.indexOf(type, true);
-        if(idx != -1){
+        if (idx != -1) {
             array.remove(idx);
-            if(map != null){
+            if (map != null) {
                 map.remove(type.id());
             }
 
-            //fix iteration index when removing
-            if(index >= idx){
-                index --;
+            // fix iteration index when removing
+            if (index >= idx) {
+                index--;
             }
         }
     }
 
-    public void clear(){
+    public void clear() {
         clearing = true;
 
         array.each(Entityc::remove);
         array.clear();
-        if(map != null) map.clear();
+        if (map != null) map.clear();
 
         clearing = false;
     }
 
     @Nullable
-    public T find(Boolf<T> pred){
+    public T find(Boolf<T> pred) {
         return array.find(pred);
     }
 
     @Nullable
-    public T first(){
+    public T first() {
         return array.first();
     }
 
     @Override
-    public Iterator<T> iterator(){
+    public Iterator<T> iterator() {
         return array.iterator();
     }
 }

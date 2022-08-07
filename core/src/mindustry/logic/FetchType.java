@@ -1,6 +1,6 @@
 package mindustry.logic;
 
-public enum FetchType{
+public enum FetchType {
     unit,
     unitCount,
     player,

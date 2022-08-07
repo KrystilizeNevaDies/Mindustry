@@ -1,8 +1,8 @@
 package mindustry.logic;
 
-import arc.util.*;
+import arc.util.Structs;
 
-public enum ConditionOp{
+public enum ConditionOp {
     equal("==", (a, b) -> Math.abs(a - b) < 0.000001, Structs::eq),
     notEqual("not", (a, b) -> Math.abs(a - b) >= 0.000001, (a, b) -> !Structs.eq(a, b)),
     lessThan("<", (a, b) -> a < b),
@@ -18,26 +18,26 @@ public enum ConditionOp{
     public final CondOpLambda function;
     public final String symbol;
 
-    ConditionOp(String symbol, CondOpLambda function){
+    ConditionOp(String symbol, CondOpLambda function) {
         this(symbol, function, null);
     }
 
-    ConditionOp(String symbol, CondOpLambda function, CondObjOpLambda objFunction){
+    ConditionOp(String symbol, CondOpLambda function, CondObjOpLambda objFunction) {
         this.symbol = symbol;
         this.function = function;
         this.objFunction = objFunction;
     }
 
     @Override
-    public String toString(){
+    public String toString() {
         return symbol;
     }
 
-    interface CondObjOpLambda{
+    interface CondObjOpLambda {
         boolean get(Object a, Object b);
     }
 
-    interface CondOpLambda{
+    interface CondOpLambda {
         boolean get(double a, double b);
     }
 }

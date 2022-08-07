@@ -1,18 +1,19 @@
 package mindustry.entities.bullet;
 
-import arc.graphics.*;
-import arc.graphics.g2d.*;
-import arc.math.*;
-import mindustry.content.*;
+import arc.graphics.Color;
+import arc.graphics.g2d.Draw;
+import arc.math.Angles;
+import arc.math.Mathf;
+import mindustry.content.Fx;
 import mindustry.gen.*;
-import mindustry.graphics.*;
-import mindustry.world.blocks.distribution.MassDriver.*;
+import mindustry.graphics.Pal;
+import mindustry.world.blocks.distribution.MassDriver.DriverBulletData;
 
-import static mindustry.Vars.*;
+import static mindustry.Vars.content;
 
-public class MassDriverBolt extends BulletType{
+public class MassDriverBolt extends BulletType {
 
-    public MassDriverBolt(){
+    public MassDriverBolt() {
         super(1f, 75);
         collidesTiles = false;
         lifetime = 1f;
@@ -21,7 +22,7 @@ public class MassDriverBolt extends BulletType{
     }
 
     @Override
-    public void draw(Bullet b){
+    public void draw(Bullet b) {
         float w = 11f, h = 13f;
 
         Draw.color(Pal.bulletYellowBack);
@@ -34,9 +35,9 @@ public class MassDriverBolt extends BulletType{
     }
 
     @Override
-    public void update(Bullet b){
+    public void update(Bullet b) {
         //data MUST be an instance of DriverBulletData
-        if(!(b.data() instanceof DriverBulletData data)){
+        if (!(b.data() instanceof DriverBulletData data)) {
             hit(b);
             return;
         }
@@ -44,7 +45,7 @@ public class MassDriverBolt extends BulletType{
         float hitDst = 7f;
 
         //if the target is dead, just keep flying until the bullet explodes
-        if(data.to.dead()){
+        if (data.to.dead()) {
             return;
         }
 
@@ -55,12 +56,12 @@ public class MassDriverBolt extends BulletType{
         boolean intersect = false;
 
         //bullet has gone past the destination point: but did it intersect it?
-        if(dst1 > baseDst){
+        if (dst1 > baseDst) {
             float angleTo = b.angleTo(data.to);
             float baseAngle = data.to.angleTo(data.from);
 
             //if angles are nearby, then yes, it did
-            if(Angles.near(angleTo, baseAngle, 2f)){
+            if (Angles.near(angleTo, baseAngle, 2f)) {
                 intersect = true;
                 //snap bullet position back; this is used for low-FPS situations
                 b.set(data.to.x + Angles.trnsx(baseAngle, hitDst), data.to.y + Angles.trnsy(baseAngle, hitDst));
@@ -68,24 +69,24 @@ public class MassDriverBolt extends BulletType{
         }
 
         //if on course and it's in range of the target
-        if(Math.abs(dst1 + dst2 - baseDst) < 4f && dst2 <= hitDst){
+        if (Math.abs(dst1 + dst2 - baseDst) < 4f && dst2 <= hitDst) {
             intersect = true;
         } //else, bullet has gone off course, does not get received.
 
-        if(intersect){
+        if (intersect) {
             data.to.handlePayload(b, data);
         }
     }
 
     @Override
-    public void despawned(Bullet b){
+    public void despawned(Bullet b) {
         super.despawned(b);
 
-        if(!(b.data() instanceof DriverBulletData data)) return;
+        if (!(b.data() instanceof DriverBulletData data)) return;
 
-        for(int i = 0; i < data.items.length; i++){
+        for (int i = 0; i < data.items.length; i++) {
             int amountDropped = Mathf.random(0, data.items[i]);
-            if(amountDropped > 0){
+            if (amountDropped > 0) {
                 float angle = b.rotation() + Mathf.range(100f);
                 Fx.dropItem.at(b.x, b.y, angle, Color.white, content.item(i));
             }
@@ -93,7 +94,7 @@ public class MassDriverBolt extends BulletType{
     }
 
     @Override
-    public void hit(Bullet b, float hitx, float hity){
+    public void hit(Bullet b, float hitx, float hity) {
         super.hit(b, hitx, hity);
         despawned(b);
     }

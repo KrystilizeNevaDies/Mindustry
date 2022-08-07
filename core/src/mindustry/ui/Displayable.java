@@ -1,10 +1,12 @@
 package mindustry.ui;
 
-import arc.scene.ui.layout.*;
+import arc.scene.ui.layout.Table;
 
-/** An interface for things that can be displayed when hovered over. */
-public interface Displayable{
-    default boolean displayable(){
+/**
+ * An interface for things that can be displayed when hovered over.
+ */
+public interface Displayable {
+    default boolean displayable() {
         return true;
     }
 

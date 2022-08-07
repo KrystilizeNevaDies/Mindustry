@@ -1,17 +1,19 @@
 package mindustry.entities.bullet;
 
-import mindustry.content.*;
+import mindustry.content.Fx;
 
-/** Template class for a non-drawing bullet type that makes an explosion and disappears instantly. */
-public class ExplosionBulletType extends BulletType{
+/**
+ * Template class for a non-drawing bullet type that makes an explosion and disappears instantly.
+ */
+public class ExplosionBulletType extends BulletType {
 
-    public ExplosionBulletType(float splashDamage, float splashDamageRadius){
+    public ExplosionBulletType(float splashDamage, float splashDamageRadius) {
         this.splashDamage = splashDamage;
         this.splashDamageRadius = splashDamageRadius;
         rangeOverride = Math.max(rangeOverride, splashDamageRadius * 2f / 3f);
     }
 
-    public ExplosionBulletType(){
+    public ExplosionBulletType() {
     }
 
     {

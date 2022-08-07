@@ -1,27 +1,28 @@
 package mindustry.entities.comp;
 
-import arc.math.*;
-import arc.util.*;
-import mindustry.annotations.Annotations.*;
+import arc.math.Scaled;
+import arc.util.Time;
+import mindustry.annotations.Annotations.Component;
+import mindustry.annotations.Annotations.MethodPriority;
 import mindustry.gen.*;
 
 @Component
-abstract class TimedComp implements Entityc, Scaled{
+abstract class TimedComp implements Entityc, Scaled {
     float time, lifetime;
 
-    //called last so pooling and removal happens then.
+    // called last so pooling and removal happens then.
     @MethodPriority(100)
     @Override
-    public void update(){
+    public void update() {
         time = Math.min(time + Time.delta, lifetime);
 
-        if(time >= lifetime){
+        if (time >= lifetime) {
             remove();
         }
     }
 
     @Override
-    public float fin(){
+    public float fin() {
         return time / lifetime;
     }
 }

@@ -1,47 +1,58 @@
 package mindustry.world.blocks.liquid;
 
-import arc.*;
-import arc.func.*;
-import arc.graphics.*;
-import arc.graphics.g2d.*;
-import arc.math.*;
-import arc.math.geom.*;
-import arc.struct.*;
-import arc.util.*;
-import mindustry.annotations.Annotations.*;
-import mindustry.content.*;
-import mindustry.entities.*;
-import mindustry.entities.units.*;
+import arc.Core;
+import arc.func.Boolf;
+import arc.graphics.Color;
+import arc.graphics.g2d.Draw;
+import arc.graphics.g2d.TextureRegion;
+import arc.math.Mathf;
+import arc.math.geom.Geometry;
+import arc.math.geom.Point2;
+import arc.struct.Seq;
+import arc.util.Eachable;
+import arc.util.Nullable;
+import arc.util.Tmp;
+import mindustry.annotations.Annotations.Load;
+import mindustry.content.Blocks;
+import mindustry.entities.TargetPriority;
+import mindustry.entities.units.BuildPlan;
 import mindustry.gen.*;
-import mindustry.graphics.*;
-import mindustry.input.*;
-import mindustry.type.*;
-import mindustry.world.*;
-import mindustry.world.blocks.*;
-import mindustry.world.blocks.distribution.*;
+import mindustry.graphics.Drawf;
+import mindustry.graphics.Layer;
+import mindustry.input.Placement;
+import mindustry.type.Liquid;
+import mindustry.world.Block;
+import mindustry.world.Tile;
+import mindustry.world.blocks.Autotiler;
+import mindustry.world.blocks.distribution.ChainedBuilding;
+import mindustry.world.blocks.distribution.DirectionBridge;
+import mindustry.world.blocks.distribution.ItemBridge;
 
-import static mindustry.Vars.*;
-import static mindustry.type.Liquid.*;
+import static mindustry.Vars.renderer;
+import static mindustry.Vars.tilesize;
+import static mindustry.type.Liquid.animationFrames;
 
-public class Conduit extends LiquidBlock implements Autotiler{
+public class Conduit extends LiquidBlock implements Autotiler {
     static final float rotatePad = 6, hpad = rotatePad / 2f / 4f;
     static final float[][] rotateOffsets = {{hpad, hpad}, {-hpad, hpad}, {-hpad, -hpad}, {hpad, -hpad}};
 
     public final int timerFlow = timers++;
-    
+
     public Color botColor = Color.valueOf("565656");
 
     public @Load(value = "@-top-#", length = 5) TextureRegion[] topRegions;
     public @Load(value = "@-bottom-#", length = 5, fallback = "conduit-bottom-#") TextureRegion[] botRegions;
     public @Load("@-cap") TextureRegion capRegion;
 
-    /** indices: [rotation] [fluid type] [frame] */
+    /**
+     * indices: [rotation] [fluid type] [frame]
+     */
     public TextureRegion[][][] rotateRegions;
 
     public boolean leaks = true;
     public @Nullable Block junctionReplacement, bridgeReplacement, rotBridgeReplacement;
 
-    public Conduit(String name){
+    public Conduit(String name) {
         super(name);
         rotate = true;
         solid = false;
@@ -54,40 +65,41 @@ public class Conduit extends LiquidBlock implements Autotiler{
     }
 
     @Override
-    public void init(){
+    public void init() {
         super.init();
 
-        if(junctionReplacement == null) junctionReplacement = Blocks.liquidJunction;
-        if(bridgeReplacement == null || !(bridgeReplacement instanceof ItemBridge)) bridgeReplacement = Blocks.bridgeConduit;
+        if (junctionReplacement == null) junctionReplacement = Blocks.liquidJunction;
+        if (bridgeReplacement == null || !(bridgeReplacement instanceof ItemBridge))
+            bridgeReplacement = Blocks.bridgeConduit;
     }
 
     @Override
-    public void load(){
+    public void load() {
         super.load();
 
         rotateRegions = new TextureRegion[4][2][animationFrames];
 
-        if(renderer != null){
+        if (renderer != null) {
             float pad = rotatePad;
             var frames = renderer.getFluidFrames();
 
-            for(int rot = 0; rot < 4; rot++){
-                for(int fluid = 0; fluid < 2; fluid++){
-                    for(int frame = 0; frame < animationFrames; frame++){
+            for (int rot = 0; rot < 4; rot++) {
+                for (int fluid = 0; fluid < 2; fluid++) {
+                    for (int frame = 0; frame < animationFrames; frame++) {
                         TextureRegion base = frames[fluid][frame];
                         TextureRegion result = new TextureRegion();
                         result.set(base);
 
-                        if(rot == 0){
+                        if (rot == 0) {
                             result.setX(result.getX() + pad);
                             result.setHeight(result.height - pad);
-                        }else if(rot == 1){
+                        } else if (rot == 1) {
                             result.setWidth(result.width - pad);
                             result.setHeight(result.height - pad);
-                        }else if(rot == 2){
+                        } else if (rot == 2) {
                             result.setWidth(result.width - pad);
                             result.setY(result.getY() + pad);
-                        }else{
+                        } else {
                             result.setX(result.getX() + pad);
                             result.setY(result.getY() + pad);
                         }
@@ -100,10 +112,10 @@ public class Conduit extends LiquidBlock implements Autotiler{
     }
 
     @Override
-    public void drawPlanRegion(BuildPlan plan, Eachable<BuildPlan> list){
+    public void drawPlanRegion(BuildPlan plan, Eachable<BuildPlan> list) {
         int[] bits = getTiling(plan, list);
 
-        if(bits == null) return;
+        if (bits == null) return;
 
         Draw.scl(bits[1], bits[2]);
         Draw.color(botColor);
@@ -115,53 +127,53 @@ public class Conduit extends LiquidBlock implements Autotiler{
     }
 
     @Override
-    public Block getReplacement(BuildPlan req, Seq<BuildPlan> plans){
-        if(junctionReplacement == null) return this;
+    public Block getReplacement(BuildPlan req, Seq<BuildPlan> plans) {
+        if (junctionReplacement == null) return this;
 
         Boolf<Point2> cont = p -> plans.contains(o -> o.x == req.x + p.x && o.y == req.y + p.y && o.rotation == req.rotation && (req.block instanceof Conduit || req.block instanceof LiquidJunction));
         return cont.get(Geometry.d4(req.rotation)) &&
-            cont.get(Geometry.d4(req.rotation - 2)) &&
-            req.tile() != null &&
-            req.tile().block() instanceof Conduit &&
-            Mathf.mod(req.build().rotation - req.rotation, 2) == 1 ? junctionReplacement : this;
+                cont.get(Geometry.d4(req.rotation - 2)) &&
+                req.tile() != null &&
+                req.tile().block() instanceof Conduit &&
+                Mathf.mod(req.build().rotation - req.rotation, 2) == 1 ? junctionReplacement : this;
     }
 
     @Override
-    public boolean blends(Tile tile, int rotation, int otherx, int othery, int otherrot, Block otherblock){
+    public boolean blends(Tile tile, int rotation, int otherx, int othery, int otherrot, Block otherblock) {
         return otherblock.hasLiquids && (otherblock.outputsLiquid || (lookingAt(tile, rotation, otherx, othery, otherblock))) && lookingAtEither(tile, rotation, otherx, othery, otherrot, otherblock);
     }
 
     @Override
-    public void handlePlacementLine(Seq<BuildPlan> plans){
-        if(bridgeReplacement == null) return;
+    public void handlePlacementLine(Seq<BuildPlan> plans) {
+        if (bridgeReplacement == null) return;
 
-        if(rotBridgeReplacement instanceof DirectionBridge duct){
+        if (rotBridgeReplacement instanceof DirectionBridge duct) {
             Placement.calculateBridges(plans, duct, true, b -> b instanceof Conduit);
-        }else{
-            Placement.calculateBridges(plans, (ItemBridge)bridgeReplacement);
+        } else {
+            Placement.calculateBridges(plans, (ItemBridge) bridgeReplacement);
         }
     }
 
     @Override
-    public TextureRegion[] icons(){
+    public TextureRegion[] icons() {
         return new TextureRegion[]{Core.atlas.find("conduit-bottom"), topRegions[0]};
     }
 
-    public class ConduitBuild extends LiquidBuild implements ChainedBuilding{
+    public class ConduitBuild extends LiquidBuild implements ChainedBuilding {
         public float smoothLiquid;
         public int blendbits, xscl = 1, yscl = 1, blending;
         public boolean capped, backCapped = false;
 
         @Override
-        public void draw(){
+        public void draw() {
             int r = this.rotation;
 
             //draw extra conduits facing this one for tiling purposes
             Draw.z(Layer.blockUnder);
-            for(int i = 0; i < 4; i++){
-                if((blending & (1 << i)) != 0){
+            for (int i = 0; i < 4; i++) {
+                if ((blending & (1 << i)) != 0) {
                     int dir = r - i;
-                    drawAt(x + Geometry.d4x(dir) * tilesize*0.75f, y + Geometry.d4y(dir) * tilesize*0.75f, 0, i == 0 ? r : dir, i != 0 ? SliceMode.bottom : SliceMode.top);
+                    drawAt(x + Geometry.d4x(dir) * tilesize * 0.75f, y + Geometry.d4y(dir) * tilesize * 0.75f, 0, i == 0 ? r : dir, i != 0 ? SliceMode.bottom : SliceMode.top);
                 }
             }
 
@@ -171,11 +183,11 @@ public class Conduit extends LiquidBlock implements Autotiler{
             drawAt(x, y, blendbits, r, SliceMode.none);
             Draw.reset();
 
-            if(capped && capRegion.found()) Draw.rect(capRegion, x, y, rotdeg());
-            if(backCapped && capRegion.found()) Draw.rect(capRegion, x, y, rotdeg() + 180);
+            if (capped && capRegion.found()) Draw.rect(capRegion, x, y, rotdeg());
+            if (backCapped && capRegion.found()) Draw.rect(capRegion, x, y, rotdeg() + 180);
         }
 
-        protected void drawAt(float x, float y, int bits, int rotation, SliceMode slice){
+        protected void drawAt(float x, float y, int bits, int rotation, SliceMode slice) {
             float angle = rotation * 90f;
             Draw.color(botColor);
             Draw.rect(sliced(botRegions[bits], slice), x, y, angle);
@@ -188,7 +200,7 @@ public class Conduit extends LiquidBlock implements Autotiler{
             int wrapRot = (rotation + offset) % 4;
             TextureRegion liquidr = bits == 1 ? rotateRegions[wrapRot][gas][frame] : renderer.fluidFrames[gas][frame];
 
-            if(bits == 1){
+            if (bits == 1) {
                 ox = rotateOffsets[wrapRot][0];
                 oy = rotateOffsets[wrapRot][1];
             }
@@ -203,7 +215,7 @@ public class Conduit extends LiquidBlock implements Autotiler{
         }
 
         @Override
-        public void onProximityUpdate(){
+        public void onProximityUpdate() {
             super.onProximityUpdate();
 
             int[] bits = buildBlending(tile, rotation, null, true);
@@ -218,29 +230,29 @@ public class Conduit extends LiquidBlock implements Autotiler{
         }
 
         @Override
-        public boolean acceptLiquid(Building source, Liquid liquid){
+        public boolean acceptLiquid(Building source, Liquid liquid) {
             noSleep();
             return (liquids.current() == liquid || liquids.currentAmount() < 0.2f)
-                && (tile == null || (source.relativeTo(tile.x, tile.y) + 2) % 4 != rotation);
+                    && (tile == null || (source.relativeTo(tile.x, tile.y) + 2) % 4 != rotation);
         }
 
         @Override
-        public void updateTile(){
+        public void updateTile() {
             smoothLiquid = Mathf.lerpDelta(smoothLiquid, liquids.currentAmount() / liquidCapacity, 0.05f);
 
-            if(liquids.currentAmount() > 0.001f && timer(timerFlow, 1)){
+            if (liquids.currentAmount() > 0.001f && timer(timerFlow, 1)) {
                 moveLiquidForward(leaks, liquids.current());
                 noSleep();
-            }else{
+            } else {
                 sleep();
             }
         }
 
         @Nullable
         @Override
-        public Building next(){
+        public Building next() {
             Tile next = tile.nearby(rotation);
-            if(next != null && next.build instanceof ConduitBuild){
+            if (next != null && next.build instanceof ConduitBuild) {
                 return next.build;
             }
             return null;

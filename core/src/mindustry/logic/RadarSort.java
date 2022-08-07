@@ -1,9 +1,9 @@
 package mindustry.logic;
 
-import arc.math.geom.*;
+import arc.math.geom.Position;
 import mindustry.gen.*;
 
-public enum RadarSort{
+public enum RadarSort {
     distance((pos, other) -> -pos.dst2(other)),
     health((pos, other) -> other.health()),
     shield((pos, other) -> other.shield()),
@@ -14,11 +14,11 @@ public enum RadarSort{
 
     public static final RadarSort[] all = values();
 
-    RadarSort(RadarSortFunc func){
+    RadarSort(RadarSortFunc func) {
         this.func = func;
     }
 
-    public interface RadarSortFunc{
+    public interface RadarSortFunc {
         float get(Position pos, Unit other);
     }
 }

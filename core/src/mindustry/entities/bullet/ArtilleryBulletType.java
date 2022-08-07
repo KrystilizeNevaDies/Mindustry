@@ -1,13 +1,13 @@
 package mindustry.entities.bullet;
 
-import arc.math.*;
-import mindustry.content.*;
+import arc.math.Interp;
+import mindustry.content.Fx;
 import mindustry.gen.*;
 
-public class ArtilleryBulletType extends BasicBulletType{
+public class ArtilleryBulletType extends BasicBulletType {
     public float trailMult = 1f, trailSize = 4f;
 
-    public ArtilleryBulletType(float speed, float damage, String bulletSprite){
+    public ArtilleryBulletType(float speed, float damage, String bulletSprite) {
         super(speed, damage, bulletSprite);
         collidesTiles = false;
         collides = false;
@@ -19,12 +19,12 @@ public class ArtilleryBulletType extends BasicBulletType{
         shootEffect = Fx.shootBig;
         trailEffect = Fx.artilleryTrail;
 
-        //default settings:
+        // default settings:
         shrinkX = 0.15f;
         shrinkY = 0.63f;
         shrinkInterp = Interp.slope;
 
-        //for trail:
+        // for trail:
 
         /*
         trailLength = 27;
@@ -39,19 +39,19 @@ public class ArtilleryBulletType extends BasicBulletType{
         */
     }
 
-    public ArtilleryBulletType(float speed, float damage){
+    public ArtilleryBulletType(float speed, float damage) {
         this(speed, damage, "shell");
     }
 
-    public ArtilleryBulletType(){
+    public ArtilleryBulletType() {
         this(1f, 1f, "shell");
     }
 
     @Override
-    public void update(Bullet b){
+    public void update(Bullet b) {
         super.update(b);
 
-        if(b.timer(0, (3 + b.fslope() * 2f) * trailMult)){
+        if (b.timer(0, (3 + b.fslope() * 2f) * trailMult)) {
             trailEffect.at(b.x, b.y, b.fslope() * trailSize, backColor);
         }
     }

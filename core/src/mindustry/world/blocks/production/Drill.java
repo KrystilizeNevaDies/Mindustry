@@ -1,60 +1,92 @@
 package mindustry.world.blocks.production;
 
-import arc.*;
-import arc.graphics.*;
-import arc.graphics.g2d.*;
-import arc.math.*;
-import arc.struct.*;
-import arc.util.*;
-import arc.util.io.*;
-import mindustry.annotations.Annotations.*;
-import mindustry.content.*;
-import mindustry.entities.*;
-import mindustry.entities.units.*;
-import mindustry.game.*;
+import arc.Core;
+import arc.graphics.Blending;
+import arc.graphics.Color;
+import arc.graphics.g2d.Draw;
+import arc.graphics.g2d.TextureRegion;
+import arc.math.Mathf;
+import arc.struct.ObjectIntMap;
+import arc.struct.Seq;
+import arc.util.Eachable;
+import arc.util.Nullable;
+import arc.util.Strings;
+import arc.util.Time;
+import arc.util.io.Reads;
+import arc.util.io.Writes;
+import mindustry.annotations.Annotations.Load;
+import mindustry.content.Fx;
+import mindustry.entities.Effect;
+import mindustry.entities.units.BuildPlan;
+import mindustry.game.Team;
 import mindustry.gen.*;
-import mindustry.graphics.*;
-import mindustry.logic.*;
-import mindustry.type.*;
-import mindustry.ui.*;
-import mindustry.world.*;
-import mindustry.world.blocks.environment.*;
+import mindustry.graphics.Drawf;
+import mindustry.graphics.Layer;
+import mindustry.graphics.Pal;
+import mindustry.logic.LAccess;
+import mindustry.type.Item;
+import mindustry.ui.Bar;
+import mindustry.world.Block;
+import mindustry.world.Tile;
+import mindustry.world.blocks.environment.Floor;
 import mindustry.world.meta.*;
 
 import static mindustry.Vars.*;
 
-public class Drill extends Block{
+public class Drill extends Block {
     public float hardnessDrillMultiplier = 50f;
 
     protected final ObjectIntMap<Item> oreCount = new ObjectIntMap<>();
     protected final Seq<Item> itemArray = new Seq<>();
 
-    /** Maximum tier of blocks this drill can mine. */
+    /**
+     * Maximum tier of blocks this drill can mine.
+     */
     public int tier;
-    /** Base time to drill one ore, in frames. */
+    /**
+     * Base time to drill one ore, in frames.
+     */
     public float drillTime = 300;
-    /** How many times faster the drill will progress when boosted by liquid. */
+    /**
+     * How many times faster the drill will progress when boosted by liquid.
+     */
     public float liquidBoostIntensity = 1.6f;
-    /** Speed at which the drill speeds up. */
+    /**
+     * Speed at which the drill speeds up.
+     */
     public float warmupSpeed = 0.015f;
-    /** Special exemption item that this drill can't mine. */
+    /**
+     * Special exemption item that this drill can't mine.
+     */
     public @Nullable Item blockedItem;
 
     //return variables for countOre
     protected @Nullable Item returnItem;
     protected int returnCount;
 
-    /** Whether to draw the item this drill is mining. */
+    /**
+     * Whether to draw the item this drill is mining.
+     */
     public boolean drawMineItem = true;
-    /** Effect played when an item is produced. This is colored. */
+    /**
+     * Effect played when an item is produced. This is colored.
+     */
     public Effect drillEffect = Fx.mine;
-    /** Drill effect randomness. Block size by default. */
+    /**
+     * Drill effect randomness. Block size by default.
+     */
     public float drillEffectRnd = -1f;
-    /** Speed the drill bit rotates at. */
+    /**
+     * Speed the drill bit rotates at.
+     */
     public float rotateSpeed = 2f;
-    /** Effect randomly played while drilling. */
+    /**
+     * Effect randomly played while drilling.
+     */
     public Effect updateEffect = Fx.pulverizeSmall;
-    /** Chance the update effect will appear. */
+    /**
+     * Chance the update effect will appear.
+     */
     public float updateEffectChance = 0.02f;
 
     public boolean drawRim = false;
@@ -65,7 +97,7 @@ public class Drill extends Block{
     public @Load("@-top") TextureRegion topRegion;
     public @Load(value = "@-item", fallback = "drill-item-@size") TextureRegion itemRegion;
 
-    public Drill(String name){
+    public Drill(String name) {
         super(name);
         update = true;
         solid = true;
@@ -80,19 +112,19 @@ public class Drill extends Block{
     }
 
     @Override
-    public void init(){
+    public void init() {
         super.init();
-        if(drillEffectRnd < 0) drillEffectRnd = size;
+        if (drillEffectRnd < 0) drillEffectRnd = size;
     }
 
     @Override
-    public void drawPlanConfigTop(BuildPlan plan, Eachable<BuildPlan> list){
-        if(!plan.worldContext) return;
+    public void drawPlanConfigTop(BuildPlan plan, Eachable<BuildPlan> list) {
+        if (!plan.worldContext) return;
         Tile tile = plan.tile();
-        if(tile == null) return;
+        if (tile == null) return;
 
         countOre(tile);
-        if(returnItem == null || !drawMineItem) return;
+        if (returnItem == null || !drawMineItem) return;
 
         Draw.color(returnItem.color);
         Draw.rect(itemRegion, plan.drawx(), plan.drawy());
@@ -100,106 +132,106 @@ public class Drill extends Block{
     }
 
     @Override
-    public void setBars(){
+    public void setBars() {
         super.setBars();
 
         addBar("drillspeed", (DrillBuild e) ->
-             new Bar(() -> Core.bundle.format("bar.drillspeed", Strings.fixed(e.lastDrillSpeed * 60 * e.timeScale(), 2)), () -> Pal.ammo, () -> e.warmup));
+                new Bar(() -> Core.bundle.format("bar.drillspeed", Strings.fixed(e.lastDrillSpeed * 60 * e.timeScale(), 2)), () -> Pal.ammo, () -> e.warmup));
     }
 
-    public Item getDrop(Tile tile){
+    public Item getDrop(Tile tile) {
         return tile.drop();
     }
 
     @Override
-    public boolean canPlaceOn(Tile tile, Team team, int rotation){
-        if(isMultiblock()){
-            for(Tile other : tile.getLinkedTilesAs(this, tempTiles)){
-                if(canMine(other)){
+    public boolean canPlaceOn(Tile tile, Team team, int rotation) {
+        if (isMultiblock()) {
+            for (Tile other : tile.getLinkedTilesAs(this, tempTiles)) {
+                if (canMine(other)) {
                     return true;
                 }
             }
             return false;
-        }else{
+        } else {
             return canMine(tile);
         }
     }
 
     @Override
-    public void drawPlace(int x, int y, int rotation, boolean valid){
+    public void drawPlace(int x, int y, int rotation, boolean valid) {
         super.drawPlace(x, y, rotation, valid);
 
         Tile tile = world.tile(x, y);
-        if(tile == null) return;
+        if (tile == null) return;
 
         countOre(tile);
 
-        if(returnItem != null){
+        if (returnItem != null) {
             float width = drawPlaceText(Core.bundle.formatFloat("bar.drillspeed", 60f / (drillTime + hardnessDrillMultiplier * returnItem.hardness) * returnCount, 2), x, y, valid);
-            float dx = x * tilesize + offset - width/2f - 4f, dy = y * tilesize + offset + size * tilesize / 2f + 5, s = iconSmall / 4f;
+            float dx = x * tilesize + offset - width / 2f - 4f, dy = y * tilesize + offset + size * tilesize / 2f + 5, s = iconSmall / 4f;
             Draw.mixcol(Color.darkGray, 1f);
             Draw.rect(returnItem.fullIcon, dx, dy - 1, s, s);
             Draw.reset();
             Draw.rect(returnItem.fullIcon, dx, dy, s, s);
 
-            if(drawMineItem){
+            if (drawMineItem) {
                 Draw.color(returnItem.color);
                 Draw.rect(itemRegion, tile.worldx() + offset, tile.worldy() + offset);
                 Draw.color();
             }
-        }else{
+        } else {
             Tile to = tile.getLinkedTilesAs(this, tempTiles).find(t -> t.drop() != null && (t.drop().hardness > tier || t.drop() == blockedItem));
             Item item = to == null ? null : to.drop();
-            if(item != null){
+            if (item != null) {
                 drawPlaceText(Core.bundle.get("bar.drilltierreq"), x, y, valid);
             }
         }
     }
 
     @Override
-    public void setStats(){
+    public void setStats() {
         super.setStats();
 
         stats.add(Stat.drillTier, StatValues.blocks(b -> b instanceof Floor f && !f.wallOre && f.itemDrop != null &&
-            f.itemDrop.hardness <= tier && f.itemDrop != blockedItem && (indexer.isBlockPresent(f) || state.isMenu())));
+                f.itemDrop.hardness <= tier && f.itemDrop != blockedItem && (indexer.isBlockPresent(f) || state.isMenu())));
 
         stats.add(Stat.drillSpeed, 60f / drillTime * size * size, StatUnit.itemsSecond);
-        if(liquidBoostIntensity != 1){
+        if (liquidBoostIntensity != 1) {
             stats.add(Stat.boostEffect, liquidBoostIntensity * liquidBoostIntensity, StatUnit.timesSpeed);
         }
     }
 
     @Override
-    public TextureRegion[] icons(){
+    public TextureRegion[] icons() {
         return new TextureRegion[]{region, rotatorRegion, topRegion};
     }
 
-    protected void countOre(Tile tile){
+    protected void countOre(Tile tile) {
         returnItem = null;
         returnCount = 0;
 
         oreCount.clear();
         itemArray.clear();
 
-        for(Tile other : tile.getLinkedTilesAs(this, tempTiles)){
-            if(canMine(other)){
+        for (Tile other : tile.getLinkedTilesAs(this, tempTiles)) {
+            if (canMine(other)) {
                 oreCount.increment(getDrop(other), 0, 1);
             }
         }
 
-        for(Item item : oreCount.keys()){
+        for (Item item : oreCount.keys()) {
             itemArray.add(item);
         }
 
         itemArray.sort((item1, item2) -> {
             int type = Boolean.compare(!item1.lowPriority, !item2.lowPriority);
-            if(type != 0) return type;
+            if (type != 0) return type;
             int amounts = Integer.compare(oreCount.get(item1, 0), oreCount.get(item2, 0));
-            if(amounts != 0) return amounts;
+            if (amounts != 0) return amounts;
             return Integer.compare(item1.id, item2.id);
         });
 
-        if(itemArray.size == 0){
+        if (itemArray.size == 0) {
             return;
         }
 
@@ -207,13 +239,13 @@ public class Drill extends Block{
         returnCount = oreCount.get(itemArray.peek(), 0);
     }
 
-    public boolean canMine(Tile tile){
-        if(tile == null || tile.block().isStatic()) return false;
+    public boolean canMine(Tile tile) {
+        if (tile == null || tile.block().isStatic()) return false;
         Item drops = tile.drop();
         return drops != null && drops.hardness <= tier && drops != blockedItem;
     }
 
-    public class DrillBuild extends Building{
+    public class DrillBuild extends Building {
         public float progress;
         public float warmup;
         public float timeDrilled;
@@ -223,24 +255,24 @@ public class Drill extends Block{
         public Item dominantItem;
 
         @Override
-        public boolean shouldConsume(){
+        public boolean shouldConsume() {
             return items.total() < itemCapacity && enabled;
         }
 
         @Override
-        public boolean shouldAmbientSound(){
+        public boolean shouldAmbientSound() {
             return efficiency > 0.01f && items.total() < itemCapacity;
         }
 
         @Override
-        public float ambientVolume(){
+        public float ambientVolume() {
             return efficiency * (size * size) / 4f;
         }
 
         @Override
-        public void drawSelect(){
-            if(dominantItem != null){
-                float dx = x - size * tilesize/2f, dy = y + size * tilesize/2f, s = iconSmall / 4f;
+        public void drawSelect() {
+            if (dominantItem != null) {
+                float dx = x - size * tilesize / 2f, dy = y + size * tilesize / 2f, s = iconSmall / 4f;
                 Draw.mixcol(Color.darkGray, 1f);
                 Draw.rect(dominantItem.fullIcon, dx, dy - 1, s, s);
                 Draw.reset();
@@ -249,12 +281,12 @@ public class Drill extends Block{
         }
 
         @Override
-        public void pickedUp(){
+        public void pickedUp() {
             dominantItem = null;
         }
 
         @Override
-        public void onProximityUpdate(){
+        public void onProximityUpdate() {
             super.onProximityUpdate();
 
             countOre(tile);
@@ -263,27 +295,27 @@ public class Drill extends Block{
         }
 
         @Override
-        public void updateTile(){
-            if(dominantItem == null){
+        public void updateTile() {
+            if (dominantItem == null) {
                 return;
             }
 
-            if(timer(timerDump, dumpTime)){
+            if (timer(timerDump, dumpTime)) {
                 dump(items.has(dominantItem) ? dominantItem : null);
             }
 
             timeDrilled += warmup * delta();
 
-            if(items.total() < itemCapacity && dominantItems > 0 && efficiency > 0){
+            if (items.total() < itemCapacity && dominantItems > 0 && efficiency > 0) {
                 float speed = Mathf.lerp(1f, liquidBoostIntensity, optionalEfficiency) * efficiency;
 
                 lastDrillSpeed = (speed * dominantItems * warmup) / (drillTime + hardnessDrillMultiplier * dominantItem.hardness);
                 warmup = Mathf.approachDelta(warmup, speed, warmupSpeed);
                 progress += delta() * dominantItems * speed * warmup;
 
-                if(Mathf.chanceDelta(updateEffectChance * warmup))
+                if (Mathf.chanceDelta(updateEffectChance * warmup))
                     updateEffect.at(x + Mathf.range(size * 2f), y + Mathf.range(size * 2f));
-            }else{
+            } else {
                 lastDrillSpeed = 0f;
                 warmup = Mathf.approachDelta(warmup, 0f, warmupSpeed);
                 return;
@@ -291,30 +323,33 @@ public class Drill extends Block{
 
             float delay = drillTime + hardnessDrillMultiplier * dominantItem.hardness;
 
-            if(dominantItems > 0 && progress >= delay && items.total() < itemCapacity){
+            if (dominantItems > 0 && progress >= delay && items.total() < itemCapacity) {
                 offload(dominantItem);
 
                 progress %= delay;
 
-                if(wasVisible) drillEffect.at(x + Mathf.range(drillEffectRnd), y + Mathf.range(drillEffectRnd), dominantItem.color);
+                if (wasVisible)
+                    drillEffect.at(x + Mathf.range(drillEffectRnd), y + Mathf.range(drillEffectRnd), dominantItem.color);
             }
         }
 
         @Override
-        public double sense(LAccess sensor){
-            if(sensor == LAccess.progress && dominantItem != null) return Mathf.clamp(progress / (drillTime + hardnessDrillMultiplier * dominantItem.hardness));
+        public double sense(LAccess sensor) {
+            if (sensor == LAccess.progress && dominantItem != null)
+                return Mathf.clamp(progress / (drillTime + hardnessDrillMultiplier * dominantItem.hardness));
             return super.sense(sensor);
         }
 
         @Override
-        public void drawCracks(){}
+        public void drawCracks() {
+        }
 
-        public void drawDefaultCracks(){
+        public void drawDefaultCracks() {
             super.drawCracks();
         }
 
         @Override
-        public void draw(){
+        public void draw() {
             float s = 0.3f;
             float ts = 0.6f;
 
@@ -323,7 +358,7 @@ public class Drill extends Block{
             drawDefaultCracks();
 
             Draw.z(Layer.blockAfterCracks);
-            if(drawRim){
+            if (drawRim) {
                 Draw.color(heatColor);
                 Draw.alpha(warmup * ts * (1f - s + Mathf.absin(Time.time, 3f, s)));
                 Draw.blend(Blending.additive);
@@ -332,15 +367,15 @@ public class Drill extends Block{
                 Draw.color();
             }
 
-            if(drawSpinSprite){
+            if (drawSpinSprite) {
                 Drawf.spinSprite(rotatorRegion, x, y, timeDrilled * rotateSpeed);
-            }else{
+            } else {
                 Draw.rect(rotatorRegion, x, y, timeDrilled * rotateSpeed);
             }
 
             Draw.rect(topRegion, x, y);
 
-            if(dominantItem != null && drawMineItem){
+            if (dominantItem != null && drawMineItem) {
                 Draw.color(dominantItem.color);
                 Draw.rect(itemRegion, x, y);
                 Draw.color();
@@ -348,21 +383,21 @@ public class Drill extends Block{
         }
 
         @Override
-        public byte version(){
+        public byte version() {
             return 1;
         }
 
         @Override
-        public void write(Writes write){
+        public void write(Writes write) {
             super.write(write);
             write.f(progress);
             write.f(warmup);
         }
 
         @Override
-        public void read(Reads read, byte revision){
+        public void read(Reads read, byte revision) {
             super.read(read, revision);
-            if(revision >= 1){
+            if (revision >= 1) {
                 progress = read.f();
                 warmup = read.f();
             }

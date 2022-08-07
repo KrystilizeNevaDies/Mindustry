@@ -1,83 +1,116 @@
 package mindustry.type;
 
-import arc.*;
-import arc.graphics.*;
-import arc.graphics.g2d.*;
-import arc.struct.*;
-import arc.util.*;
-import mindustry.ctype.*;
-import mindustry.game.EventType.*;
-import mindustry.graphics.*;
-import mindustry.graphics.MultiPacker.*;
-import mindustry.logic.*;
-import mindustry.world.blocks.environment.*;
-import mindustry.world.meta.*;
+import arc.Core;
+import arc.Events;
+import arc.graphics.Color;
+import arc.graphics.Pixmap;
+import arc.graphics.Pixmaps;
+import arc.graphics.g2d.PixmapRegion;
+import arc.graphics.g2d.TextureRegion;
+import arc.struct.Seq;
+import arc.util.Time;
+import mindustry.ctype.ContentType;
+import mindustry.ctype.UnlockableContent;
+import mindustry.game.EventType.Trigger;
+import mindustry.graphics.MultiPacker;
+import mindustry.graphics.MultiPacker.PageType;
+import mindustry.logic.LAccess;
+import mindustry.logic.Senseable;
+import mindustry.world.blocks.environment.OreBlock;
+import mindustry.world.meta.Stat;
 
-import static mindustry.Vars.*;
+import static mindustry.Vars.content;
 
-public class Item extends UnlockableContent implements Senseable{
+public class Item extends UnlockableContent implements Senseable {
     public Color color;
 
-    /** how explosive this item is. */
+    /**
+     * how explosive this item is.
+     */
     public float explosiveness = 0f;
-    /** flammability above 0.3 makes this eligible for item burners. */
+    /**
+     * flammability above 0.3 makes this eligible for item burners.
+     */
     public float flammability = 0f;
-    /** how radioactive this item is. */
+    /**
+     * how radioactive this item is.
+     */
     public float radioactivity;
-    /** how electrically potent this item is. */
+    /**
+     * how electrically potent this item is.
+     */
     public float charge = 0f;
-    /** drill hardness of the item */
+    /**
+     * drill hardness of the item
+     */
     public int hardness = 0;
     /**
-     * base material cost of this item, used for calculating place times
-     * 1 cost = 1 tick added to build time
+     * base material cost of this item, used for calculating place times 1 cost = 1 tick added to
+     * build time
      */
     public float cost = 1f;
-    /** When this item is present in the build cost, a block's <b>default</b> health is multiplied by 1 + scaling, where 'scaling' is summed together for all item requirement types. */
+    /**
+     * When this item is present in the build cost, a block's <b>default</b> health is multiplied by
+     * 1 + scaling, where 'scaling' is summed together for all item requirement types.
+     */
     public float healthScaling = 0f;
-    /** if true, this item is of the lowest priority to drills. */
+    /**
+     * if true, this item is of the lowest priority to drills.
+     */
     public boolean lowPriority;
 
-    /** If >0, this item is animated. */
+    /**
+     * If >0, this item is animated.
+     */
     public int frames = 0;
-    /** Number of generated transition frames between each frame */
+    /**
+     * Number of generated transition frames between each frame
+     */
     public int transitionFrames = 0;
-    /** Ticks in-between animation frames. */
+    /**
+     * Ticks in-between animation frames.
+     */
     public float frameTime = 5f;
-    /** If true, this material is used by buildings. If false, this material will be incinerated in certain cores. */
+    /**
+     * If true, this material is used by buildings. If false, this material will be incinerated in
+     * certain cores.
+     */
     public boolean buildable = true;
+
     public boolean hidden = false;
 
-    public Item(String name, Color color){
+    public Item(String name, Color color) {
         super(name);
         this.color = color;
     }
 
-    public Item(String name){
+    public Item(String name) {
         this(name, new Color(Color.black));
     }
 
     @Override
-    public boolean isHidden(){
+    public boolean isHidden() {
         return hidden;
     }
 
     @Override
-    public void loadIcon(){
+    public void loadIcon() {
         super.loadIcon();
 
-        //animation code ""borrowed"" from Project Unity - original implementation by GlennFolker and sk7725
-        if(frames > 0){
+        // animation code ""borrowed"" from Project Unity - original implementation by GlennFolker
+        // and
+        // sk7725
+        if (frames > 0) {
             TextureRegion[] regions = new TextureRegion[frames * (transitionFrames + 1)];
 
-            if(transitionFrames <= 0){
-                for(int i = 1; i <= frames; i++){
+            if (transitionFrames <= 0) {
+                for (int i = 1; i <= frames; i++) {
                     regions[i - 1] = Core.atlas.find(name + i);
                 }
-            }else{
-                for(int i = 0; i < frames; i++){
+            } else {
+                for (int i = 0; i < frames; i++) {
                     regions[i * (transitionFrames + 1)] = Core.atlas.find(name + (i + 1));
-                    for(int j = 1; j <= transitionFrames; j++){
+                    for (int j = 1; j <= transitionFrames; j++) {
                         int index = i * (transitionFrames + 1) + j;
                         regions[index] = Core.atlas.find(name + "-t" + index);
                     }
@@ -87,17 +120,19 @@ public class Item extends UnlockableContent implements Senseable{
             fullIcon = new TextureRegion(fullIcon);
             uiIcon = new TextureRegion(uiIcon);
 
-            Events.run(Trigger.update, () -> {
-                int frame = (int)(Time.globalTime / frameTime) % regions.length;
+            Events.run(
+                    Trigger.update,
+                    () -> {
+                        int frame = (int) (Time.globalTime / frameTime) % regions.length;
 
-                fullIcon.set(regions[frame]);
-                uiIcon.set(regions[frame]);
-            });
+                        fullIcon.set(regions[frame]);
+                        uiIcon.set(regions[frame]);
+                    });
         }
     }
 
     @Override
-    public void setStats(){
+    public void setStats() {
         stats.addPercent(Stat.explosiveness, explosiveness);
         stats.addPercent(Stat.flammability, flammability);
         stats.addPercent(Stat.radioactivity, radioactivity);
@@ -105,30 +140,30 @@ public class Item extends UnlockableContent implements Senseable{
     }
 
     @Override
-    public String toString(){
+    public String toString() {
         return localizedName;
     }
 
     @Override
-    public ContentType getContentType(){
+    public ContentType getContentType() {
         return ContentType.item;
     }
 
     @Override
-    public void createIcons(MultiPacker packer){
+    public void createIcons(MultiPacker packer) {
         super.createIcons(packer);
 
-        //create transitions
-        if(frames > 0 && transitionFrames > 0){
+        // create transitions
+        if (frames > 0 && transitionFrames > 0) {
             var pixmaps = new PixmapRegion[frames];
 
-            for(int i = 0; i < frames; i++){
+            for (int i = 0; i < frames; i++) {
                 pixmaps[i] = Core.atlas.getPixmap(name + (i + 1));
             }
 
-            for(int i = 0; i < frames; i++){
-                for(int j = 1; j <= transitionFrames; j++){
-                    float f = (float)j / (transitionFrames + 1);
+            for (int i = 0; i < frames; i++) {
+                for (int j = 1; j <= transitionFrames; j++) {
+                    float f = (float) j / (transitionFrames + 1);
                     int index = i * (transitionFrames + 1) + j;
 
                     Pixmap res = Pixmaps.blend(pixmaps[i], pixmaps[(i + 1) % frames], f);
@@ -139,19 +174,21 @@ public class Item extends UnlockableContent implements Senseable{
     }
 
     @Override
-    public double sense(LAccess sensor){
-        if(sensor == LAccess.color) return color.toFloatBits();
+    public double sense(LAccess sensor) {
+        if (sensor == LAccess.color) return color.toFloatBits();
         return 0;
     }
 
     @Override
-    public Object senseObject(LAccess sensor){
-        if(sensor == LAccess.name) return name;
+    public Object senseObject(LAccess sensor) {
+        if (sensor == LAccess.name) return name;
         return noSensed;
     }
 
-    /** Allocates a new array containing all items that generate ores. */
-    public static Seq<Item> getAllOres(){
+    /**
+     * Allocates a new array containing all items that generate ores.
+     */
+    public static Seq<Item> getAllOres() {
         return content.blocks().select(b -> b instanceof OreBlock).map(b -> b.itemDrop);
     }
 }

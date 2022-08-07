@@ -1,9 +1,9 @@
-buildscript{
-    repositories{
+buildscript {
+    repositories {
         mavenCentral()
     }
 
-    dependencies{
+    dependencies {
         classpath "com.mobidevelop.robovm:robovm-gradle-plugin:2.3.15"
     }
 }
@@ -11,13 +11,13 @@ buildscript{
 apply plugin: "java"
 apply plugin: "robovm"
 
-task incrementConfig{
+task incrementConfig {
     def vfile = file('robovm.properties')
     def bversion = getBuildVersion()
     def props = new Properties()
-    if(vfile.exists()){
+    if (vfile.exists()) {
         props.load(new FileInputStream(vfile))
-    }else{
+    } else {
         props['app.id'] = 'io.anuke.mindustry'
         props['app.version'] = '7.0'
         props['app.mainclass'] = 'mindustry.IOSLauncher'
@@ -26,13 +26,13 @@ task incrementConfig{
     }
 
     props['app.build'] = (!props.containsKey("app.build") ? 40 : props['app.build'].toInteger() + 1) + ""
-    if(bversion != "custom build"){
+    if (bversion != "custom build") {
         props['app.version'] = versionNumber + "." + bversion + (bversion.contains(".") ? "" : ".0")
     }
     props.store(vfile.newWriter(), null)
 }
 
-dependencies{
+dependencies {
     implementation project(":core")
 
     implementation arcModule("natives:natives-ios")
@@ -44,26 +44,26 @@ dependencies{
 
 sourceSets.main.java.srcDirs = ["src/"]
 
-ext{
+ext {
     mainClassName = "mindustry.ios.IOSLauncher"
 }
 
-task copyAssets(){
-    doLast{
-        delete{
+task copyAssets() {
+    doLast {
+        delete {
             delete "assets/"
         }
-    
-        copy{
+
+        copy {
             from "../core/assets"
             into "assets/"
         }
     }
 }
 
-task copyNatives(){
-    doLast{
-        copy{
+task copyNatives() {
+    doLast {
+        copy {
             from "../../Arc/natives/natives-freetype-ios/libs", "../../Arc/natives/natives-ios/libs"
             into "libs"
         }
@@ -71,8 +71,8 @@ task copyNatives(){
     }
 }
 
-task deploy{
-    if(System.getProperty("os.name").contains("Mac")) dependsOn copyAssets
+task deploy {
+    if (System.getProperty("os.name").contains("Mac")) dependsOn copyAssets
     dependsOn createIPA
 }
 
@@ -84,11 +84,11 @@ launchIPadSimulator.dependsOn build
 launchIOSDevice.dependsOn build
 createIPA.dependsOn build
 
-robovm{
+robovm {
     archs = "thumbv7:arm64"
 
-    if(project.hasProperty("signIdentity")) println "iOS Sign Identity: " + project.property("signIdentity")
-    if(project.hasProperty("provisioningProfile")) println "iOS Provisioning Profile: " + project.property("provisioningProfile")
+    if (project.hasProperty("signIdentity")) println "iOS Sign Identity: " + project.property("signIdentity")
+    if (project.hasProperty("provisioningProfile")) println "iOS Provisioning Profile: " + project.property("provisioningProfile")
 
     iosSignIdentity = project.properties["signIdentity"]
     iosProvisioningProfile = project.properties["provisioningProfile"]

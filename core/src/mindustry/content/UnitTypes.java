@@ -1,34 +1,59 @@
 package mindustry.content;
 
-import arc.graphics.*;
-import arc.graphics.g2d.*;
-import arc.math.*;
-import arc.math.geom.*;
-import arc.struct.*;
-import arc.util.*;
-import mindustry.ai.*;
+import arc.graphics.Blending;
+import arc.graphics.Color;
+import arc.graphics.g2d.Fill;
+import arc.graphics.g2d.Lines;
+import arc.math.Angles;
+import arc.math.Interp;
+import arc.math.Mathf;
+import arc.math.geom.Rect;
+import arc.math.geom.Vec2;
+import arc.struct.ObjectSet;
+import arc.util.Time;
+import mindustry.ai.UnitCommand;
 import mindustry.ai.types.*;
-import mindustry.annotations.Annotations.*;
-import mindustry.entities.*;
+import mindustry.annotations.Annotations.EntityDef;
+import mindustry.entities.Effect;
 import mindustry.entities.abilities.*;
 import mindustry.entities.bullet.*;
-import mindustry.entities.effect.*;
-import mindustry.entities.part.*;
-import mindustry.entities.pattern.*;
+import mindustry.entities.effect.ExplosionEffect;
+import mindustry.entities.effect.MultiEffect;
+import mindustry.entities.effect.WaveEffect;
+import mindustry.entities.effect.WrapEffect;
+import mindustry.entities.part.FlarePart;
+import mindustry.entities.part.HoverPart;
+import mindustry.entities.part.RegionPart;
+import mindustry.entities.part.ShapePart;
+import mindustry.entities.pattern.ShootAlternate;
+import mindustry.entities.pattern.ShootHelix;
+import mindustry.entities.pattern.ShootPattern;
+import mindustry.entities.pattern.ShootSpread;
 import mindustry.gen.*;
-import mindustry.graphics.*;
-import mindustry.type.*;
-import mindustry.type.ammo.*;
-import mindustry.type.unit.*;
-import mindustry.type.weapons.*;
-import mindustry.world.meta.*;
+import mindustry.graphics.Drawf;
+import mindustry.graphics.Layer;
+import mindustry.graphics.Pal;
+import mindustry.type.UnitType;
+import mindustry.type.Weapon;
+import mindustry.type.ammo.ItemAmmoType;
+import mindustry.type.ammo.PowerAmmoType;
+import mindustry.type.unit.ErekirUnitType;
+import mindustry.type.unit.MissileUnitType;
+import mindustry.type.unit.NeoplasmUnitType;
+import mindustry.type.unit.TankUnitType;
+import mindustry.type.weapons.BuildWeapon;
+import mindustry.type.weapons.PointDefenseWeapon;
+import mindustry.type.weapons.RepairBeamWeapon;
+import mindustry.world.meta.BlockFlag;
+import mindustry.world.meta.Env;
 
-import static arc.graphics.g2d.Draw.*;
-import static arc.graphics.g2d.Lines.*;
-import static arc.math.Angles.*;
-import static mindustry.Vars.*;
+import static arc.graphics.g2d.Draw.color;
+import static arc.graphics.g2d.Lines.stroke;
+import static arc.math.Angles.randLenVectors;
+import static mindustry.Vars.tilePayload;
+import static mindustry.Vars.tilesize;
 
-public class UnitTypes{
+public class UnitTypes {
     //region standard
 
     //mech
@@ -39,8 +64,8 @@ public class UnitTypes{
 
     //legs
     public static @EntityDef({Unitc.class, Legsc.class}) UnitType corvus, atrax,
-    merui, cleroi, anthicus,
-    tecta, collaris;
+            merui, cleroi, anthicus,
+            tecta, collaris;
 
     //legs, legacy
     public static @EntityDef(value = {Unitc.class, Legsc.class}, legacy = true) UnitType spiroct, arkyid, toxopid;
@@ -50,7 +75,7 @@ public class UnitTypes{
 
     //air
     public static @EntityDef({Unitc.class}) UnitType flare, eclipse, horizon, zenith, antumbra,
-    avert, obviate;
+            avert, obviate;
 
     //air, legacy
     public static @EntityDef(value = {Unitc.class}, legacy = true) UnitType mono;
@@ -60,7 +85,7 @@ public class UnitTypes{
 
     //air + payload
     public static @EntityDef({Unitc.class, Payloadc.class}) UnitType mega,
-    evoke, incite, emanate, quell, disrupt;
+            evoke, incite, emanate, quell, disrupt;
 
     //air + payload, legacy
     public static @EntityDef(value = {Unitc.class, Payloadc.class}, legacy = true) UnitType quad;
@@ -94,20 +119,20 @@ public class UnitTypes{
 
     //endregion
 
-    public static void load(){
+    public static void load() {
         //region ground attack
 
-        dagger = new UnitType("dagger"){{
+        dagger = new UnitType("dagger") {{
             speed = 0.5f;
             hitSize = 8f;
             health = 150;
-            weapons.add(new Weapon("large-weapon"){{
+            weapons.add(new Weapon("large-weapon") {{
                 reload = 13f;
                 x = 4f;
                 y = 2f;
                 top = false;
                 ejectEffect = Fx.casing1;
-                bullet = new BasicBulletType(2.5f, 9){{
+                bullet = new BasicBulletType(2.5f, 9) {{
                     width = 7f;
                     height = 9f;
                     lifetime = 60f;
@@ -115,7 +140,7 @@ public class UnitTypes{
             }});
         }};
 
-        mace = new UnitType("mace"){{
+        mace = new UnitType("mace") {{
             speed = 0.5f;
             hitSize = 10f;
             health = 550;
@@ -124,14 +149,14 @@ public class UnitTypes{
 
             immunities.add(StatusEffects.burning);
 
-            weapons.add(new Weapon("flamethrower"){{
+            weapons.add(new Weapon("flamethrower") {{
                 top = false;
                 shootSound = Sounds.flame;
                 shootY = 2f;
                 reload = 11f;
                 recoil = 1f;
                 ejectEffect = Fx.none;
-                bullet = new BulletType(4.2f, 37f){{
+                bullet = new BulletType(4.2f, 37f) {{
                     ammoMultiplier = 3f;
                     hitSize = 7f;
                     lifetime = 13f;
@@ -149,7 +174,7 @@ public class UnitTypes{
             }});
         }};
 
-        fortress = new UnitType("fortress"){{
+        fortress = new UnitType("fortress") {{
             speed = 0.43f;
             hitSize = 13f;
             rotateSpeed = 3f;
@@ -159,7 +184,7 @@ public class UnitTypes{
             mechFrontSway = 0.55f;
             ammoType = new ItemAmmoType(Items.graphite);
 
-            weapons.add(new Weapon("artillery"){{
+            weapons.add(new Weapon("artillery") {{
                 top = false;
                 y = 1f;
                 x = 9f;
@@ -168,7 +193,7 @@ public class UnitTypes{
                 shake = 2f;
                 ejectEffect = Fx.casing2;
                 shootSound = Sounds.artillery;
-                bullet = new ArtilleryBulletType(2f, 20, "shell"){{
+                bullet = new ArtilleryBulletType(2f, 20, "shell") {{
                     hitEffect = Fx.blastExplosion;
                     knockback = 0.8f;
                     lifetime = 120f;
@@ -183,7 +208,7 @@ public class UnitTypes{
             }});
         }};
 
-        scepter = new UnitType("scepter"){{
+        scepter = new UnitType("scepter") {{
             speed = 0.36f;
             hitSize = 22f;
             rotateSpeed = 2.1f;
@@ -197,61 +222,61 @@ public class UnitTypes{
             singleTarget = true;
             drownTimeMultiplier = 4f;
 
-            BulletType smallBullet = new BasicBulletType(3f, 10){{
+            BulletType smallBullet = new BasicBulletType(3f, 10) {{
                 width = 7f;
                 height = 9f;
                 lifetime = 50f;
             }};
 
             weapons.add(
-            new Weapon("scepter-weapon"){{
-                top = false;
-                y = 1f;
-                x = 16f;
-                shootY = 8f;
-                reload = 45f;
-                recoil = 5f;
-                shake = 2f;
-                ejectEffect = Fx.casing3;
-                shootSound = Sounds.bang;
-                inaccuracy = 3f;
+                    new Weapon("scepter-weapon") {{
+                        top = false;
+                        y = 1f;
+                        x = 16f;
+                        shootY = 8f;
+                        reload = 45f;
+                        recoil = 5f;
+                        shake = 2f;
+                        ejectEffect = Fx.casing3;
+                        shootSound = Sounds.bang;
+                        inaccuracy = 3f;
 
-                shoot.shots = 3;
-                shoot.shotDelay = 4f;
+                        shoot.shots = 3;
+                        shoot.shotDelay = 4f;
 
-                bullet = new BasicBulletType(7f, 50){{
-                    width = 11f;
-                    height = 20f;
-                    lifetime = 25f;
-                    shootEffect = Fx.shootBig;
-                    lightning = 2;
-                    lightningLength = 6;
-                    lightningColor = Pal.surge;
-                    //standard bullet damage is far too much for lightning
-                    lightningDamage = 20;
-                }};
-            }},
+                        bullet = new BasicBulletType(7f, 50) {{
+                            width = 11f;
+                            height = 20f;
+                            lifetime = 25f;
+                            shootEffect = Fx.shootBig;
+                            lightning = 2;
+                            lightningLength = 6;
+                            lightningColor = Pal.surge;
+                            //standard bullet damage is far too much for lightning
+                            lightningDamage = 20;
+                        }};
+                    }},
 
-            new Weapon("mount-weapon"){{
-                reload = 13f;
-                x = 8.5f;
-                y = 6f;
-                rotate = true;
-                ejectEffect = Fx.casing1;
-                bullet = smallBullet;
-            }},
-            new Weapon("mount-weapon"){{
-                reload = 16f;
-                x = 8.5f;
-                y = -7f;
-                rotate = true;
-                ejectEffect = Fx.casing1;
-                bullet = smallBullet;
-            }}
+                    new Weapon("mount-weapon") {{
+                        reload = 13f;
+                        x = 8.5f;
+                        y = 6f;
+                        rotate = true;
+                        ejectEffect = Fx.casing1;
+                        bullet = smallBullet;
+                    }},
+                    new Weapon("mount-weapon") {{
+                        reload = 16f;
+                        x = 8.5f;
+                        y = -7f;
+                        rotate = true;
+                        ejectEffect = Fx.casing1;
+                        bullet = smallBullet;
+                    }}
             );
         }};
 
-        reign = new UnitType("reign"){{
+        reign = new UnitType("reign") {{
             speed = 0.35f;
             hitSize = 26f;
             rotateSpeed = 1.65f;
@@ -265,48 +290,48 @@ public class UnitTypes{
             ammoType = new ItemAmmoType(Items.thorium);
 
             weapons.add(
-            new Weapon("reign-weapon"){{
-                top = false;
-                y = 1f;
-                x = 21.5f;
-                shootY = 11f;
-                reload = 9f;
-                recoil = 5f;
-                shake = 2f;
-                ejectEffect = Fx.casing4;
-                shootSound = Sounds.bang;
+                    new Weapon("reign-weapon") {{
+                        top = false;
+                        y = 1f;
+                        x = 21.5f;
+                        shootY = 11f;
+                        reload = 9f;
+                        recoil = 5f;
+                        shake = 2f;
+                        ejectEffect = Fx.casing4;
+                        shootSound = Sounds.bang;
 
-                bullet = new BasicBulletType(13f, 80){{
-                    pierce = true;
-                    pierceCap = 10;
-                    width = 14f;
-                    height = 33f;
-                    lifetime = 15f;
-                    shootEffect = Fx.shootBig;
-                    fragVelocityMin = 0.4f;
+                        bullet = new BasicBulletType(13f, 80) {{
+                            pierce = true;
+                            pierceCap = 10;
+                            width = 14f;
+                            height = 33f;
+                            lifetime = 15f;
+                            shootEffect = Fx.shootBig;
+                            fragVelocityMin = 0.4f;
 
-                    hitEffect = Fx.blastExplosion;
-                    splashDamage = 18f;
-                    splashDamageRadius = 13f;
+                            hitEffect = Fx.blastExplosion;
+                            splashDamage = 18f;
+                            splashDamageRadius = 13f;
 
-                    fragBullets = 3;
-                    fragLifeMin = 0f;
-                    fragRandomSpread = 30f;
+                            fragBullets = 3;
+                            fragLifeMin = 0f;
+                            fragRandomSpread = 30f;
 
-                    fragBullet = new BasicBulletType(9f, 20){{
-                        width = 10f;
-                        height = 10f;
-                        pierce = true;
-                        pierceBuilding = true;
-                        pierceCap = 3;
+                            fragBullet = new BasicBulletType(9f, 20) {{
+                                width = 10f;
+                                height = 10f;
+                                pierce = true;
+                                pierceBuilding = true;
+                                pierceCap = 3;
 
-                        lifetime = 20f;
-                        hitEffect = Fx.flakExplosion;
-                        splashDamage = 15f;
-                        splashDamageRadius = 10f;
-                    }};
-                }};
-            }}
+                                lifetime = 20f;
+                                hitEffect = Fx.flakExplosion;
+                                splashDamage = 15f;
+                                splashDamageRadius = 10f;
+                            }};
+                        }};
+                    }}
 
             );
         }};
@@ -314,7 +339,7 @@ public class UnitTypes{
         //endregion
         //region ground support
 
-        nova = new UnitType("nova"){{
+        nova = new UnitType("nova") {{
             canBoost = true;
             boostMultiplier = 1.5f;
             speed = 0.55f;
@@ -326,7 +351,7 @@ public class UnitTypes{
             abilities.add(new RepairFieldAbility(10f, 60f * 4, 60f));
             ammoType = new PowerAmmoType(1000);
 
-            weapons.add(new Weapon("heal-weapon"){{
+            weapons.add(new Weapon("heal-weapon") {{
                 top = false;
                 shootY = 2f;
                 reload = 24f;
@@ -336,7 +361,7 @@ public class UnitTypes{
                 recoil = 2f;
                 shootSound = Sounds.lasershoot;
 
-                bullet = new LaserBoltBulletType(5.2f, 13){{
+                bullet = new LaserBoltBulletType(5.2f, 13) {{
                     lifetime = 30f;
                     healPercent = 5f;
                     collidesTeam = true;
@@ -346,7 +371,7 @@ public class UnitTypes{
             }});
         }};
 
-        pulsar = new UnitType("pulsar"){{
+        pulsar = new UnitType("pulsar") {{
             canBoost = true;
             boostMultiplier = 1.6f;
             speed = 0.7f;
@@ -362,7 +387,7 @@ public class UnitTypes{
             abilities.add(new ShieldRegenFieldAbility(20f, 40f, 60f * 5, 60f));
             ammoType = new PowerAmmoType(1300);
 
-            weapons.add(new Weapon("heal-shotgun-weapon"){{
+            weapons.add(new Weapon("heal-shotgun-weapon") {{
                 top = false;
                 x = 5f;
                 shake = 2.2f;
@@ -379,7 +404,7 @@ public class UnitTypes{
                 recoil = 2.5f;
                 shootSound = Sounds.spark;
 
-                bullet = new LightningBulletType(){{
+                bullet = new LightningBulletType() {{
                     lightningColor = hitColor = Pal.heal;
                     damage = 14f;
                     lightningLength = 7;
@@ -388,7 +413,7 @@ public class UnitTypes{
                     //Does not actually do anything; Just here to make stats work
                     healPercent = 2f;
 
-                    lightningType = new BulletType(0.0001f, 0f){{
+                    lightningType = new BulletType(0.0001f, 0f) {{
                         lifetime = Fx.lightning.lifetime;
                         hitEffect = Fx.hitLancer;
                         despawnEffect = Fx.none;
@@ -402,7 +427,7 @@ public class UnitTypes{
             }});
         }};
 
-        quasar = new UnitType("quasar"){{
+        quasar = new UnitType("quasar") {{
             mineTier = 3;
             boostMultiplier = 2f;
             health = 640f;
@@ -423,7 +448,7 @@ public class UnitTypes{
 
             abilities.add(new ForceFieldAbility(60f, 0.3f, 400f, 60f * 6));
 
-            weapons.add(new Weapon("beam-weapon"){{
+            weapons.add(new Weapon("beam-weapon") {{
                 top = false;
                 shake = 2f;
                 shootY = 4f;
@@ -432,7 +457,7 @@ public class UnitTypes{
                 recoil = 4f;
                 shootSound = Sounds.laser;
 
-                bullet = new LaserBulletType(){{
+                bullet = new LaserBulletType() {{
                     damage = 45f;
                     recoil = 1f;
                     sideAngle = 45f;
@@ -446,7 +471,7 @@ public class UnitTypes{
             }});
         }};
 
-        vela = new UnitType("vela"){{
+        vela = new UnitType("vela") {{
             hitSize = 24f;
 
             rotateSpeed = 1.8f;
@@ -473,7 +498,7 @@ public class UnitTypes{
 
             singleTarget = true;
 
-            weapons.add(new Weapon("vela-weapon"){{
+            weapons.add(new Weapon("vela-weapon") {{
                 mirror = false;
                 top = false;
                 shake = 4f;
@@ -490,7 +515,7 @@ public class UnitTypes{
                 continuous = true;
                 cooldownTime = 200f;
 
-                bullet = new ContinuousLaserBulletType(){{
+                bullet = new ContinuousLaserBulletType() {{
                     damage = 35f;
                     length = 180f;
                     hitEffect = Fx.hitMeltHeal;
@@ -517,20 +542,20 @@ public class UnitTypes{
                 shootStatusDuration = bullet.lifetime + shoot.firstShotDelay;
             }});
 
-            weapons.add(new RepairBeamWeapon("repair-beam-weapon-center-large"){{
+            weapons.add(new RepairBeamWeapon("repair-beam-weapon-center-large") {{
                 x = 44 / 4f;
                 y = -30f / 4f;
                 shootY = 6f;
                 beamWidth = 0.8f;
                 repairSpeed = 1.4f;
 
-                bullet = new BulletType(){{
+                bullet = new BulletType() {{
                     maxRange = 120f;
                 }};
             }});
         }};
 
-        corvus = new UnitType("corvus"){{
+        corvus = new UnitType("corvus") {{
             hitSize = 29f;
             health = 18000f;
             armor = 9f;
@@ -552,7 +577,7 @@ public class UnitTypes{
 
             drawShields = false;
 
-            weapons.add(new Weapon("corvus-weapon"){{
+            weapons.add(new Weapon("corvus-weapon") {{
                 shootSound = Sounds.laserblast;
                 chargeSound = Sounds.lasercharge;
                 soundPitchMin = 1f;
@@ -571,7 +596,7 @@ public class UnitTypes{
                 shoot.firstShotDelay = Fx.greenLaserCharge.lifetime;
                 parentizeEffects = true;
 
-                bullet = new LaserBulletType(){{
+                bullet = new LaserBulletType() {{
                     length = 460f;
                     damage = 560f;
                     width = 75f;
@@ -603,7 +628,7 @@ public class UnitTypes{
         //endregion
         //region ground legs
 
-        crawler = new UnitType("crawler"){{
+        crawler = new UnitType("crawler") {{
             aiController = SuicideAI::new;
 
             speed = 1f;
@@ -613,7 +638,7 @@ public class UnitTypes{
             range = 40f;
             ammoType = new ItemAmmoType(Items.coal);
 
-            weapons.add(new Weapon(){{
+            weapons.add(new Weapon() {{
                 shootOnDeath = true;
                 reload = 24f;
                 shootCone = 180f;
@@ -621,7 +646,7 @@ public class UnitTypes{
                 shootSound = Sounds.explosion;
                 x = shootY = 0f;
                 mirror = false;
-                bullet = new BulletType(){{
+                bullet = new BulletType() {{
                     collidesTiles = false;
                     collides = false;
                     hitSound = Sounds.explosion;
@@ -639,7 +664,7 @@ public class UnitTypes{
             }});
         }};
 
-        atrax = new UnitType("atrax"){{
+        atrax = new UnitType("atrax") {{
             speed = 0.6f;
             drag = 0.4f;
             hitSize = 13f;
@@ -659,7 +684,7 @@ public class UnitTypes{
             shadowElevation = 0.2f;
             groundLayer = Layer.legUnit - 1f;
 
-            weapons.add(new Weapon("atrax-weapon"){{
+            weapons.add(new Weapon("atrax-weapon") {{
                 top = false;
                 shootY = 3f;
                 reload = 9f;
@@ -668,7 +693,7 @@ public class UnitTypes{
                 x = 7f;
                 shootSound = Sounds.flame;
 
-                bullet = new LiquidBulletType(Liquids.slag){{
+                bullet = new LiquidBulletType(Liquids.slag) {{
                     damage = 13;
                     speed = 2.5f;
                     drag = 0.009f;
@@ -679,7 +704,7 @@ public class UnitTypes{
             }});
         }};
 
-        spiroct = new UnitType("spiroct"){{
+        spiroct = new UnitType("spiroct") {{
             speed = 0.54f;
             drag = 0.4f;
             hitSize = 15f;
@@ -697,7 +722,7 @@ public class UnitTypes{
             shadowElevation = 0.3f;
             groundLayer = Layer.legUnit;
 
-            weapons.add(new Weapon("spiroct-weapon"){{
+            weapons.add(new Weapon("spiroct-weapon") {{
                 shootY = 4f;
                 reload = 14f;
                 ejectEffect = Fx.none;
@@ -708,7 +733,7 @@ public class UnitTypes{
                 x = 8.5f;
                 y = -1.5f;
 
-                bullet = new SapBulletType(){{
+                bullet = new SapBulletType() {{
                     sapStrength = 0.5f;
                     length = 75f;
                     damage = 23;
@@ -721,14 +746,14 @@ public class UnitTypes{
                 }};
             }});
 
-            weapons.add(new Weapon("mount-purple-weapon"){{
+            weapons.add(new Weapon("mount-purple-weapon") {{
                 reload = 18f;
                 rotate = true;
                 x = 4f;
                 y = 3f;
                 shootSound = Sounds.sap;
 
-                bullet = new SapBulletType(){{
+                bullet = new SapBulletType() {{
                     sapStrength = 0.8f;
                     length = 40f;
                     damage = 18;
@@ -742,7 +767,7 @@ public class UnitTypes{
             }});
         }};
 
-        arkyid = new UnitType("arkyid"){{
+        arkyid = new UnitType("arkyid") {{
             drag = 0.1f;
             speed = 0.62f;
             hitSize = 23f;
@@ -771,7 +796,7 @@ public class UnitTypes{
             shadowElevation = 0.65f;
             groundLayer = Layer.legUnit;
 
-            BulletType sapper = new SapBulletType(){{
+            BulletType sapper = new SapBulletType() {{
                 sapStrength = 0.85f;
                 length = 55f;
                 damage = 40;
@@ -784,66 +809,66 @@ public class UnitTypes{
             }};
 
             weapons.add(
-            new Weapon("spiroct-weapon"){{
-                reload = 9f;
-                x = 4f;
-                y = 8f;
-                rotate = true;
-                bullet = sapper;
-                shootSound = Sounds.sap;
-            }},
-            new Weapon("spiroct-weapon"){{
-                reload = 14f;
-                x = 9f;
-                y = 6f;
-                rotate = true;
-                bullet = sapper;
-                shootSound = Sounds.sap;
-            }},
-            new Weapon("spiroct-weapon"){{
-                reload = 22f;
-                x = 14f;
-                y = 0f;
-                rotate = true;
-                bullet = sapper;
-                shootSound = Sounds.sap;
-            }},
-            new Weapon("large-purple-mount"){{
-                y = -7f;
-                x = 9f;
-                shootY = 7f;
-                reload = 45;
-                shake = 3f;
-                rotateSpeed = 2f;
-                ejectEffect = Fx.casing1;
-                shootSound = Sounds.artillery;
-                rotate = true;
-                shadow = 8f;
-                recoil = 3f;
+                    new Weapon("spiroct-weapon") {{
+                        reload = 9f;
+                        x = 4f;
+                        y = 8f;
+                        rotate = true;
+                        bullet = sapper;
+                        shootSound = Sounds.sap;
+                    }},
+                    new Weapon("spiroct-weapon") {{
+                        reload = 14f;
+                        x = 9f;
+                        y = 6f;
+                        rotate = true;
+                        bullet = sapper;
+                        shootSound = Sounds.sap;
+                    }},
+                    new Weapon("spiroct-weapon") {{
+                        reload = 22f;
+                        x = 14f;
+                        y = 0f;
+                        rotate = true;
+                        bullet = sapper;
+                        shootSound = Sounds.sap;
+                    }},
+                    new Weapon("large-purple-mount") {{
+                        y = -7f;
+                        x = 9f;
+                        shootY = 7f;
+                        reload = 45;
+                        shake = 3f;
+                        rotateSpeed = 2f;
+                        ejectEffect = Fx.casing1;
+                        shootSound = Sounds.artillery;
+                        rotate = true;
+                        shadow = 8f;
+                        recoil = 3f;
 
-                bullet = new ArtilleryBulletType(2f, 12){{
-                    hitEffect = Fx.sapExplosion;
-                    knockback = 0.8f;
-                    lifetime = 70f;
-                    width = height = 19f;
-                    collidesTiles = true;
-                    ammoMultiplier = 4f;
-                    splashDamageRadius = 70f;
-                    splashDamage = 65f;
-                    backColor = Pal.sapBulletBack;
-                    frontColor = lightningColor = Pal.sapBullet;
-                    lightning = 3;
-                    lightningLength = 10;
-                    smokeEffect = Fx.shootBigSmoke2;
-                    shake = 5f;
+                        bullet = new ArtilleryBulletType(2f, 12) {{
+                            hitEffect = Fx.sapExplosion;
+                            knockback = 0.8f;
+                            lifetime = 70f;
+                            width = height = 19f;
+                            collidesTiles = true;
+                            ammoMultiplier = 4f;
+                            splashDamageRadius = 70f;
+                            splashDamage = 65f;
+                            backColor = Pal.sapBulletBack;
+                            frontColor = lightningColor = Pal.sapBullet;
+                            lightning = 3;
+                            lightningLength = 10;
+                            smokeEffect = Fx.shootBigSmoke2;
+                            shake = 5f;
 
-                    status = StatusEffects.sapped;
-                    statusDuration = 60f * 10;
-                }};
-            }});
+                            status = StatusEffects.sapped;
+                            statusDuration = 60f * 10;
+                        }};
+                    }});
         }};
 
-        toxopid = new UnitType("toxopid"){{
+        toxopid = new UnitType("toxopid") {{
             drag = 0.1f;
             speed = 0.5f;
             hitSize = 26f;
@@ -874,37 +899,37 @@ public class UnitTypes{
             groundLayer = Layer.legUnit;
 
             weapons.add(
-            new Weapon("large-purple-mount"){{
-                y = -5f;
-                x = 11f;
-                shootY = 7f;
-                reload = 30;
-                shake = 4f;
-                rotateSpeed = 2f;
-                ejectEffect = Fx.casing1;
-                shootSound = Sounds.shootBig;
-                rotate = true;
-                shadow = 12f;
-                recoil = 3f;
+                    new Weapon("large-purple-mount") {{
+                        y = -5f;
+                        x = 11f;
+                        shootY = 7f;
+                        reload = 30;
+                        shake = 4f;
+                        rotateSpeed = 2f;
+                        ejectEffect = Fx.casing1;
+                        shootSound = Sounds.shootBig;
+                        rotate = true;
+                        shadow = 12f;
+                        recoil = 3f;
 
-                shoot = new ShootSpread(2, 17f);
+                        shoot = new ShootSpread(2, 17f);
 
-                bullet = new ShrapnelBulletType(){{
-                    length = 90f;
-                    damage = 110f;
-                    width = 25f;
-                    serrationLenScl = 7f;
-                    serrationSpaceOffset = 60f;
-                    serrationFadeOffset = 0f;
-                    serrations = 10;
-                    serrationWidth = 6f;
-                    fromColor = Pal.sapBullet;
-                    toColor = Pal.sapBulletBack;
-                    shootEffect = smokeEffect = Fx.sparkShoot;
-                }};
-            }});
+                        bullet = new ShrapnelBulletType() {{
+                            length = 90f;
+                            damage = 110f;
+                            width = 25f;
+                            serrationLenScl = 7f;
+                            serrationSpaceOffset = 60f;
+                            serrationFadeOffset = 0f;
+                            serrations = 10;
+                            serrationWidth = 6f;
+                            fromColor = Pal.sapBullet;
+                            toColor = Pal.sapBulletBack;
+                            shootEffect = smokeEffect = Fx.sparkShoot;
+                        }};
+                    }});
 
-            weapons.add(new Weapon("toxopid-cannon"){{
+            weapons.add(new Weapon("toxopid-cannon") {{
                 y = -14f;
                 x = 0f;
                 shootY = 22f;
@@ -920,7 +945,7 @@ public class UnitTypes{
 
                 rotationLimit = 80f;
 
-                bullet = new ArtilleryBulletType(3f, 50){{
+                bullet = new ArtilleryBulletType(3f, 50) {{
                     hitEffect = Fx.sapExplosion;
                     knockback = 0.8f;
                     lifetime = 80f;
@@ -945,7 +970,7 @@ public class UnitTypes{
                     fragLifeMin = 0.3f;
                     fragBullets = 9;
 
-                    fragBullet = new ArtilleryBulletType(2.3f, 30){{
+                    fragBullet = new ArtilleryBulletType(2.3f, 30) {{
                         hitEffect = Fx.sapExplosion;
                         knockback = 0.8f;
                         lifetime = 90f;
@@ -973,7 +998,7 @@ public class UnitTypes{
         //endregion
         //region air attack
 
-        flare = new UnitType("flare"){{
+        flare = new UnitType("flare") {{
             speed = 2.7f;
             accel = 0.08f;
             drag = 0.04f;
@@ -986,12 +1011,12 @@ public class UnitTypes{
             hitSize = 9;
             itemCapacity = 10;
 
-            weapons.add(new Weapon(){{
+            weapons.add(new Weapon() {{
                 y = 0f;
                 x = 2f;
                 reload = 20f;
                 ejectEffect = Fx.casing1;
-                bullet = new BasicBulletType(2.5f, 9){{
+                bullet = new BasicBulletType(2.5f, 9) {{
                     width = 7f;
                     height = 9f;
                     lifetime = 45f;
@@ -1003,7 +1028,7 @@ public class UnitTypes{
             }});
         }};
 
-        horizon = new UnitType("horizon"){{
+        horizon = new UnitType("horizon") {{
             health = 340;
             speed = 1.65f;
             accel = 0.08f;
@@ -1020,7 +1045,7 @@ public class UnitTypes{
             circleTarget = true;
             ammoType = new ItemAmmoType(Items.graphite);
 
-            weapons.add(new Weapon(){{
+            weapons.add(new Weapon() {{
                 minShootVelocity = 0.75f;
                 x = 3f;
                 shootY = 0f;
@@ -1030,7 +1055,7 @@ public class UnitTypes{
                 inaccuracy = 15f;
                 ignoreRotation = true;
                 shootSound = Sounds.none;
-                bullet = new BombBulletType(27f, 25f){{
+                bullet = new BombBulletType(27f, 25f) {{
                     width = 10f;
                     height = 14f;
                     hitEffect = Fx.flakExplosion;
@@ -1043,7 +1068,7 @@ public class UnitTypes{
             }});
         }};
 
-        zenith = new UnitType("zenith"){{
+        zenith = new UnitType("zenith") {{
             health = 700;
             speed = 1.7f;
             accel = 0.04f;
@@ -1060,7 +1085,7 @@ public class UnitTypes{
             engineSize = 3f;
             ammoType = new ItemAmmoType(Items.graphite);
 
-            weapons.add(new Weapon("zenith-missiles"){{
+            weapons.add(new Weapon("zenith-missiles") {{
                 reload = 40f;
                 x = 7f;
                 rotate = true;
@@ -1070,7 +1095,7 @@ public class UnitTypes{
                 velocityRnd = 0.2f;
                 shootSound = Sounds.missile;
 
-                bullet = new MissileBulletType(3f, 14){{
+                bullet = new MissileBulletType(3f, 14) {{
                     width = 8f;
                     height = 8f;
                     shrinkY = 0f;
@@ -1091,7 +1116,7 @@ public class UnitTypes{
             }});
         }};
 
-        antumbra = new UnitType("antumbra"){{
+        antumbra = new UnitType("antumbra") {{
             speed = 0.8f;
             accel = 0.04f;
             drag = 0.04f;
@@ -1106,7 +1131,7 @@ public class UnitTypes{
             targetFlags = new BlockFlag[]{BlockFlag.generator, BlockFlag.core, null};
             ammoType = new ItemAmmoType(Items.thorium);
 
-            BulletType missiles = new MissileBulletType(2.7f, 18){{
+            BulletType missiles = new MissileBulletType(2.7f, 18) {{
                 width = 8f;
                 height = 8f;
                 shrinkY = 0f;
@@ -1123,50 +1148,50 @@ public class UnitTypes{
             }};
 
             weapons.add(
-            new Weapon("missiles-mount"){{
-                y = 8f;
-                x = 17f;
-                reload = 20f;
-                ejectEffect = Fx.casing1;
-                rotateSpeed = 8f;
-                bullet = missiles;
-                shootSound = Sounds.missile;
-                rotate = true;
-                shadow = 6f;
-            }},
-            new Weapon("missiles-mount"){{
-                y = -8f;
-                x = 17f;
-                reload = 35;
-                rotateSpeed = 8f;
-                ejectEffect = Fx.casing1;
-                bullet = missiles;
-                shootSound = Sounds.missile;
-                rotate = true;
-                shadow = 6f;
-            }},
-            new Weapon("large-bullet-mount"){{
-                y = 2f;
-                x = 10f;
-                shootY = 10f;
-                reload = 12;
-                shake = 1f;
-                rotateSpeed = 2f;
-                ejectEffect = Fx.casing1;
-                shootSound = Sounds.shootBig;
-                rotate = true;
-                shadow = 8f;
-                bullet = new BasicBulletType(7f, 55){{
-                    width = 12f;
-                    height = 18f;
-                    lifetime = 25f;
-                    shootEffect = Fx.shootBig;
-                }};
-            }}
+                    new Weapon("missiles-mount") {{
+                        y = 8f;
+                        x = 17f;
+                        reload = 20f;
+                        ejectEffect = Fx.casing1;
+                        rotateSpeed = 8f;
+                        bullet = missiles;
+                        shootSound = Sounds.missile;
+                        rotate = true;
+                        shadow = 6f;
+                    }},
+                    new Weapon("missiles-mount") {{
+                        y = -8f;
+                        x = 17f;
+                        reload = 35;
+                        rotateSpeed = 8f;
+                        ejectEffect = Fx.casing1;
+                        bullet = missiles;
+                        shootSound = Sounds.missile;
+                        rotate = true;
+                        shadow = 6f;
+                    }},
+                    new Weapon("large-bullet-mount") {{
+                        y = 2f;
+                        x = 10f;
+                        shootY = 10f;
+                        reload = 12;
+                        shake = 1f;
+                        rotateSpeed = 2f;
+                        ejectEffect = Fx.casing1;
+                        shootSound = Sounds.shootBig;
+                        rotate = true;
+                        shadow = 8f;
+                        bullet = new BasicBulletType(7f, 55) {{
+                            width = 12f;
+                            height = 18f;
+                            lifetime = 25f;
+                            shootEffect = Fx.shootBig;
+                        }};
+                    }}
             );
         }};
 
-        eclipse = new UnitType("eclipse"){{
+        eclipse = new UnitType("eclipse") {{
             speed = 0.54f;
             accel = 0.04f;
             drag = 0.04f;
@@ -1181,7 +1206,7 @@ public class UnitTypes{
             targetFlags = new BlockFlag[]{BlockFlag.reactor, BlockFlag.battery, BlockFlag.core, null};
             ammoType = new ItemAmmoType(Items.thorium);
 
-            BulletType fragBullet = new FlakBulletType(4f, 15){{
+            BulletType fragBullet = new FlakBulletType(4f, 15) {{
                 shootEffect = Fx.shootBig;
                 ammoMultiplier = 4f;
                 splashDamage = 65f;
@@ -1194,60 +1219,60 @@ public class UnitTypes{
             }};
 
             weapons.add(
-            new Weapon("large-laser-mount"){{
-                shake = 4f;
-                shootY = 9f;
-                x = 18f;
-                y = 5f;
-                rotateSpeed = 2f;
-                reload = 45f;
-                recoil = 4f;
-                shootSound = Sounds.laser;
-                shadow = 20f;
-                rotate = true;
+                    new Weapon("large-laser-mount") {{
+                        shake = 4f;
+                        shootY = 9f;
+                        x = 18f;
+                        y = 5f;
+                        rotateSpeed = 2f;
+                        reload = 45f;
+                        recoil = 4f;
+                        shootSound = Sounds.laser;
+                        shadow = 20f;
+                        rotate = true;
 
-                bullet = new LaserBulletType(){{
-                    damage = 115f;
-                    sideAngle = 20f;
-                    sideWidth = 1.5f;
-                    sideLength = 80f;
-                    width = 25f;
-                    length = 230f;
-                    shootEffect = Fx.shockwave;
-                    colors = new Color[]{Color.valueOf("ec7458aa"), Color.valueOf("ff9c5a"), Color.white};
-                }};
-            }},
-            new Weapon("large-artillery"){{
-                x = 11f;
-                y = 27f;
-                rotateSpeed = 2f;
-                reload = 9f;
-                shootSound = Sounds.shoot;
-                shadow = 7f;
-                rotate = true;
-                recoil = 0.5f;
-                shootY = 7.25f;
-                bullet = fragBullet;
-            }},
-            new Weapon("large-artillery"){{
-                y = -13f;
-                x = 20f;
-                reload = 12f;
-                ejectEffect = Fx.casing1;
-                rotateSpeed = 7f;
-                shake = 1f;
-                shootSound = Sounds.shoot;
-                rotate = true;
-                shadow = 12f;
-                shootY = 7.25f;
-                bullet = fragBullet;
-            }});
+                        bullet = new LaserBulletType() {{
+                            damage = 115f;
+                            sideAngle = 20f;
+                            sideWidth = 1.5f;
+                            sideLength = 80f;
+                            width = 25f;
+                            length = 230f;
+                            shootEffect = Fx.shockwave;
+                            colors = new Color[]{Color.valueOf("ec7458aa"), Color.valueOf("ff9c5a"), Color.white};
+                        }};
+                    }},
+                    new Weapon("large-artillery") {{
+                        x = 11f;
+                        y = 27f;
+                        rotateSpeed = 2f;
+                        reload = 9f;
+                        shootSound = Sounds.shoot;
+                        shadow = 7f;
+                        rotate = true;
+                        recoil = 0.5f;
+                        shootY = 7.25f;
+                        bullet = fragBullet;
+                    }},
+                    new Weapon("large-artillery") {{
+                        y = -13f;
+                        x = 20f;
+                        reload = 12f;
+                        ejectEffect = Fx.casing1;
+                        rotateSpeed = 7f;
+                        shake = 1f;
+                        shootSound = Sounds.shoot;
+                        rotate = true;
+                        shadow = 12f;
+                        shootY = 7.25f;
+                        bullet = fragBullet;
+                    }});
         }};
 
         //endregion
         //region air support
 
-        mono = new UnitType("mono"){{
+        mono = new UnitType("mono") {{
             //there's no reason to command monos anywhere. it's just annoying.
             controller = u -> new MinerAI();
 
@@ -1269,7 +1294,7 @@ public class UnitTypes{
             mineSpeed = 2.5f;
         }};
 
-        poly = new UnitType("poly"){{
+        poly = new UnitType("poly") {{
             defaultCommand = UnitCommand.rebuildCommand;
 
             flying = true;
@@ -1291,7 +1316,7 @@ public class UnitTypes{
 
             abilities.add(new RepairFieldAbility(5f, 60f * 8, 50f));
 
-            weapons.add(new Weapon("poly-weapon"){{
+            weapons.add(new Weapon("poly-weapon") {{
                 top = false;
                 y = -2.5f;
                 x = 3.75f;
@@ -1303,7 +1328,7 @@ public class UnitTypes{
                 inaccuracy = 15f;
                 alternate = true;
 
-                bullet = new MissileBulletType(4f, 12){{
+                bullet = new MissileBulletType(4f, 12) {{
                     homingPower = 0.08f;
                     weaveMag = 4;
                     weaveScale = 4;
@@ -1323,7 +1348,7 @@ public class UnitTypes{
             }});
         }};
 
-        mega = new UnitType("mega"){{
+        mega = new UnitType("mega") {{
             defaultCommand = UnitCommand.repairCommand;
 
             mineTier = 3;
@@ -1346,37 +1371,37 @@ public class UnitTypes{
             ammoType = new PowerAmmoType(1100);
 
             weapons.add(
-            new Weapon("heal-weapon-mount"){{
-                shootSound = Sounds.lasershoot;
-                reload = 24f;
-                x = 8f;
-                y = -6f;
-                rotate = true;
-                bullet = new LaserBoltBulletType(5.2f, 10){{
-                    lifetime = 35f;
-                    healPercent = 5.5f;
-                    collidesTeam = true;
-                    backColor = Pal.heal;
-                    frontColor = Color.white;
-                }};
-            }},
-            new Weapon("heal-weapon-mount"){{
-                shootSound = Sounds.lasershoot;
-                reload = 15f;
-                x = 4f;
-                y = 5f;
-                rotate = true;
-                bullet = new LaserBoltBulletType(5.2f, 8){{
-                    lifetime = 35f;
-                    healPercent = 3f;
-                    collidesTeam = true;
-                    backColor = Pal.heal;
-                    frontColor = Color.white;
-                }};
-            }});
+                    new Weapon("heal-weapon-mount") {{
+                        shootSound = Sounds.lasershoot;
+                        reload = 24f;
+                        x = 8f;
+                        y = -6f;
+                        rotate = true;
+                        bullet = new LaserBoltBulletType(5.2f, 10) {{
+                            lifetime = 35f;
+                            healPercent = 5.5f;
+                            collidesTeam = true;
+                            backColor = Pal.heal;
+                            frontColor = Color.white;
+                        }};
+                    }},
+                    new Weapon("heal-weapon-mount") {{
+                        shootSound = Sounds.lasershoot;
+                        reload = 15f;
+                        x = 4f;
+                        y = 5f;
+                        rotate = true;
+                        bullet = new LaserBoltBulletType(5.2f, 8) {{
+                            lifetime = 35f;
+                            healPercent = 3f;
+                            collidesTeam = true;
+                            backColor = Pal.heal;
+                            frontColor = Color.white;
+                        }};
+                    }});
         }};
 
-        quad = new UnitType("quad"){{
+        quad = new UnitType("quad") {{
             armor = 8f;
             health = 6000;
             speed = 1.2f;
@@ -1400,54 +1425,54 @@ public class UnitTypes{
             ammoType = new PowerAmmoType(3000);
 
             weapons.add(
-            new Weapon(){{
-                x = y = 0f;
-                mirror = false;
-                reload = 55f;
-                minShootVelocity = 0.01f;
+                    new Weapon() {{
+                        x = y = 0f;
+                        mirror = false;
+                        reload = 55f;
+                        minShootVelocity = 0.01f;
 
-                soundPitchMin = 1f;
-                shootSound = Sounds.plasmadrop;
+                        soundPitchMin = 1f;
+                        shootSound = Sounds.plasmadrop;
 
-                bullet = new BasicBulletType(){{
-                    sprite = "large-bomb";
-                    width = height = 120/4f;
+                        bullet = new BasicBulletType() {{
+                            sprite = "large-bomb";
+                            width = height = 120 / 4f;
 
-                    maxRange = 30f;
-                    ignoreRotation = true;
+                            maxRange = 30f;
+                            ignoreRotation = true;
 
-                    backColor = Pal.heal;
-                    frontColor = Color.white;
-                    mixColorTo = Color.white;
+                            backColor = Pal.heal;
+                            frontColor = Color.white;
+                            mixColorTo = Color.white;
 
-                    hitSound = Sounds.plasmaboom;
+                            hitSound = Sounds.plasmaboom;
 
-                    shootCone = 180f;
-                    ejectEffect = Fx.none;
-                    hitShake = 4f;
+                            shootCone = 180f;
+                            ejectEffect = Fx.none;
+                            hitShake = 4f;
 
-                    collidesAir = false;
+                            collidesAir = false;
 
-                    lifetime = 70f;
+                            lifetime = 70f;
 
-                    despawnEffect = Fx.greenBomb;
-                    hitEffect = Fx.massiveExplosion;
-                    keepVelocity = false;
-                    spin = 2f;
+                            despawnEffect = Fx.greenBomb;
+                            hitEffect = Fx.massiveExplosion;
+                            keepVelocity = false;
+                            spin = 2f;
 
-                    shrinkX = shrinkY = 0.7f;
+                            shrinkX = shrinkY = 0.7f;
 
-                    speed = 0f;
-                    collides = false;
+                            speed = 0f;
+                            collides = false;
 
-                    healPercent = 15f;
-                    splashDamage = 220f;
-                    splashDamageRadius = 80f;
-                }};
-            }});
+                            healPercent = 15f;
+                            splashDamage = 220f;
+                            splashDamageRadius = 80f;
+                        }};
+                    }});
         }};
 
-        oct = new UnitType("oct"){{
+        oct = new UnitType("oct") {{
             aiController = DefenderAI::new;
 
             armor = 16f;
@@ -1474,7 +1499,7 @@ public class UnitTypes{
         //endregion
         //region naval attack
 
-        risso = new UnitType("risso"){{
+        risso = new UnitType("risso") {{
             speed = 1.1f;
             drag = 0.13f;
             hitSize = 10f;
@@ -1485,14 +1510,14 @@ public class UnitTypes{
 
             armor = 2f;
 
-            weapons.add(new Weapon("mount-weapon"){{
+            weapons.add(new Weapon("mount-weapon") {{
                 reload = 13f;
                 x = 4f;
                 shootY = 4f;
                 y = 1.5f;
                 rotate = true;
                 ejectEffect = Fx.casing1;
-                bullet = new BasicBulletType(2.5f, 9){{
+                bullet = new BasicBulletType(2.5f, 9) {{
                     width = 7f;
                     height = 9f;
                     lifetime = 60f;
@@ -1500,7 +1525,7 @@ public class UnitTypes{
                 }};
             }});
 
-            weapons.add(new Weapon("missiles-mount"){{
+            weapons.add(new Weapon("missiles-mount") {{
                 mirror = false;
                 reload = 25f;
                 x = 0f;
@@ -1508,7 +1533,7 @@ public class UnitTypes{
                 rotate = true;
                 ejectEffect = Fx.casing1;
                 shootSound = Sounds.missile;
-                bullet = new MissileBulletType(2.7f, 12, "missile"){{
+                bullet = new MissileBulletType(2.7f, 12, "missile") {{
                     keepVelocity = true;
                     width = 8f;
                     height = 8f;
@@ -1529,7 +1554,7 @@ public class UnitTypes{
             }});
         }};
 
-        minke = new UnitType("minke"){{
+        minke = new UnitType("minke") {{
             health = 600;
             speed = 0.9f;
             drag = 0.15f;
@@ -1545,7 +1570,7 @@ public class UnitTypes{
             waveTrailY = -4f;
             trailScl = 1.9f;
 
-            weapons.add(new Weapon("mount-weapon"){{
+            weapons.add(new Weapon("mount-weapon") {{
                 reload = 10f;
                 x = 5f;
                 y = 3.5f;
@@ -1554,7 +1579,7 @@ public class UnitTypes{
                 inaccuracy = 8f;
                 ejectEffect = Fx.casing1;
                 shootSound = Sounds.shoot;
-                bullet = new FlakBulletType(4.2f, 3){{
+                bullet = new FlakBulletType(4.2f, 3) {{
                     lifetime = 60f;
                     ammoMultiplier = 4f;
                     shootEffect = Fx.shootSmall;
@@ -1566,7 +1591,7 @@ public class UnitTypes{
                 }};
             }});
 
-            weapons.add(new Weapon("artillery-mount"){{
+            weapons.add(new Weapon("artillery-mount") {{
                 reload = 30f;
                 x = 5f;
                 y = -5f;
@@ -1576,7 +1601,7 @@ public class UnitTypes{
                 shake = 1.5f;
                 ejectEffect = Fx.casing2;
                 shootSound = Sounds.bang;
-                bullet = new ArtilleryBulletType(3f, 20, "shell"){{
+                bullet = new ArtilleryBulletType(3f, 20, "shell") {{
                     hitEffect = Fx.flakExplosion;
                     knockback = 0.8f;
                     lifetime = 80f;
@@ -1588,7 +1613,7 @@ public class UnitTypes{
             }});
         }};
 
-        bryde = new UnitType("bryde"){{
+        bryde = new UnitType("bryde") {{
             health = 910;
             speed = 0.85f;
             accel = 0.2f;
@@ -1606,7 +1631,7 @@ public class UnitTypes{
 
             abilities.add(new ShieldRegenFieldAbility(20f, 40f, 60f * 4, 60f));
 
-            weapons.add(new Weapon("large-artillery"){{
+            weapons.add(new Weapon("large-artillery") {{
                 reload = 65f;
                 mirror = false;
                 x = 0f;
@@ -1622,7 +1647,7 @@ public class UnitTypes{
                 ejectEffect = Fx.casing3;
                 shootSound = Sounds.artillery;
 
-                bullet = new ArtilleryBulletType(3.2f, 15){{
+                bullet = new ArtilleryBulletType(3.2f, 15) {{
                     trailMult = 0.8f;
                     hitEffect = Fx.massiveExplosion;
                     knockback = 1.5f;
@@ -1645,7 +1670,7 @@ public class UnitTypes{
                 }};
             }});
 
-            weapons.add(new Weapon("missiles-mount"){{
+            weapons.add(new Weapon("missiles-mount") {{
                 reload = 20f;
                 x = 8.5f;
                 y = -9f;
@@ -1663,7 +1688,7 @@ public class UnitTypes{
                 ammoType = new ItemAmmoType(Items.thorium);
 
                 ejectEffect = Fx.none;
-                bullet = new MissileBulletType(2.7f, 12){{
+                bullet = new MissileBulletType(2.7f, 12) {{
                     width = 8f;
                     height = 8f;
                     shrinkY = 0f;
@@ -1684,7 +1709,7 @@ public class UnitTypes{
             }});
         }};
 
-        sei = new UnitType("sei"){{
+        sei = new UnitType("sei") {{
             health = 11000;
             armor = 12f;
 
@@ -1701,7 +1726,7 @@ public class UnitTypes{
             waveTrailY = -21f;
             trailScl = 3f;
 
-            weapons.add(new Weapon("sei-launcher"){{
+            weapons.add(new Weapon("sei-launcher") {{
 
                 x = 0f;
                 y = 0f;
@@ -1720,14 +1745,14 @@ public class UnitTypes{
                 shake = 1f;
                 shootSound = Sounds.missile;
 
-                shoot = new ShootAlternate(){{
+                shoot = new ShootAlternate() {{
                     shots = 6;
                     shotDelay = 1.5f;
                     spread = 4f;
                     barrels = 3;
                 }};
 
-                bullet = new MissileBulletType(4.2f, 42){{
+                bullet = new MissileBulletType(4.2f, 42) {{
                     homingPower = 0.12f;
                     width = 8f;
                     height = 8f;
@@ -1748,11 +1773,11 @@ public class UnitTypes{
                 }};
             }});
 
-            weapons.add(new Weapon("large-bullet-mount"){{
+            weapons.add(new Weapon("large-bullet-mount") {{
                 reload = 60f;
                 cooldownTime = 90f;
-                x = 70f/4f;
-                y = -66f/4f;
+                x = 70f / 4f;
+                y = -66f / 4f;
                 rotateSpeed = 4f;
                 rotate = true;
                 shootY = 7f;
@@ -1766,7 +1791,7 @@ public class UnitTypes{
                 shoot.shotDelay = 4f;
 
                 inaccuracy = 1f;
-                bullet = new BasicBulletType(7f, 57){{
+                bullet = new BasicBulletType(7f, 57) {{
                     width = 13f;
                     height = 19f;
                     shootEffect = Fx.shootBig;
@@ -1775,7 +1800,7 @@ public class UnitTypes{
             }});
         }};
 
-        omura = new UnitType("omura"){{
+        omura = new UnitType("omura") {{
             health = 22000;
             speed = 0.62f;
             drag = 0.18f;
@@ -1795,7 +1820,7 @@ public class UnitTypes{
             waveTrailY = -32f;
             trailScl = 3.5f;
 
-            weapons.add(new Weapon("omura-cannon"){{
+            weapons.add(new Weapon("omura-cannon") {{
                 reload = 110f;
                 cooldownTime = 90f;
                 mirror = false;
@@ -1811,7 +1836,7 @@ public class UnitTypes{
 
                 ejectEffect = Fx.none;
 
-                bullet = new RailBulletType(){{
+                bullet = new RailBulletType() {{
                     shootEffect = Fx.railShoot;
                     length = 500;
                     pointEffectSpace = 60f;
@@ -1827,7 +1852,7 @@ public class UnitTypes{
 
         //endregion
         //region naval support
-        retusa = new UnitType("retusa"){{
+        retusa = new UnitType("retusa") {{
             speed = 0.9f;
             targetAir = false;
             drag = 0.14f;
@@ -1845,7 +1870,7 @@ public class UnitTypes{
 
             buildSpeed = 1.5f;
 
-            weapons.add(new RepairBeamWeapon("repair-beam-weapon-center"){{
+            weapons.add(new RepairBeamWeapon("repair-beam-weapon-center") {{
                 x = 0f;
                 y = -5.5f;
                 shootY = 6f;
@@ -1853,12 +1878,12 @@ public class UnitTypes{
                 mirror = false;
                 repairSpeed = 0.75f;
 
-                bullet = new BulletType(){{
+                bullet = new BulletType() {{
                     maxRange = 120f;
                 }};
             }});
 
-            weapons.add(new Weapon(){{
+            weapons.add(new Weapon() {{
                 mirror = false;
                 rotate = true;
                 reload = 90f;
@@ -1870,7 +1895,7 @@ public class UnitTypes{
                 shoot.shots = 3;
                 shoot.shotDelay = 7f;
 
-                bullet = new BasicBulletType(){{
+                bullet = new BasicBulletType() {{
                     sprite = "mine-bullet";
                     width = height = 8f;
                     layer = Layer.scorch;
@@ -1915,7 +1940,7 @@ public class UnitTypes{
             }});
         }};
 
-        oxynoe = new UnitType("oxynoe"){{
+        oxynoe = new UnitType("oxynoe") {{
             health = 560;
             speed = 0.83f;
             drag = 0.14f;
@@ -1935,7 +1960,7 @@ public class UnitTypes{
 
             buildSpeed = 2f;
 
-            weapons.add(new Weapon("plasma-mount-weapon"){{
+            weapons.add(new Weapon("plasma-mount-weapon") {{
 
                 reload = 5f;
                 x = 4.5f;
@@ -1947,7 +1972,7 @@ public class UnitTypes{
                 shootSound = Sounds.flame;
                 shootCone = 30f;
 
-                bullet = new BulletType(3.4f, 23f){{
+                bullet = new BulletType(3.4f, 23f) {{
                     healPercent = 1.5f;
                     collidesTeam = true;
                     ammoMultiplier = 3f;
@@ -1973,7 +1998,7 @@ public class UnitTypes{
                 }};
             }});
 
-            weapons.add(new PointDefenseWeapon("point-defense-mount"){{
+            weapons.add(new PointDefenseWeapon("point-defense-mount") {{
                 mirror = false;
                 x = 0f;
                 y = 1f;
@@ -1981,7 +2006,7 @@ public class UnitTypes{
                 targetInterval = 10f;
                 targetSwitchInterval = 15f;
 
-                bullet = new BulletType(){{
+                bullet = new BulletType() {{
                     shootEffect = Fx.sparkShoot;
                     hitEffect = Fx.pointHit;
                     maxRange = 100f;
@@ -1991,7 +2016,7 @@ public class UnitTypes{
 
         }};
 
-        cyerce = new UnitType("cyerce"){{
+        cyerce = new UnitType("cyerce") {{
             health = 870;
             speed = 0.86f;
             accel = 0.22f;
@@ -2009,19 +2034,19 @@ public class UnitTypes{
 
             buildSpeed = 2f;
 
-            weapons.add(new RepairBeamWeapon("repair-beam-weapon-center"){{
+            weapons.add(new RepairBeamWeapon("repair-beam-weapon-center") {{
                 x = 11f;
                 y = -10f;
                 shootY = 6f;
                 beamWidth = 0.8f;
                 repairSpeed = 0.7f;
 
-                bullet = new BulletType(){{
+                bullet = new BulletType() {{
                     maxRange = 130f;
                 }};
             }});
 
-            weapons.add(new Weapon("plasma-missile-mount"){{
+            weapons.add(new Weapon("plasma-missile-mount") {{
                 reload = 60f;
                 x = 9f;
                 y = 3f;
@@ -2035,7 +2060,7 @@ public class UnitTypes{
                 shootSound = Sounds.missile;
 
                 ejectEffect = Fx.none;
-                bullet = new FlakBulletType(2.5f, 25){{
+                bullet = new FlakBulletType(2.5f, 25) {{
                     sprite = "missile-large";
                     //for targeting
                     collidesGround = collidesAir = true;
@@ -2056,7 +2081,7 @@ public class UnitTypes{
                     backColor = Pal.heal;
                     frontColor = Color.white;
 
-                    hitEffect = new ExplosionEffect(){{
+                    hitEffect = new ExplosionEffect() {{
                         lifetime = 28f;
                         waveStroke = 6f;
                         waveLife = 10f;
@@ -2082,7 +2107,7 @@ public class UnitTypes{
                     fragBullets = 7;
                     fragVelocityMin = 0.3f;
 
-                    fragBullet = new MissileBulletType(3.9f, 11){{
+                    fragBullet = new MissileBulletType(3.9f, 11) {{
                         homingPower = 0.2f;
                         weaveMag = 4;
                         weaveScale = 4;
@@ -2109,7 +2134,7 @@ public class UnitTypes{
                         backColor = Pal.heal;
 
                         despawnEffect = Fx.none;
-                        hitEffect = new ExplosionEffect(){{
+                        hitEffect = new ExplosionEffect() {{
                             lifetime = 20f;
                             waveStroke = 2f;
                             waveColor = Pal.heal;
@@ -2127,7 +2152,7 @@ public class UnitTypes{
             }});
         }};
 
-        aegires = new UnitType("aegires"){{
+        aegires = new UnitType("aegires") {{
             health = 12000;
             armor = 12f;
 
@@ -2150,20 +2175,20 @@ public class UnitTypes{
 
             buildSpeed = 3f;
 
-            abilities.add(new EnergyFieldAbility(40f, 65f, 180f){{
+            abilities.add(new EnergyFieldAbility(40f, 65f, 180f) {{
                 statusDuration = 60f * 6f;
                 maxTargets = 25;
             }});
 
-            for(float mountY : new float[]{-18f, 14}){
-                weapons.add(new PointDefenseWeapon("point-defense-mount"){{
+            for (float mountY : new float[]{-18f, 14}) {
+                weapons.add(new PointDefenseWeapon("point-defense-mount") {{
                     x = 12.5f;
                     y = mountY;
                     reload = 6f;
                     targetInterval = 8f;
                     targetSwitchInterval = 8f;
 
-                    bullet = new BulletType(){{
+                    bullet = new BulletType() {{
                         shootEffect = Fx.sparkShoot;
                         hitEffect = Fx.pointHit;
                         maxRange = 180f;
@@ -2173,7 +2198,7 @@ public class UnitTypes{
             }
         }};
 
-        navanax = new UnitType("navanax"){{
+        navanax = new UnitType("navanax") {{
             health = 20000;
             speed = 0.65f;
             drag = 0.17f;
@@ -2191,9 +2216,9 @@ public class UnitTypes{
 
             buildSpeed = 3.5f;
 
-            for(float mountY : new float[]{-117/4f, 50/4f}){
-                for(float sign : Mathf.signs){
-                    weapons.add(new Weapon("plasma-laser-mount"){{
+            for (float mountY : new float[]{-117 / 4f, 50 / 4f}) {
+                for (float sign : Mathf.signs) {
+                    weapons.add(new Weapon("plasma-laser-mount") {{
                         shadow = 20f;
                         controllable = false;
                         autoTarget = true;
@@ -2201,7 +2226,7 @@ public class UnitTypes{
                         shake = 3f;
                         shootY = 7f;
                         rotate = true;
-                        x = 84f/4f * sign;
+                        x = 84f / 4f * sign;
                         y = mountY;
 
                         targetInterval = 20f;
@@ -2215,7 +2240,7 @@ public class UnitTypes{
                         cooldownTime = reload;
                         immunities.add(StatusEffects.burning);
 
-                        bullet = new ContinuousLaserBulletType(){{
+                        bullet = new ContinuousLaserBulletType() {{
                             maxRange = 90f;
                             damage = 27f;
                             length = 95f;
@@ -2242,11 +2267,11 @@ public class UnitTypes{
                 }
             }
 
-            weapons.add(new Weapon("emp-cannon-mount"){{
+            weapons.add(new Weapon("emp-cannon-mount") {{
                 rotate = true;
 
-                x = 70f/4f;
-                y = -26f/4f;
+                x = 70f / 4f;
+                y = -26f / 4f;
 
                 reload = 65f;
                 shake = 3f;
@@ -2258,7 +2283,7 @@ public class UnitTypes{
                 //TODO better sound
                 shootSound = Sounds.laser;
 
-                bullet = new EmpBulletType(){{
+                bullet = new EmpBulletType() {{
                     float rad = 100f;
 
                     scaleLife = true;
@@ -2294,8 +2319,8 @@ public class UnitTypes{
 
                     trailEffect = new Effect(16f, e -> {
                         color(Pal.heal);
-                        for(int s : Mathf.signs){
-                            Drawf.tri(e.x, e.y, 4f, 30f * e.fslope(), e.rotation + 90f*s);
+                        for (int s : Mathf.signs) {
+                            Drawf.tri(e.x, e.y, 4f, 30f * e.fslope(), e.rotation + 90f * s);
                         }
                     });
 
@@ -2311,10 +2336,10 @@ public class UnitTypes{
 
                         int points = 10;
                         float offset = Mathf.randomSeed(e.id, 360f);
-                        for(int i = 0; i < points; i++){
-                            float angle = i* 360f / points + offset;
+                        for (int i = 0; i < points; i++) {
+                            float angle = i * 360f / points + offset;
                             //for(int s : Mathf.zeroOne){
-                                Drawf.tri(e.x + Angles.trnsx(angle, rad), e.y + Angles.trnsy(angle, rad), 6f, 50f * e.fout(), angle/* + s*180f*/);
+                            Drawf.tri(e.x + Angles.trnsx(angle, rad), e.y + Angles.trnsy(angle, rad), 6f, 50f * e.fout(), angle/* + s*180f*/);
                             //}
                         }
 
@@ -2330,7 +2355,7 @@ public class UnitTypes{
         //endregion
         //region core
 
-        alpha = new UnitType("alpha"){{
+        alpha = new UnitType("alpha") {{
             aiController = BuilderAI::new;
             isEnemy = false;
 
@@ -2349,14 +2374,14 @@ public class UnitTypes{
             hitSize = 8f;
             alwaysUnlocked = true;
 
-            weapons.add(new Weapon("small-basic-weapon"){{
+            weapons.add(new Weapon("small-basic-weapon") {{
                 reload = 17f;
                 x = 2.75f;
                 y = 1f;
                 top = false;
                 ejectEffect = Fx.casing1;
 
-                bullet = new BasicBulletType(2.5f, 11){{
+                bullet = new BasicBulletType(2.5f, 11) {{
                     width = 7f;
                     height = 9f;
                     lifetime = 60f;
@@ -2367,7 +2392,7 @@ public class UnitTypes{
             }});
         }};
 
-        beta = new UnitType("beta"){{
+        beta = new UnitType("beta") {{
             aiController = BuilderAI::new;
             isEnemy = false;
 
@@ -2386,7 +2411,7 @@ public class UnitTypes{
             faceTarget = false;
             lowAltitude = true;
 
-            weapons.add(new Weapon("small-mount-weapon"){{
+            weapons.add(new Weapon("small-mount-weapon") {{
                 top = false;
                 reload = 20f;
                 x = 3f;
@@ -2396,7 +2421,7 @@ public class UnitTypes{
                 shoot.shotDelay = 4f;
                 ejectEffect = Fx.casing1;
 
-                bullet = new BasicBulletType(3f, 11){{
+                bullet = new BasicBulletType(3f, 11) {{
                     width = 7f;
                     height = 9f;
                     lifetime = 60f;
@@ -2407,7 +2432,7 @@ public class UnitTypes{
             }});
         }};
 
-        gamma = new UnitType("gamma"){{
+        gamma = new UnitType("gamma") {{
             aiController = BuilderAI::new;
             isEnemy = false;
 
@@ -2425,12 +2450,12 @@ public class UnitTypes{
             engineOffset = 6f;
             hitSize = 11f;
 
-            weapons.add(new Weapon("small-mount-weapon"){{
+            weapons.add(new Weapon("small-mount-weapon") {{
                 top = false;
                 reload = 15f;
                 x = 1f;
                 y = 2f;
-                shoot = new ShootSpread(){{
+                shoot = new ShootSpread() {{
                     shots = 2;
                     shotDelay = 3f;
                     spread = 2f;
@@ -2439,7 +2464,7 @@ public class UnitTypes{
                 inaccuracy = 3f;
                 ejectEffect = Fx.casing1;
 
-                bullet = new BasicBulletType(3.5f, 11){{
+                bullet = new BasicBulletType(3.5f, 11) {{
                     width = 6.5f;
                     height = 11f;
                     lifetime = 70f;
@@ -2454,7 +2479,7 @@ public class UnitTypes{
         //endregion
         //region erekir - tank
 
-        stell = new TankUnitType("stell"){{
+        stell = new TankUnitType("stell") {{
             hitSize = 12f;
             treadPullOffset = 3;
             speed = 0.75f;
@@ -2465,7 +2490,7 @@ public class UnitTypes{
             treadRects = new Rect[]{new Rect(12 - 32f, 7 - 32f, 14, 51)};
             researchCostMultiplier = 0f;
 
-            weapons.add(new Weapon("stell-weapon"){{
+            weapons.add(new Weapon("stell-weapon") {{
                 layerOffset = 0.0001f;
                 reload = 50f;
                 shootY = 4.5f;
@@ -2478,7 +2503,7 @@ public class UnitTypes{
                 heatColor = Color.valueOf("f9350f");
                 cooldownTime = 30f;
 
-                bullet = new BasicBulletType(4f, 40){{
+                bullet = new BasicBulletType(4f, 40) {{
                     sprite = "missile-large";
                     smokeEffect = Fx.shootBigSmoke;
                     shootEffect = Fx.shootBigColor;
@@ -2495,7 +2520,7 @@ public class UnitTypes{
             }});
         }};
 
-        locus = new TankUnitType("locus"){{
+        locus = new TankUnitType("locus") {{
             hitSize = 18f;
             treadPullOffset = 5;
             speed = 0.7f;
@@ -2503,10 +2528,10 @@ public class UnitTypes{
             health = 2100;
             armor = 8f;
             itemCapacity = 0;
-            treadRects = new Rect[]{new Rect(17 - 96f/2f, 10 - 96f/2f, 19, 76)};
+            treadRects = new Rect[]{new Rect(17 - 96f / 2f, 10 - 96f / 2f, 19, 76)};
             researchCostMultiplier = 0f;
 
-            weapons.add(new Weapon("locus-weapon"){{
+            weapons.add(new Weapon("locus-weapon") {{
                 layerOffset = 0.0001f;
                 reload = 12f;
                 shootY = 10f;
@@ -2522,7 +2547,7 @@ public class UnitTypes{
 
                 shoot = new ShootAlternate(3.5f);
 
-                bullet = new RailBulletType(){{
+                bullet = new RailBulletType() {{
                     length = 160f;
                     damage = 48f;
                     hitColor = Color.valueOf("feb380");
@@ -2531,7 +2556,7 @@ public class UnitTypes{
 
                     smokeEffect = Fx.colorSpark;
 
-                    endEffect = new Effect(14f, e-> {
+                    endEffect = new Effect(14f, e -> {
                         color(e.color);
                         Drawf.tri(e.x, e.y, e.fout() * 1.5f, 5f, e.rotation);
                     });
@@ -2543,7 +2568,7 @@ public class UnitTypes{
                         Drawf.tri(e.x, e.y, w, 30f * e.fout(), e.rotation);
                         color(e.color);
 
-                        for(int i : Mathf.signs){
+                        for (int i : Mathf.signs) {
                             Drawf.tri(e.x, e.y, w * 0.9f, 18f * e.fout(), e.rotation + i * 90f);
                         }
 
@@ -2551,13 +2576,13 @@ public class UnitTypes{
                     });
 
                     lineEffect = new Effect(20f, e -> {
-                        if(!(e.data instanceof Vec2 v)) return;
+                        if (!(e.data instanceof Vec2 v)) return;
 
                         color(e.color);
                         stroke(e.fout() * 0.9f + 0.6f);
 
                         Fx.rand.setSeed(e.id);
-                        for(int i = 0; i < 7; i++){
+                        for (int i = 0; i < 7; i++) {
                             Fx.v.trns(e.rotation, Fx.rand.random(8f, v.dst(e.x, e.y) - 8f));
                             Lines.lineAngleCenter(e.x + Fx.v.x, e.y + Fx.v.y, e.rotation + e.finpow(), e.foutpowdown() * 20f * Fx.rand.random(0.5f, 1f) + 0.3f);
                         }
@@ -2572,7 +2597,7 @@ public class UnitTypes{
             }});
         }};
 
-        precept = new TankUnitType("precept"){{
+        precept = new TankUnitType("precept") {{
             hitSize = 26f;
             treadPullOffset = 5;
             speed = 0.64f;
@@ -2583,7 +2608,7 @@ public class UnitTypes{
             treadRects = new Rect[]{new Rect(16 - 60f, 48 - 70f, 30, 75), new Rect(44 - 60f, 17 - 70f, 17, 60)};
             researchCostMultiplier = 0f;
 
-            weapons.add(new Weapon("precept-weapon"){{
+            weapons.add(new Weapon("precept-weapon") {{
                 layerOffset = 0.0001f;
                 reload = 85f;
                 shootY = 16f;
@@ -2596,7 +2621,7 @@ public class UnitTypes{
                 y = -1f;
                 heatColor = Color.valueOf("f9350f");
                 cooldownTime = 30f;
-                bullet = new BasicBulletType(7f, 90){{
+                bullet = new BasicBulletType(7f, 90) {{
                     sprite = "missile-large";
                     width = 7.5f;
                     height = 13f;
@@ -2621,7 +2646,7 @@ public class UnitTypes{
 
                     fragBullets = 4;
 
-                    fragBullet = new BasicBulletType(5f, 25){{
+                    fragBullet = new BasicBulletType(5f, 25) {{
                         sprite = "missile-large";
                         width = 5f;
                         height = 7f;
@@ -2638,7 +2663,7 @@ public class UnitTypes{
             }});
         }};
 
-        vanquish = new TankUnitType("vanquish"){{
+        vanquish = new TankUnitType("vanquish") {{
             hitSize = 28f;
             treadPullOffset = 4;
             speed = 0.63f;
@@ -2646,9 +2671,9 @@ public class UnitTypes{
             armor = 20f;
             itemCapacity = 0;
             crushDamage = 13f / 5f;
-            treadRects = new Rect[]{new Rect(22 - 154f/2f, 16 - 154f/2f, 28, 130)};
+            treadRects = new Rect[]{new Rect(22 - 154f / 2f, 16 - 154f / 2f, 28, 130)};
 
-            weapons.add(new Weapon("vanquish-weapon"){{
+            weapons.add(new Weapon("vanquish-weapon") {{
                 layerOffset = 0.0001f;
                 reload = 110f;
                 shootY = 71f / 4f;
@@ -2663,7 +2688,7 @@ public class UnitTypes{
                 heatColor = Color.valueOf("f9350f");
                 cooldownTime = 80f;
 
-                bullet = new BasicBulletType(8f, 140){{
+                bullet = new BasicBulletType(8f, 140) {{
                     sprite = "missile-large";
                     width = 9.5f;
                     height = 13f;
@@ -2688,7 +2713,7 @@ public class UnitTypes{
                     fragBullets = 5;
                     fragVelocityMin = 1f;
 
-                    fragBullet = new BasicBulletType(8f, 25){{
+                    fragBullet = new BasicBulletType(8f, 25) {{
                         sprite = "missile-large";
                         width = 8f;
                         height = 12f;
@@ -2706,9 +2731,9 @@ public class UnitTypes{
             }});
 
             int i = 0;
-            for(float f : new float[]{34f / 4f, -36f / 4f}){
-                int fi = i ++;
-                weapons.add(new Weapon("vanquish-point-weapon"){{
+            for (float f : new float[]{34f / 4f, -36f / 4f}) {
+                int fi = i++;
+                weapons.add(new Weapon("vanquish-point-weapon") {{
                     reload = 35f + fi * 5;
                     x = 48f / 4f;
                     y = f;
@@ -2717,7 +2742,7 @@ public class UnitTypes{
                     rotate = true;
                     rotateSpeed = 2f;
 
-                    bullet = new BasicBulletType(4.5f, 25){{
+                    bullet = new BasicBulletType(4.5f, 25) {{
                         width = 6.5f;
                         height = 11f;
                         shootEffect = Fx.sparkShoot;
@@ -2732,7 +2757,7 @@ public class UnitTypes{
             }
         }};
 
-        conquer = new TankUnitType("conquer"){{
+        conquer = new TankUnitType("conquer") {{
             hitSize = 46f;
             treadPullOffset = 1;
             speed = 0.48f;
@@ -2741,10 +2766,10 @@ public class UnitTypes{
             crushDamage = 25f / 5f;
             rotateSpeed = 0.8f;
 
-            float xo = 231f/2f, yo = 231f/2f;
+            float xo = 231f / 2f, yo = 231f / 2f;
             treadRects = new Rect[]{new Rect(27 - xo, 152 - yo, 56, 73), new Rect(24 - xo, 51 - 9 - yo, 29, 17), new Rect(59 - xo, 18 - 9 - yo, 39, 19)};
 
-            weapons.add(new Weapon("conquer-weapon"){{
+            weapons.add(new Weapon("conquer-weapon") {{
                 layerOffset = 0.1f;
                 reload = 120f;
                 shootY = 32.5f;
@@ -2763,48 +2788,48 @@ public class UnitTypes{
                 minWarmup = 0.9f;
 
                 parts.addAll(
-                new RegionPart("-glow"){{
-                    color = Color.red;
-                    blending = Blending.additive;
-                    outline = mirror = false;
-                }},
-                new RegionPart("-sides"){{
-                    progress = PartProgress.warmup;
-                    mirror = true;
-                    under = true;
-                    moveX = 0.75f;
-                    moveY = 0.75f;
-                    moveRot = 82f;
-                    x = 37 / 4f;
-                    y = 8 / 4f;
-                }},
-                new RegionPart("-sinks"){{
-                    progress = PartProgress.warmup;
-                    mirror = true;
-                    under = true;
-                    heatColor = new Color(1f, 0.1f, 0.1f);
-                    moveX = 17f / 4f;
-                    moveY = -15f / 4f;
-                    x = 32 / 4f;
-                    y = -34 / 4f;
-                }},
-                new RegionPart("-sinks-heat"){{
-                    blending = Blending.additive;
-                    progress = PartProgress.warmup;
-                    mirror = true;
-                    outline = false;
-                    colorTo = new Color(1f, 0f, 0f, 0.5f);
-                    color = colorTo.cpy().a(0f);
-                    moveX = 17f / 4f;
-                    moveY = -15f / 4f;
-                    x = 32 / 4f;
-                    y = -34 / 4f;
-                }}
+                        new RegionPart("-glow") {{
+                            color = Color.red;
+                            blending = Blending.additive;
+                            outline = mirror = false;
+                        }},
+                        new RegionPart("-sides") {{
+                            progress = PartProgress.warmup;
+                            mirror = true;
+                            under = true;
+                            moveX = 0.75f;
+                            moveY = 0.75f;
+                            moveRot = 82f;
+                            x = 37 / 4f;
+                            y = 8 / 4f;
+                        }},
+                        new RegionPart("-sinks") {{
+                            progress = PartProgress.warmup;
+                            mirror = true;
+                            under = true;
+                            heatColor = new Color(1f, 0.1f, 0.1f);
+                            moveX = 17f / 4f;
+                            moveY = -15f / 4f;
+                            x = 32 / 4f;
+                            y = -34 / 4f;
+                        }},
+                        new RegionPart("-sinks-heat") {{
+                            blending = Blending.additive;
+                            progress = PartProgress.warmup;
+                            mirror = true;
+                            outline = false;
+                            colorTo = new Color(1f, 0f, 0f, 0.5f);
+                            color = colorTo.cpy().a(0f);
+                            moveX = 17f / 4f;
+                            moveY = -15f / 4f;
+                            x = 32 / 4f;
+                            y = -34 / 4f;
+                        }}
                 );
 
-                for(int i = 1; i <= 3; i++){
+                for (int i = 1; i <= 3; i++) {
                     int fi = i;
-                    parts.add(new RegionPart("-blade"){{
+                    parts.add(new RegionPart("-blade") {{
                         progress = PartProgress.warmup.delay((3 - fi) * 0.3f).blend(PartProgress.reload, 0.3f);
                         heatProgress = PartProgress.heat.add(0.3f).min(PartProgress.warmup);
                         heatColor = new Color(1f, 0.1f, 0.1f);
@@ -2818,7 +2843,7 @@ public class UnitTypes{
                     }});
                 }
 
-                bullet = new BasicBulletType(8f, 250){{
+                bullet = new BasicBulletType(8f, 250) {{
                     sprite = "missile-large";
                     width = 12f;
                     height = 20f;
@@ -2835,7 +2860,7 @@ public class UnitTypes{
                     trailLength = 9;
                     hitEffect = despawnEffect = Fx.massiveExplosion;
 
-                    shootEffect = new ExplosionEffect(){{
+                    shootEffect = new ExplosionEffect() {{
                         lifetime = 40f;
                         waveStroke = 4f;
                         waveColor = sparkColor = trailColor;
@@ -2851,13 +2876,13 @@ public class UnitTypes{
                     }};
 
                     int count = 6;
-                    for(int j = 0; j < count; j++){
+                    for (int j = 0; j < count; j++) {
                         int s = j;
-                        for(int i : Mathf.signs){
-                            float fin = 0.05f + (j + 1) / (float)count;
+                        for (int i : Mathf.signs) {
+                            float fin = 0.05f + (j + 1) / (float) count;
                             float spd = speed;
                             float life = lifetime / Mathf.lerp(fin, 1f, 0.5f);
-                            spawnBullets.add(new BasicBulletType(spd * fin, 45){{
+                            spawnBullets.add(new BasicBulletType(spd * fin, 45) {{
                                 drag = 0.002f;
                                 width = 12f;
                                 height = 11f;
@@ -2871,12 +2896,12 @@ public class UnitTypes{
                                 frontColor = Color.white;
                                 trailWidth = 2.5f;
                                 trailLength = 7;
-                                weaveScale = (3f + s/2f) / 1.2f;
+                                weaveScale = (3f + s / 2f) / 1.2f;
                                 weaveMag = i * (4f - fin * 2f);
 
                                 splashDamage = 40f;
                                 splashDamageRadius = 25f;
-                                despawnEffect = new ExplosionEffect(){{
+                                despawnEffect = new ExplosionEffect() {{
                                     lifetime = 50f;
                                     waveStroke = 4f;
                                     waveColor = sparkColor = trailColor;
@@ -2896,7 +2921,7 @@ public class UnitTypes{
                 }};
             }});
 
-            parts.add(new RegionPart("-glow"){{
+            parts.add(new RegionPart("-glow") {{
                 color = Color.red;
                 blending = Blending.additive;
                 layer = -1f;
@@ -2907,7 +2932,7 @@ public class UnitTypes{
         //endregion
         //region erekir - mech
 
-        merui = new ErekirUnitType("merui"){{
+        merui = new ErekirUnitType("merui") {{
             speed = 0.72f;
             drag = 0.11f;
             hitSize = 9f;
@@ -2940,7 +2965,7 @@ public class UnitTypes{
             targetAir = false;
             researchCostMultiplier = 0f;
 
-            weapons.add(new Weapon("merui-weapon"){{
+            weapons.add(new Weapon("merui-weapon") {{
                 mirror = false;
                 x = 0f;
                 y = 1f;
@@ -2949,7 +2974,7 @@ public class UnitTypes{
                 cooldownTime = 42f;
                 heatColor = Pal.turretHeat;
 
-                bullet = new ArtilleryBulletType(3f, 40){{
+                bullet = new ArtilleryBulletType(3f, 40) {{
                     shootEffect = new MultiEffect(Fx.shootSmallColor, new Effect(9, e -> {
                         color(Color.white, e.color, e.fin());
                         stroke(0.7f + e.fout());
@@ -2979,7 +3004,7 @@ public class UnitTypes{
                     shrinkX = 0.6f;
                     shrinkY = 0.2f;
 
-                    hitEffect = despawnEffect = new MultiEffect(Fx.hitSquaresColor, new WaveEffect(){{
+                    hitEffect = despawnEffect = new MultiEffect(Fx.hitSquaresColor, new WaveEffect() {{
                         colorFrom = colorTo = Pal.techBlue;
                         sizeTo = splashDamageRadius + 2f;
                         lifetime = 9f;
@@ -2990,7 +3015,7 @@ public class UnitTypes{
 
         }};
 
-        cleroi = new ErekirUnitType("cleroi"){{
+        cleroi = new ErekirUnitType("cleroi") {{
             speed = 0.7f;
             drag = 0.1f;
             hitSize = 14f;
@@ -3016,20 +3041,20 @@ public class UnitTypes{
             shadowElevation = 0.2f;
             groundLayer = Layer.legUnit - 1f;
 
-            for(int i = 0; i < 5; i++){
+            for (int i = 0; i < 5; i++) {
                 int fi = i;
-                parts.add(new RegionPart("-spine"){{
+                parts.add(new RegionPart("-spine") {{
                     y = 21f / 4f - 45f / 4f * fi / 4f;
                     moveX = 21f / 4f + Mathf.slope(fi / 4f) * 1.25f;
                     moveRot = 10f - fi * 14f;
-                    float fin = fi  / 4f;
+                    float fin = fi / 4f;
                     progress = PartProgress.reload.inv().mul(1.3f).add(0.1f).sustain(fin * 0.34f, 0.14f, 0.14f);
                     layerOffset = -0.001f;
                     mirror = true;
                 }});
             }
 
-            weapons.add(new Weapon("cleroi-weapon"){{
+            weapons.add(new Weapon("cleroi-weapon") {{
                 x = 14f / 4f;
                 y = 33f / 4f;
                 reload = 30f;
@@ -3040,7 +3065,7 @@ public class UnitTypes{
                 smoothReloadSpeed = 0.15f;
                 recoil = 2f;
 
-                bullet = new BasicBulletType(3.5f, 27){{
+                bullet = new BasicBulletType(3.5f, 27) {{
                     backColor = trailColor = hitColor = Pal.techBlue;
                     frontColor = Color.white;
                     width = 7.5f;
@@ -3058,7 +3083,7 @@ public class UnitTypes{
                     splashDamageRadius = 23f;
                     splashDamage = 40f;
 
-                    hitEffect = despawnEffect = new MultiEffect(Fx.hitBulletColor, new WaveEffect(){{
+                    hitEffect = despawnEffect = new MultiEffect(Fx.hitBulletColor, new WaveEffect() {{
                         colorFrom = colorTo = Pal.techBlue;
                         sizeTo = splashDamageRadius + 3f;
                         lifetime = 9f;
@@ -3077,7 +3102,7 @@ public class UnitTypes{
                 }};
             }});
 
-            weapons.add(new PointDefenseWeapon("cleroi-point-defense"){{
+            weapons.add(new PointDefenseWeapon("cleroi-point-defense") {{
                 x = 16f / 4f;
                 y = -20f / 4f;
                 reload = 9f;
@@ -3086,7 +3111,7 @@ public class UnitTypes{
                 targetSwitchInterval = 12f;
                 recoil = 0.5f;
 
-                bullet = new BulletType(){{
+                bullet = new BulletType() {{
                     shootEffect = Fx.sparkShoot;
                     hitEffect = Fx.pointHit;
                     maxRange = 100f;
@@ -3095,7 +3120,7 @@ public class UnitTypes{
             }});
         }};
 
-        anthicus = new ErekirUnitType("anthicus"){{
+        anthicus = new ErekirUnitType("anthicus") {{
             speed = 0.65f;
             drag = 0.1f;
             hitSize = 21f;
@@ -3123,9 +3148,9 @@ public class UnitTypes{
             shadowElevation = 0.2f;
             groundLayer = Layer.legUnit - 1f;
 
-            for(int j = 0; j < 3; j++){
+            for (int j = 0; j < 3; j++) {
                 int i = j;
-                parts.add(new RegionPart("-blade"){{
+                parts.add(new RegionPart("-blade") {{
                     layerOffset = -0.01f;
                     heatLayerOffset = 0.005f;
                     x = 2f;
@@ -3140,7 +3165,7 @@ public class UnitTypes{
                 }});
             }
 
-            weapons.add(new Weapon("anthicus-weapon"){{
+            weapons.add(new Weapon("anthicus-weapon") {{
                 x = 29f / 4f;
                 y = -11f / 4f;
                 shootY = 1.5f;
@@ -3159,12 +3184,12 @@ public class UnitTypes{
 
                 rotate = true;
 
-                shoot = new ShootPattern(){{
+                shoot = new ShootPattern() {{
                     shots = 2;
                     shotDelay = 6f;
                 }};
 
-                parts.add(new RegionPart("-blade"){{
+                parts.add(new RegionPart("-blade") {{
                     mirror = true;
                     moveRot = -25f;
                     under = true;
@@ -3174,7 +3199,7 @@ public class UnitTypes{
                     cooldownTime = 60f;
                 }});
 
-                parts.add(new RegionPart("-blade"){{
+                parts.add(new RegionPart("-blade") {{
                     mirror = true;
                     moveRot = -50f;
                     moveY = -2f;
@@ -3185,14 +3210,14 @@ public class UnitTypes{
                     cooldownTime = 60f;
                 }});
 
-                bullet = new BulletType(){{
+                bullet = new BulletType() {{
                     shootEffect = new MultiEffect(Fx.shootBigColor, new Effect(9, e -> {
                         color(Color.white, e.color, e.fin());
                         stroke(0.7f + e.fout());
                         Lines.square(e.x, e.y, e.fin() * 5f, e.rotation + 45f);
 
                         Drawf.light(e.x, e.y, 23f, e.color, e.fout() * 0.7f);
-                    }), new WaveEffect(){{
+                    }), new WaveEffect() {{
                         colorFrom = colorTo = Pal.techBlue;
                         sizeTo = 15f;
                         lifetime = 12f;
@@ -3205,7 +3230,7 @@ public class UnitTypes{
                     keepVelocity = false;
                     inaccuracy = 2f;
 
-                    spawnUnit = new MissileUnitType("anthicus-missile"){{
+                    spawnUnit = new MissileUnitType("anthicus-missile") {{
                         trailColor = engineColor = Pal.techBlue;
                         engineSize = 1.75f;
                         engineLayer = Layer.effect;
@@ -3216,7 +3241,7 @@ public class UnitTypes{
                         health = 45;
                         lowAltitude = true;
 
-                        parts.add(new FlarePart(){{
+                        parts.add(new FlarePart() {{
                             progress = PartProgress.life.slope().curve(Interp.pow2In);
                             radius = 0f;
                             radiusTo = 35f;
@@ -3226,13 +3251,13 @@ public class UnitTypes{
                             followRotation = true;
                         }});
 
-                        weapons.add(new Weapon(){{
+                        weapons.add(new Weapon() {{
                             shootCone = 360f;
                             mirror = false;
                             reload = 1f;
                             shootOnDeath = true;
-                            bullet = new ExplosionBulletType(120f, 25f){{
-                                shootEffect = new MultiEffect(Fx.massiveExplosion, new WrapEffect(Fx.dynamicSpikes, Pal.techBlue, 24f), new WaveEffect(){{
+                            bullet = new ExplosionBulletType(120f, 25f) {{
+                                shootEffect = new MultiEffect(Fx.massiveExplosion, new WrapEffect(Fx.dynamicSpikes, Pal.techBlue, 24f), new WaveEffect() {{
                                     colorFrom = colorTo = Pal.techBlue;
                                     sizeTo = 40f;
                                     lifetime = 12f;
@@ -3245,7 +3270,7 @@ public class UnitTypes{
             }});
         }};
 
-        tecta = new ErekirUnitType("tecta"){{
+        tecta = new ErekirUnitType("tecta") {{
             drag = 0.1f;
             speed = 0.6f;
             hitSize = 23f;
@@ -3260,7 +3285,7 @@ public class UnitTypes{
             legMaxLength = 1.3f;
             researchCostMultiplier = 0f;
 
-            abilities.add(new ShieldArcAbility(){{
+            abilities.add(new ShieldArcAbility() {{
                 region = "tecta-shield";
                 radius = 34f;
                 angle = 82f;
@@ -3292,11 +3317,11 @@ public class UnitTypes{
             shadowElevation = 0.4f;
             groundLayer = Layer.legUnit;
 
-            weapons.add(new Weapon("tecta-weapon"){{
+            weapons.add(new Weapon("tecta-weapon") {{
                 mirror = true;
                 top = false;
 
-                x = 62/4f;
+                x = 62 / 4f;
                 y = 1f;
                 shootY = 47 / 4f;
                 recoil = 3f;
@@ -3309,7 +3334,7 @@ public class UnitTypes{
                 velocityRnd = 0.33f;
                 heatColor = Color.red;
 
-                bullet = new MissileBulletType(4.2f, 50){{
+                bullet = new MissileBulletType(4.2f, 50) {{
                     homingPower = 0.2f;
                     weaveMag = 4;
                     weaveScale = 4;
@@ -3331,7 +3356,7 @@ public class UnitTypes{
                     trailChance = -1f;
 
                     despawnEffect = Fx.none;
-                    hitEffect = new ExplosionEffect(){{
+                    hitEffect = new ExplosionEffect() {{
                         lifetime = 20f;
                         waveStroke = 2f;
                         waveColor = sparkColor = trailColor;
@@ -3347,7 +3372,7 @@ public class UnitTypes{
             }});
         }};
 
-        collaris = new ErekirUnitType("collaris"){{
+        collaris = new ErekirUnitType("collaris") {{
             drag = 0.1f;
             speed = 1.1f;
             hitSize = 44f;
@@ -3383,7 +3408,7 @@ public class UnitTypes{
 
             targetAir = false;
 
-            weapons.add(new Weapon("collaris-weapon"){{
+            weapons.add(new Weapon("collaris-weapon") {{
                 mirror = true;
                 rotationLimit = 30f;
                 rotateSpeed = 0.4f;
@@ -3405,9 +3430,9 @@ public class UnitTypes{
                 shoot.shots = 1;
                 heatColor = Color.red;
 
-                for(int i = 0; i < 5; i++){
+                for (int i = 0; i < 5; i++) {
                     int fi = i;
-                    parts.add(new RegionPart("-blade"){{
+                    parts.add(new RegionPart("-blade") {{
                         under = true;
                         layerOffset = -0.001f;
                         heatColor = Pal.techBlue;
@@ -3423,7 +3448,7 @@ public class UnitTypes{
                     }});
                 }
 
-                bullet = new ArtilleryBulletType(5.5f, 300){{
+                bullet = new ArtilleryBulletType(5.5f, 300) {{
                     collidesTiles = collides = true;
                     lifetime = 75f;
                     shootEffect = Fx.shootBigColor;
@@ -3444,7 +3469,7 @@ public class UnitTypes{
 
                     despawnEffect = Fx.none;
 
-                    hitEffect = despawnEffect = new ExplosionEffect(){{
+                    hitEffect = despawnEffect = new ExplosionEffect() {{
                         lifetime = 34f;
                         waveStroke = 4f;
                         waveColor = sparkColor = trailColor;
@@ -3466,7 +3491,7 @@ public class UnitTypes{
                     fragLifeMin = 0.3f;
                     despawnShake = 5f;
 
-                    fragBullet = new BasicBulletType(5.5f, 60){{
+                    fragBullet = new BasicBulletType(5.5f, 60) {{
                         pierceCap = 2;
                         pierceBuilding = true;
 
@@ -3493,7 +3518,7 @@ public class UnitTypes{
                         splashDamage = 50f;
                         splashDamageRadius = 30f;
 
-                        hitEffect = despawnEffect = new MultiEffect(new ExplosionEffect(){{
+                        hitEffect = despawnEffect = new MultiEffect(new ExplosionEffect() {{
                             lifetime = 30f;
                             waveStroke = 2f;
                             waveColor = sparkColor = trailColor;
@@ -3513,7 +3538,7 @@ public class UnitTypes{
         //endregion
         //region erekir - flying
 
-        elude = new ErekirUnitType("elude"){{
+        elude = new ErekirUnitType("elude") {{
             hovering = true;
             shadowElevation = 0.1f;
 
@@ -3534,12 +3559,12 @@ public class UnitTypes{
             //does this look better?
             //engineColor = Pal.sapBullet;
 
-            abilities.add(new MoveEffectAbility(0f, -7f, Pal.sapBulletBack, Fx.missileTrailShort, 4f){{
+            abilities.add(new MoveEffectAbility(0f, -7f, Pal.sapBulletBack, Fx.missileTrailShort, 4f) {{
                 teamColor = true;
             }});
 
-            for(float f : new float[]{-3f, 3f}){
-                parts.add(new HoverPart(){{
+            for (float f : new float[]{-3f, 3f}) {
+                parts.add(new HoverPart() {{
                     x = 3.9f;
                     y = f;
                     mirror = true;
@@ -3551,7 +3576,7 @@ public class UnitTypes{
                 }});
             }
 
-            weapons.add(new Weapon("elude-weapon"){{
+            weapons.add(new Weapon("elude-weapon") {{
                 y = -2f;
                 x = 4f;
                 top = true;
@@ -3562,7 +3587,7 @@ public class UnitTypes{
 
                 shoot = new ShootSpread(2, 11f);
 
-                bullet = new BasicBulletType(5f, 24){{
+                bullet = new BasicBulletType(5f, 24) {{
                     homingPower = 0.19f;
                     homingDelay = 4f;
                     width = 7f;
@@ -3579,7 +3604,7 @@ public class UnitTypes{
             }});
         }};
 
-        avert = new ErekirUnitType("avert"){{
+        avert = new ErekirUnitType("avert") {{
             lowAltitude = false;
             flying = true;
             drag = 0.08f;
@@ -3594,11 +3619,11 @@ public class UnitTypes{
             itemCapacity = 0;
 
             setEnginesMirror(
-            new UnitEngine(35 / 4f, -38 / 4f, 3f, 315f),
-            new UnitEngine(39 / 4f, -16 / 4f, 3f, 315f)
+                    new UnitEngine(35 / 4f, -38 / 4f, 3f, 315f),
+                    new UnitEngine(39 / 4f, -16 / 4f, 3f, 315f)
             );
 
-            weapons.add(new Weapon("avert-weapon"){{
+            weapons.add(new Weapon("avert-weapon") {{
                 reload = 35f;
                 x = 0f;
                 y = 6.5f;
@@ -3610,7 +3635,7 @@ public class UnitTypes{
                 mirror = false;
                 shoot = new ShootHelix();
 
-                bullet = new BasicBulletType(5f, 34){{
+                bullet = new BasicBulletType(5f, 34) {{
                     width = 7f;
                     height = 12f;
                     lifetime = 25f;
@@ -3625,7 +3650,7 @@ public class UnitTypes{
             }});
         }};
 
-        obviate = new ErekirUnitType("obviate"){{
+        obviate = new ErekirUnitType("obviate") {{
             flying = true;
             drag = 0.08f;
             speed = 1.8f;
@@ -3641,28 +3666,28 @@ public class UnitTypes{
             lowAltitude = true;
 
             setEnginesMirror(
-            new UnitEngine(38 / 4f, -46 / 4f, 3.1f, 315f)
+                    new UnitEngine(38 / 4f, -46 / 4f, 3.1f, 315f)
             );
 
             parts.add(
-            new RegionPart("-blade"){{
-                moveRot = -10f;
-                moveX = -1f;
-                moves.add(new PartMove(PartProgress.reload, 2f, 1f, -5f));
-                progress = PartProgress.warmup;
-                mirror = true;
+                    new RegionPart("-blade") {{
+                        moveRot = -10f;
+                        moveX = -1f;
+                        moves.add(new PartMove(PartProgress.reload, 2f, 1f, -5f));
+                        progress = PartProgress.warmup;
+                        mirror = true;
 
-                children.add(new RegionPart("-side"){{
-                    moveX = 2f;
-                    moveY = -2f;
-                    progress = PartProgress.warmup;
-                    under = true;
-                    mirror = true;
-                    moves.add(new PartMove(PartProgress.reload, -2f, 2f, 0f));
-                }});
-            }});
+                        children.add(new RegionPart("-side") {{
+                            moveX = 2f;
+                            moveY = -2f;
+                            progress = PartProgress.warmup;
+                            under = true;
+                            mirror = true;
+                            moves.add(new PartMove(PartProgress.reload, -2f, 2f, 0f));
+                        }});
+                    }});
 
-            weapons.add(new Weapon(){{
+            weapons.add(new Weapon() {{
                 x = 0f;
                 y = -2f;
                 shootY = 0f;
@@ -3672,13 +3697,13 @@ public class UnitTypes{
                 shake = 3f;
                 cooldownTime = reload - 10f;
 
-                bullet = new BasicBulletType(){{
-                    shoot = new ShootHelix(){{
+                bullet = new BasicBulletType() {{
+                    shoot = new ShootHelix() {{
                         mag = 1f;
                         scl = 5f;
                     }};
 
-                    shootEffect = new MultiEffect(Fx.shootTitan, new WaveEffect(){{
+                    shootEffect = new MultiEffect(Fx.shootTitan, new WaveEffect() {{
                         colorTo = Pal.sapBulletBack;
                         sizeTo = 26f;
                         lifetime = 14f;
@@ -3701,7 +3726,7 @@ public class UnitTypes{
                     trailColor = Pal.sapBulletBack;
                     trailLength = 12;
                     trailWidth = 2.2f;
-                    despawnEffect = hitEffect = new ExplosionEffect(){{
+                    despawnEffect = hitEffect = new ExplosionEffect() {{
                         waveColor = Pal.sapBullet;
                         smokeColor = Color.gray;
                         sparkColor = Pal.sap;
@@ -3709,7 +3734,7 @@ public class UnitTypes{
                         waveRad = 40f;
                     }};
 
-                    intervalBullet = new LightningBulletType(){{
+                    intervalBullet = new LightningBulletType() {{
                         damage = 18;
                         collidesAir = false;
                         ammoMultiplier = 1f;
@@ -3720,7 +3745,7 @@ public class UnitTypes{
                         //for visual stats only.
                         buildingDamageMultiplier = 0.25f;
 
-                        lightningType = new BulletType(0.0001f, 0f){{
+                        lightningType = new BulletType(0.0001f, 0f) {{
                             lifetime = Fx.lightning.lifetime;
                             hitEffect = Fx.hitLancer;
                             despawnEffect = Fx.none;
@@ -3744,7 +3769,7 @@ public class UnitTypes{
             }});
         }};
 
-        quell = new ErekirUnitType("quell"){{
+        quell = new ErekirUnitType("quell") {{
             aiController = FlyingFollowAI::new;
             envDisabled = 0;
 
@@ -3763,12 +3788,12 @@ public class UnitTypes{
             engineSize = 4.8f;
             engineOffset = 61 / 4f;
 
-            abilities.add(new SuppressionFieldAbility(){{
+            abilities.add(new SuppressionFieldAbility() {{
                 orbRadius = 5.3f;
                 y = 1f;
             }});
 
-            weapons.add(new Weapon("quell-weapon"){{
+            weapons.add(new Weapon("quell-weapon") {{
                 x = 51 / 4f;
                 y = 5 / 4f;
                 rotate = true;
@@ -3778,14 +3803,14 @@ public class UnitTypes{
                 recoil = 1f;
                 rotationLimit = 60f;
 
-                bullet = new BulletType(){{
+                bullet = new BulletType() {{
                     shootEffect = Fx.shootBig;
                     smokeEffect = Fx.shootBigSmoke2;
                     shake = 1f;
                     speed = 0f;
                     keepVelocity = false;
 
-                    spawnUnit = new MissileUnitType("quell-missile"){{
+                    spawnUnit = new MissileUnitType("quell-missile") {{
                         speed = 4.3f;
                         maxRange = 6f;
                         lifetime = 60f * 1.6f;
@@ -3794,12 +3819,12 @@ public class UnitTypes{
                         engineLayer = Layer.effect;
                         health = 45;
 
-                        weapons.add(new Weapon(){{
+                        weapons.add(new Weapon() {{
                             shootCone = 360f;
                             mirror = false;
                             reload = 1f;
                             shootOnDeath = true;
-                            bullet = new ExplosionBulletType(110f, 25f){{
+                            bullet = new ExplosionBulletType(110f, 25f) {{
                                 shootEffect = Fx.massiveExplosion;
                             }};
                         }});
@@ -3808,12 +3833,12 @@ public class UnitTypes{
             }});
 
             setEnginesMirror(
-            new UnitEngine(62 / 4f, -60 / 4f, 3.9f, 315f),
-            new UnitEngine(72 / 4f, -29 / 4f, 3f, 315f)
+                    new UnitEngine(62 / 4f, -60 / 4f, 3.9f, 315f),
+                    new UnitEngine(72 / 4f, -29 / 4f, 3f, 315f)
             );
         }};
 
-        disrupt = new ErekirUnitType("disrupt"){{
+        disrupt = new ErekirUnitType("disrupt") {{
             aiController = FlyingFollowAI::new;
             envDisabled = 0;
 
@@ -3834,15 +3859,15 @@ public class UnitTypes{
             float orbRad = 5f, partRad = 3f;
             int parts = 10;
 
-            abilities.add(new SuppressionFieldAbility(){{
+            abilities.add(new SuppressionFieldAbility() {{
                 orbRadius = orbRad;
                 particleSize = partRad;
                 y = 10f;
                 particles = parts;
             }});
 
-            for(int i : Mathf.signs){
-                abilities.add(new SuppressionFieldAbility(){{
+            for (int i : Mathf.signs) {
+                abilities.add(new SuppressionFieldAbility() {{
                     orbRadius = orbRad;
                     particleSize = partRad;
                     y = -32f / 4f;
@@ -3853,7 +3878,7 @@ public class UnitTypes{
                 }});
             }
 
-            weapons.add(new Weapon("disrupt-weapon"){{
+            weapons.add(new Weapon("disrupt-weapon") {{
                 x = 78f / 4f;
                 y = -10f / 4f;
                 mirror = true;
@@ -3871,7 +3896,7 @@ public class UnitTypes{
                 shoot.shotDelay = 5f;
                 inaccuracy = 28f;
 
-                parts.add(new RegionPart("-blade"){{
+                parts.add(new RegionPart("-blade") {{
                     heatProgress = PartProgress.warmup;
                     progress = PartProgress.warmup.blend(PartProgress.reload, 0.15f);
                     heatColor = Color.valueOf("9c50ff");
@@ -3884,7 +3909,7 @@ public class UnitTypes{
                     mirror = true;
                 }});
 
-                bullet = new BulletType(){{
+                bullet = new BulletType() {{
                     shootEffect = Fx.sparkShoot;
                     smokeEffect = Fx.shootSmokeTitan;
                     hitColor = Pal.suppress;
@@ -3892,7 +3917,7 @@ public class UnitTypes{
                     speed = 0f;
                     keepVelocity = false;
 
-                    spawnUnit = new MissileUnitType("disrupt-missile"){{
+                    spawnUnit = new MissileUnitType("disrupt-missile") {{
                         speed = 4.6f;
                         maxRange = 5f;
                         outlineColor = Pal.darkOutline;
@@ -3904,7 +3929,7 @@ public class UnitTypes{
                         engineLayer = Layer.effect;
                         deathExplosionEffect = Fx.none;
 
-                        parts.add(new ShapePart(){{
+                        parts.add(new ShapePart() {{
                             layer = Layer.effect;
                             circle = true;
                             y = -0.25f;
@@ -3914,7 +3939,7 @@ public class UnitTypes{
                             progress = PartProgress.life.curve(Interp.pow5In);
                         }});
 
-                        parts.add(new RegionPart("-fin"){{
+                        parts.add(new RegionPart("-fin") {{
                             mirror = true;
                             progress = PartProgress.life.mul(3f).curve(Interp.pow5In);
                             moveRot = 32f;
@@ -3924,14 +3949,14 @@ public class UnitTypes{
                             y = -6f / 4f;
                         }});
 
-                        weapons.add(new Weapon(){{
+                        weapons.add(new Weapon() {{
                             shootCone = 360f;
                             mirror = false;
                             reload = 1f;
                             shootOnDeath = true;
-                            bullet = new ExplosionBulletType(140f, 25f){{
+                            bullet = new ExplosionBulletType(140f, 25f) {{
                                 suppressionRange = 140f;
-                                shootEffect = new ExplosionEffect(){{
+                                shootEffect = new ExplosionEffect() {{
                                     lifetime = 50f;
                                     waveStroke = 5f;
                                     waveLife = 8f;
@@ -3953,15 +3978,15 @@ public class UnitTypes{
             }});
 
             setEnginesMirror(
-            new UnitEngine(95 / 4f, -56 / 4f, 5f, 330f),
-            new UnitEngine(89 / 4f, -95 / 4f, 4f, 315f)
+                    new UnitEngine(95 / 4f, -56 / 4f, 5f, 330f),
+                    new UnitEngine(89 / 4f, -95 / 4f, 4f, 315f)
             );
         }};
 
         //endregion
         //region erekir - neoplasm
 
-        renale = new NeoplasmUnitType("renale"){{
+        renale = new NeoplasmUnitType("renale") {{
             health = 500;
             armor = 2;
             hitSize = 9f;
@@ -3981,7 +4006,7 @@ public class UnitTypes{
             speed = 1.2f;
         }};
 
-        latum = new NeoplasmUnitType("latum"){{
+        latum = new NeoplasmUnitType("latum") {{
             health = 20000;
             armor = 12;
             hitSize = 48f;
@@ -4007,7 +4032,7 @@ public class UnitTypes{
 
         float coreFleeRange = 500f;
 
-        evoke = new ErekirUnitType("evoke"){{
+        evoke = new ErekirUnitType("evoke") {{
             coreUnitDock = true;
             controller = u -> new BuilderAI(true, coreFleeRange);
             isEnemy = false;
@@ -4040,11 +4065,11 @@ public class UnitTypes{
             hittable = false;
 
             setEnginesMirror(
-            new UnitEngine(21 / 4f, 19 / 4f, 2.2f, 45f),
-            new UnitEngine(23 / 4f, -22 / 4f, 2.2f, 315f)
+                    new UnitEngine(21 / 4f, 19 / 4f, 2.2f, 45f),
+                    new UnitEngine(23 / 4f, -22 / 4f, 2.2f, 315f)
             );
 
-            weapons.add(new RepairBeamWeapon(){{
+            weapons.add(new RepairBeamWeapon() {{
                 widthSinMag = 0.11f;
                 reload = 20f;
                 x = 0f;
@@ -4065,13 +4090,13 @@ public class UnitTypes{
                 laserColor = Pal.accent;
                 healColor = Pal.accent;
 
-                bullet = new BulletType(){{
+                bullet = new BulletType() {{
                     maxRange = 60f;
                 }};
             }});
         }};
 
-        incite = new ErekirUnitType("incite"){{
+        incite = new ErekirUnitType("incite") {{
             coreUnitDock = true;
             controller = u -> new BuilderAI(true, coreFleeRange);
             isEnemy = false;
@@ -4106,10 +4131,10 @@ public class UnitTypes{
             engineSize = 3.1f;
 
             setEnginesMirror(
-            new UnitEngine(25 / 4f, -1 / 4f, 2.4f, 300f)
+                    new UnitEngine(25 / 4f, -1 / 4f, 2.4f, 300f)
             );
 
-            weapons.add(new RepairBeamWeapon(){{
+            weapons.add(new RepairBeamWeapon() {{
                 widthSinMag = 0.11f;
                 reload = 20f;
                 x = 0f;
@@ -4131,24 +4156,24 @@ public class UnitTypes{
                 laserColor = Pal.accent;
                 healColor = Pal.accent;
 
-                bullet = new BulletType(){{
+                bullet = new BulletType() {{
                     maxRange = 60f;
                 }};
             }});
 
             drawBuildBeam = false;
 
-            weapons.add(new BuildWeapon("build-weapon"){{
+            weapons.add(new BuildWeapon("build-weapon") {{
                 rotate = true;
                 rotateSpeed = 7f;
-                x = 14/4f;
-                y = 15/4f;
+                x = 14 / 4f;
+                y = 15 / 4f;
                 layerOffset = -0.001f;
                 shootY = 3f;
             }});
         }};
 
-        emanate = new ErekirUnitType("emanate"){{
+        emanate = new ErekirUnitType("emanate") {{
             coreUnitDock = true;
             controller = u -> new BuilderAI(true, coreFleeRange);
             isEnemy = false;
@@ -4184,15 +4209,15 @@ public class UnitTypes{
             engineSize = 3.4f;
 
             setEnginesMirror(
-            new UnitEngine(35 / 4f, -13 / 4f, 2.7f, 315f),
-            new UnitEngine(28 / 4f, -35 / 4f, 2.7f, 315f)
+                    new UnitEngine(35 / 4f, -13 / 4f, 2.7f, 315f),
+                    new UnitEngine(28 / 4f, -35 / 4f, 2.7f, 315f)
             );
 
-            weapons.add(new RepairBeamWeapon(){{
+            weapons.add(new RepairBeamWeapon() {{
                 widthSinMag = 0.11f;
                 reload = 20f;
-                x = 19f/4f;
-                y = 19f/4f;
+                x = 19f / 4f;
+                y = 19f / 4f;
                 rotate = false;
                 shootY = 0f;
                 beamWidth = 0.7f;
@@ -4210,7 +4235,7 @@ public class UnitTypes{
                 laserColor = Pal.accent;
                 healColor = Pal.accent;
 
-                bullet = new BulletType(){{
+                bullet = new BulletType() {{
                     maxRange = 65f;
                 }};
             }});
@@ -4219,7 +4244,7 @@ public class UnitTypes{
         //endregion
         //region internal + special
 
-        block = new UnitType("block"){{
+        block = new UnitType("block") {{
             speed = 0f;
             hitSize = 0f;
             health = 1;
@@ -4229,7 +4254,7 @@ public class UnitTypes{
             internal = true;
         }};
 
-        manifold = new ErekirUnitType("manifold"){{
+        manifold = new ErekirUnitType("manifold") {{
             controller = u -> new CargoAI();
             isEnemy = false;
             allowedInPayloads = false;
@@ -4252,11 +4277,11 @@ public class UnitTypes{
             hidden = true;
 
             setEnginesMirror(
-                new UnitEngine(24 / 4f, -24 / 4f, 2.3f, 315f)
+                    new UnitEngine(24 / 4f, -24 / 4f, 2.3f, 315f)
             );
         }};
 
-        assemblyDrone = new ErekirUnitType("assembly-drone"){{
+        assemblyDrone = new ErekirUnitType("assembly-drone") {{
             controller = u -> new AssemblerAI();
 
             flying = true;

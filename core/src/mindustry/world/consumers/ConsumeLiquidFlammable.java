@@ -2,25 +2,25 @@ package mindustry.world.consumers;
 
 import mindustry.gen.*;
 
-public class ConsumeLiquidFlammable extends ConsumeLiquidFilter{
+public class ConsumeLiquidFlammable extends ConsumeLiquidFilter {
     public float minFlammability;
 
-    public ConsumeLiquidFlammable(float minFlammability, float amount){
+    public ConsumeLiquidFlammable(float minFlammability, float amount) {
         this.amount = amount;
         this.minFlammability = minFlammability;
         this.filter = liquid -> liquid.flammability >= this.minFlammability;
     }
 
-    public ConsumeLiquidFlammable(float amount){
+    public ConsumeLiquidFlammable(float amount) {
         this(0.2f, amount);
     }
 
-    public ConsumeLiquidFlammable(){
+    public ConsumeLiquidFlammable() {
         this(0.2f);
     }
 
     @Override
-    public float efficiencyMultiplier(Building build){
+    public float efficiencyMultiplier(Building build) {
         var liq = getConsumed(build);
         return liq == null ? 0f : liq.flammability;
     }

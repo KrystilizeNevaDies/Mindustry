@@ -1,75 +1,100 @@
 package mindustry.world.blocks.defense.turrets;
 
-import arc.math.*;
-import arc.struct.*;
-import arc.util.*;
-import mindustry.entities.bullet.*;
+import arc.math.Angles;
+import arc.math.Mathf;
+import arc.struct.Seq;
+import arc.util.Nullable;
+import arc.util.Time;
+import mindustry.entities.bullet.BulletType;
 import mindustry.gen.*;
-import mindustry.type.*;
-import mindustry.world.consumers.*;
-import mindustry.world.meta.*;
+import mindustry.type.Liquid;
+import mindustry.world.consumers.ConsumeLiquidBase;
+import mindustry.world.meta.Stat;
+import mindustry.world.meta.StatValues;
 
-import static mindustry.Vars.*;
+import static mindustry.Vars.tilesize;
 
-/** A turret that fires a continuous beam with a delay between shots. Liquid coolant is required. Yes, this class name is awful. */
-public class LaserTurret extends PowerTurret{
+/**
+ * A turret that fires a continuous beam with a delay between shots. Liquid coolant is required.
+ * Yes, this class name is awful.
+ */
+public class LaserTurret extends PowerTurret {
     public float firingMoveFract = 0.25f;
     public float shootDuration = 100f;
 
-    public LaserTurret(String name){
+    public LaserTurret(String name) {
         super(name);
 
         coolantMultiplier = 1f;
     }
 
     @Override
-    public void setStats(){
+    public void setStats() {
         super.setStats();
 
         stats.remove(Stat.booster);
-        stats.add(Stat.input, StatValues.boosters(reload, coolant.amount, coolantMultiplier, false, this::consumesLiquid));
+        stats.add(
+                Stat.input,
+                StatValues.boosters(
+                        reload, coolant.amount, coolantMultiplier, false, this::consumesLiquid));
     }
 
     @Override
-    public void init(){
+    public void init() {
         super.init();
 
-        if(coolant == null){
+        if (coolant == null) {
             coolant = findConsumer(c -> c instanceof ConsumeLiquidBase);
         }
     }
 
-    public class LaserTurretBuild extends PowerTurretBuild{
+    public class LaserTurretBuild extends PowerTurretBuild {
         public Seq<BulletEntry> bullets = new Seq<>();
 
         @Override
-        protected void updateCooling(){
-            //do nothing, cooling is irrelevant here
+        protected void updateCooling() {
+            // do nothing, cooling is irrelevant here
         }
 
         @Override
-        public boolean shouldConsume(){
-            //still consumes power when bullet is around
+        public boolean shouldConsume() {
+            // still consumes power when bullet is around
             return bullets.any() || isActive() || isShooting();
         }
 
         @Override
-        public void updateTile(){
+        public void updateTile() {
             super.updateTile();
 
-            bullets.removeAll(b -> !b.bullet.isAdded() || b.bullet.type == null || b.life <= 0f || b.bullet.owner != this);
+            bullets.removeAll(
+                    b ->
+                            !b.bullet.isAdded()
+                                    || b.bullet.type == null
+                                    || b.life <= 0f
+                                    || b.bullet.owner != this);
 
-            if(bullets.any()){
+            if (bullets.any()) {
 
-                for(var entry : bullets){
+                for (var entry : bullets) {
                     float
-                    bulletX = x + Angles.trnsx(rotation - 90, shootX + entry.x, shootY + entry.y),
-                    bulletY = y + Angles.trnsy(rotation - 90, shootX + entry.x, shootY + entry.y),
-                    angle = rotation + entry.rotation;
+                            bulletX =
+                            x
+                                    + Angles.trnsx(
+                                    rotation - 90,
+                                    shootX + entry.x,
+                                    shootY + entry.y),
+                            bulletY =
+                                    y
+                                            + Angles.trnsy(
+                                            rotation - 90,
+                                            shootX + entry.x,
+                                            shootY + entry.y),
+                            angle = rotation + entry.rotation;
 
                     entry.bullet.rotation(angle);
                     entry.bullet.set(bulletX, bulletY);
-                    entry.bullet.time = entry.bullet.type.lifetime * entry.bullet.type.optimalLifeFract;
+                    entry.bullet.time =
+                            entry.bullet.type.lifetime * entry.bullet.type.optimalLifeFract;
                     entry.bullet.keepAlive = true;
                     entry.life -= Time.delta / Math.max(efficiency, 0.00001f);
                 }
@@ -77,43 +102,47 @@ public class LaserTurret extends PowerTurret{
                 wasShooting = true;
                 heat = 1f;
                 curRecoil = 1f;
-            }else if(reloadCounter > 0){
+            } else if (reloadCounter > 0) {
                 wasShooting = true;
 
-                if(coolant != null){
-                    //TODO does not handle multi liquid req?
+                if (coolant != null) {
+                    // TODO does not handle multi liquid req?
                     Liquid liquid = liquids.current();
                     float maxUsed = coolant.amount;
-                    float used = (cheating() ? maxUsed : Math.min(liquids.get(liquid), maxUsed)) * delta();
+                    float used =
+                            (cheating() ? maxUsed : Math.min(liquids.get(liquid), maxUsed))
+                                    * delta();
                     reloadCounter -= used * liquid.heatCapacity * coolantMultiplier;
                     liquids.remove(liquid, used);
 
-                    if(Mathf.chance(0.06 * used)){
-                        coolEffect.at(x + Mathf.range(size * tilesize / 2f), y + Mathf.range(size * tilesize / 2f));
+                    if (Mathf.chance(0.06 * used)) {
+                        coolEffect.at(
+                                x + Mathf.range(size * tilesize / 2f),
+                                y + Mathf.range(size * tilesize / 2f));
                     }
-                }else{
+                } else {
                     reloadCounter -= edelta();
                 }
             }
         }
 
         @Override
-        public float progress(){
+        public float progress() {
             return 1f - Mathf.clamp(reloadCounter / reload);
         }
 
         @Override
-        protected void updateReload(){
-            //updated in updateTile() depending on coolant
+        protected void updateReload() {
+            // updated in updateTile() depending on coolant
         }
 
         @Override
-        protected void updateShooting(){
-            if(bullets.any()){
+        protected void updateShooting() {
+            if (bullets.any()) {
                 return;
             }
 
-            if(reloadCounter <= 0 && efficiency > 0 && !charging() && shootWarmup >= minWarmup){
+            if (reloadCounter <= 0 && efficiency > 0 && !charging() && shootWarmup >= minWarmup) {
                 BulletType type = peekAmmo();
 
                 shoot(type);
@@ -123,19 +152,27 @@ public class LaserTurret extends PowerTurret{
         }
 
         @Override
-        protected void turnToTarget(float targetRot){
-            rotation = Angles.moveToward(rotation, targetRot, efficiency * rotateSpeed * delta() * (bullets.any() ? firingMoveFract : 1f));
+        protected void turnToTarget(float targetRot) {
+            rotation =
+                    Angles.moveToward(
+                            rotation,
+                            targetRot,
+                            efficiency
+                                    * rotateSpeed
+                                    * delta()
+                                    * (bullets.any() ? firingMoveFract : 1f));
         }
 
         @Override
-        protected void handleBullet(@Nullable Bullet bullet, float offsetX, float offsetY, float angleOffset){
-            if(bullet != null){
+        protected void handleBullet(
+                @Nullable Bullet bullet, float offsetX, float offsetY, float angleOffset) {
+            if (bullet != null) {
                 bullets.add(new BulletEntry(bullet, offsetX, offsetY, angleOffset, shootDuration));
             }
         }
 
         @Override
-        public boolean shouldActiveSound(){
+        public boolean shouldActiveSound() {
             return bullets.any();
         }
     }

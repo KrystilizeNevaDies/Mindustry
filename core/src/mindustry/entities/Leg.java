@@ -1,8 +1,8 @@
 package mindustry.entities;
 
-import arc.math.geom.*;
+import arc.math.geom.Vec2;
 
-public class Leg{
+public class Leg {
     public final Vec2 joint = new Vec2(), base = new Vec2();
     public int group;
     public boolean moving;

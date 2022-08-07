@@ -1,8 +1,8 @@
 package mindustry.service;
 
-import static mindustry.Vars.*;
+import static mindustry.Vars.service;
 
-public enum SStat{
+public enum SStat {
     unitsDestroyed,
     attacksWon,
     pvpsWon,
@@ -24,30 +24,30 @@ public enum SStat{
     schematicsCreated,
     ;
 
-    public int get(){
+    public int get() {
         return service.getStat(name(), 0);
     }
 
-    public void max(int amount){
-        if(amount > get()){
+    public void max(int amount) {
+        if (amount > get()) {
             set(amount);
         }
     }
 
-    public void set(int amount){
+    public void set(int amount) {
         service.setStat(name(), amount);
         service.storeStats();
 
-        for(Achievement a : Achievement.all){
+        for (Achievement a : Achievement.all) {
             a.checkCompletion();
         }
     }
 
-    public void add(int amount){
+    public void add(int amount) {
         set(get() + amount);
     }
 
-    public void add(){
+    public void add() {
         add(1);
     }
 }

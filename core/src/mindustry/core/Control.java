@@ -1,40 +1,54 @@
 package mindustry.core;
 
-import arc.*;
-import arc.assets.*;
-import arc.audio.*;
-import arc.graphics.g2d.*;
-import arc.input.*;
-import arc.math.*;
-import arc.scene.style.*;
-import arc.scene.ui.*;
-import arc.struct.*;
-import arc.util.*;
-import mindustry.*;
-import mindustry.audio.*;
-import mindustry.content.*;
-import mindustry.content.TechTree.*;
-import mindustry.core.GameState.*;
-import mindustry.entities.*;
+import arc.ApplicationListener;
+import arc.Core;
+import arc.Events;
+import arc.assets.Loadable;
+import arc.audio.Music;
+import arc.graphics.g2d.Draw;
+import arc.input.KeyCode;
+import arc.math.Mathf;
+import arc.scene.style.TextureRegionDrawable;
+import arc.scene.ui.Dialog;
+import arc.struct.Seq;
+import arc.util.Interval;
+import arc.util.Log;
+import arc.util.Nullable;
+import arc.util.Time;
+import mindustry.Vars;
+import mindustry.audio.SoundControl;
+import mindustry.content.Fx;
+import mindustry.content.TechTree;
+import mindustry.content.TechTree.TechNode;
+import mindustry.core.GameState.State;
+import mindustry.entities.Effect;
 import mindustry.game.EventType.*;
-import mindustry.game.Objectives.*;
-import mindustry.game.*;
-import mindustry.game.Saves.*;
+import mindustry.game.Objectives.SectorComplete;
+import mindustry.game.Rules;
+import mindustry.game.Saves;
+import mindustry.game.Saves.SaveSlot;
+import mindustry.game.Schematics;
 import mindustry.gen.*;
-import mindustry.input.*;
-import mindustry.io.*;
-import mindustry.io.SaveIO.*;
+import mindustry.input.Binding;
+import mindustry.input.DesktopInput;
+import mindustry.input.InputHandler;
+import mindustry.input.MobileInput;
+import mindustry.io.SaveIO;
+import mindustry.io.SaveIO.SaveException;
 import mindustry.maps.Map;
-import mindustry.maps.*;
-import mindustry.net.*;
-import mindustry.type.*;
-import mindustry.ui.dialogs.*;
-import mindustry.world.*;
-import mindustry.world.blocks.storage.CoreBlock.*;
+import mindustry.maps.SectorDamage;
+import mindustry.net.WorldReloader;
+import mindustry.type.Sector;
+import mindustry.type.SectorPreset;
+import mindustry.ui.dialogs.BaseDialog;
+import mindustry.world.Block;
+import mindustry.world.Tile;
+import mindustry.world.blocks.storage.CoreBlock.CoreBuild;
 
-import java.io.*;
-import java.text.*;
-import java.util.*;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 
 import static arc.Core.*;
 import static mindustry.Vars.*;
@@ -45,7 +59,7 @@ import static mindustry.Vars.*;
  * Should <i>not</i> handle any logic-critical state.
  * This class is not created in the headless server.
  */
-public class Control implements ApplicationListener, Loadable{
+public class Control implements ApplicationListener, Loadable {
     public Saves saves;
     public SoundControl sound;
     public InputHandler input;
@@ -55,13 +69,13 @@ public class Control implements ApplicationListener, Loadable{
     private boolean wasPaused = false;
     private Seq<Building> toBePlaced = new Seq<>(false);
 
-    public Control(){
+    public Control() {
         saves = new Saves();
         sound = new SoundControl();
 
         //show dialog saying that mod loading was skipped.
         Events.on(ClientLoadEvent.class, e -> {
-            if(Vars.mods.skipModLoading() && Vars.mods.list().any()){
+            if (Vars.mods.skipModLoading() && Vars.mods.list().any()) {
                 Time.runTask(4f, () -> {
                     ui.showInfo("@mods.initfailed");
                 });
@@ -69,7 +83,7 @@ public class Control implements ApplicationListener, Loadable{
         });
 
         Events.on(StateChangeEvent.class, event -> {
-            if((event.from == State.playing && event.to == State.menu) || (event.from == State.menu && event.to != State.menu)){
+            if ((event.from == State.playing && event.to == State.menu) || (event.from == State.menu && event.to != State.menu)) {
                 Time.runTask(5f, platform::updateRPC);
             }
         });
@@ -82,13 +96,13 @@ public class Control implements ApplicationListener, Loadable{
         });
 
         Events.on(WorldLoadEvent.class, event -> {
-            if(Mathf.zero(player.x) && Mathf.zero(player.y)){
+            if (Mathf.zero(player.x) && Mathf.zero(player.y)) {
                 Building core = player.bestCore();
-                if(core != null){
+                if (core != null) {
                     player.set(core);
                     camera.position.set(core);
                 }
-            }else{
+            } else {
                 camera.position.set(player);
             }
         });
@@ -106,7 +120,7 @@ public class Control implements ApplicationListener, Loadable{
         });
 
         Events.on(WaveEvent.class, event -> {
-            if(state.map.getHightScore() < state.wave){
+            if (state.map.getHightScore() < state.wave) {
                 hiscore = true;
                 state.map.setHighScore(state.wave);
             }
@@ -125,18 +139,18 @@ public class Control implements ApplicationListener, Loadable{
         Events.on(WorldLoadEvent.class, e -> {
             player.add();
             //make player admin on any load when hosting
-            if(net.active() && net.server()){
+            if (net.active() && net.server()) {
                 player.admin = true;
             }
         });
 
         //autohost for pvp maps
         Events.on(WorldLoadEvent.class, event -> app.post(() -> {
-            if(state.rules.pvp && !net.active()){
-                try{
+            if (state.rules.pvp && !net.active()) {
+                try {
                     net.host(port);
                     player.admin = true;
-                }catch(IOException e){
+                } catch (IOException e) {
                     ui.showException("@server.error", e);
                     state.set(State.menu);
                 }
@@ -144,15 +158,15 @@ public class Control implements ApplicationListener, Loadable{
         }));
 
         Events.on(UnlockEvent.class, e -> {
-            if(e.content.showUnlock()){
+            if (e.content.showUnlock()) {
                 ui.hudfrag.showUnlock(e.content);
             }
 
             checkAutoUnlocks();
 
-            if(e.content instanceof SectorPreset){
-                for(TechNode node : TechTree.all){
-                    if(!node.content.unlocked() && node.objectives.contains(o -> o instanceof SectorComplete sec && sec.preset == e.content) && !node.objectives.contains(o -> !o.complete())){
+            if (e.content instanceof SectorPreset) {
+                for (TechNode node : TechTree.all) {
+                    if (!node.content.unlocked() && node.objectives.contains(o -> o instanceof SectorComplete sec && sec.preset == e.content) && !node.objectives.contains(o -> !o.complete())) {
                         ui.hudfrag.showToast(new TextureRegionDrawable(node.content.uiIcon), iconLarge, bundle.get("available"));
                     }
                 }
@@ -165,10 +179,10 @@ public class Control implements ApplicationListener, Loadable{
 
         //delete save on campaign game over
         Events.on(GameOverEvent.class, e -> {
-            if(state.isCampaign() && !net.client() && !headless){
+            if (state.isCampaign() && !net.client() && !headless) {
 
                 //save gameover sate immediately
-                if(saves.getCurrent() != null){
+                if (saves.getCurrent() != null) {
                     saves.getCurrent().save();
                 }
             }
@@ -177,19 +191,19 @@ public class Control implements ApplicationListener, Loadable{
         Events.run(Trigger.newGame, () -> {
             var core = player.bestCore();
 
-            if(core == null) return;
+            if (core == null) return;
 
             camera.position.set(core);
             player.set(core);
 
             float coreDelay = 0f;
 
-            if(!settings.getBool("skipcoreanimation") && !state.rules.pvp){
+            if (!settings.getBool("skipcoreanimation") && !state.rules.pvp) {
                 coreDelay = coreLandDuration;
                 //delay player respawn so animation can play.
                 player.deathTimer = -80f;
                 //TODO this sounds pretty bad due to conflict
-                if(settings.getInt("musicvol") > 0){
+                if (settings.getInt("musicvol") > 0) {
                     Musics.land.stop();
                     Musics.land.play();
                     Musics.land.setVolume(settings.getInt("musicvol") / 100f);
@@ -203,45 +217,45 @@ public class Control implements ApplicationListener, Loadable{
                     Effect.shake(5f, 5f, core);
                     core.thrusterTime = 1f;
 
-                    if(state.isCampaign() && Vars.showSectorLandInfo && (state.rules.sector.preset == null || state.rules.sector.preset.showSectorLandInfo)){
+                    if (state.isCampaign() && Vars.showSectorLandInfo && (state.rules.sector.preset == null || state.rules.sector.preset.showSectorLandInfo)) {
                         ui.announce("[accent]" + state.rules.sector.name() + "\n" +
-                        (state.rules.sector.info.resources.any() ? "[lightgray]" + bundle.get("sectors.resources") + "[white] " +
-                        state.rules.sector.info.resources.toString(" ", u -> u.emoji()) : ""), 5);
+                                (state.rules.sector.info.resources.any() ? "[lightgray]" + bundle.get("sectors.resources") + "[white] " +
+                                        state.rules.sector.info.resources.toString(" ", u -> u.emoji()) : ""), 5);
                     }
                 });
             }
 
-            if(state.isCampaign()){
+            if (state.isCampaign()) {
 
                 //don't run when hosting, that doesn't really work.
-                if(state.rules.sector.planet.prebuildBase){
+                if (state.rules.sector.planet.prebuildBase) {
                     toBePlaced.clear();
                     float unitsPerTick = 2f;
                     float buildRadius = state.rules.enemyCoreBuildRadius * 1.5f;
 
                     //TODO if the save is unloaded or map is hosted, these blocks do not get built.
                     boolean anyBuilds = false;
-                    for(var build : state.rules.defaultTeam.data().buildings.copy()){
-                        if(!(build instanceof CoreBuild) && !build.block.privileged){
+                    for (var build : state.rules.defaultTeam.data().buildings.copy()) {
+                        if (!(build instanceof CoreBuild) && !build.block.privileged) {
                             var ccore = build.closestCore();
 
-                            if(ccore != null){
+                            if (ccore != null) {
                                 anyBuilds = true;
 
-                                if(!net.active()){
+                                if (!net.active()) {
                                     build.pickedUp();
                                     build.tile.remove();
 
                                     toBePlaced.add(build);
 
                                     Time.run(build.dst(ccore) / unitsPerTick + coreDelay, () -> {
-                                        if(build.tile.build != build){
+                                        if (build.tile.build != build) {
                                             placeLandBuild(build);
 
                                             toBePlaced.remove(build);
                                         }
                                     });
-                                }else{
+                                } else {
                                     //when already hosting, instantly build everything. this looks bad but it's better than a desync
                                     Fx.coreBuildBlock.at(build.x, build.y, 0f, build.block);
                                     Fx.placeBlock.at(build.x, build.y, build.block.size);
@@ -250,8 +264,8 @@ public class Control implements ApplicationListener, Loadable{
                         }
                     }
 
-                    if(anyBuilds){
-                        for(var ccore : state.rules.defaultTeam.data().cores){
+                    if (anyBuilds) {
+                        for (var ccore : state.rules.defaultTeam.data().cores) {
                             Time.run(coreDelay, () -> {
                                 Fx.coreBuildShockwave.at(ccore.x, ccore.y, buildRadius);
                             });
@@ -265,16 +279,16 @@ public class Control implements ApplicationListener, Loadable{
         Events.on(HostEvent.class, e -> forcePlaceAll());
     }
 
-    private void forcePlaceAll(){
+    private void forcePlaceAll() {
         //force set buildings when a save is done or map is hosted, to prevent desyncs
-        for(var build : toBePlaced){
+        for (var build : toBePlaced) {
             placeLandBuild(build);
         }
 
         toBePlaced.clear();
     }
 
-    private void placeLandBuild(Building build){
+    private void placeLandBuild(Building build) {
         build.tile.setBlock(build.block, build.team, build.rotation, () -> build);
         build.dropped();
 
@@ -283,16 +297,16 @@ public class Control implements ApplicationListener, Loadable{
     }
 
     @Override
-    public void loadAsync(){
+    public void loadAsync() {
         Draw.scl = 1f / Core.atlas.find("scale_marker").width;
 
         Core.input.setCatch(KeyCode.back, true);
 
         Core.settings.defaults(
-        "ip", "localhost",
-        "color-0", playerColors[8].rgba(),
-        "name", "",
-        "lastBuild", 0
+                "ip", "localhost",
+                "color-0", playerColors[8].rgba(),
+                "name", "",
+                "lastBuild", 0
         );
 
         createPlayer();
@@ -300,101 +314,103 @@ public class Control implements ApplicationListener, Loadable{
         saves.load();
     }
 
-    /** Automatically unlocks things with no requirements and no locked parents. */
-    public void checkAutoUnlocks(){
-        if(net.client()) return;
+    /**
+     * Automatically unlocks things with no requirements and no locked parents.
+     */
+    public void checkAutoUnlocks() {
+        if (net.client()) return;
 
-        for(TechNode node : TechTree.all){
-            if(!node.content.unlocked() && (node.parent == null || node.parent.content.unlocked()) && node.requirements.length == 0 && !node.objectives.contains(o -> !o.complete())){
+        for (TechNode node : TechTree.all) {
+            if (!node.content.unlocked() && (node.parent == null || node.parent.content.unlocked()) && node.requirements.length == 0 && !node.objectives.contains(o -> !o.complete())) {
                 node.content.unlock();
             }
         }
     }
 
-    void createPlayer(){
+    void createPlayer() {
         player = Player.create();
         player.name = Core.settings.getString("name");
         player.color.set(Core.settings.getInt("color-0"));
 
-        if(mobile){
+        if (mobile) {
             input = new MobileInput();
-        }else{
+        } else {
             input = new DesktopInput();
         }
 
-        if(state.isGame()){
+        if (state.isGame()) {
             player.add();
         }
 
         Events.on(ClientLoadEvent.class, e -> input.add());
     }
 
-    public void setInput(InputHandler newInput){
+    public void setInput(InputHandler newInput) {
         Block block = input.block;
         boolean added = Core.input.getInputProcessors().contains(input);
         input.remove();
         this.input = newInput;
         newInput.block = block;
-        if(added){
+        if (added) {
             newInput.add();
         }
     }
 
-    public void playMap(Map map, Rules rules){
+    public void playMap(Map map, Rules rules) {
         playMap(map, rules, false);
     }
 
-    public void playMap(Map map, Rules rules, boolean playtest){
+    public void playMap(Map map, Rules rules, boolean playtest) {
         ui.loadAnd(() -> {
             logic.reset();
             world.loadMap(map, rules);
             state.rules = rules;
-            if(playtest) state.playtestingMap = map;
+            if (playtest) state.playtestingMap = map;
             state.rules.sector = null;
             state.rules.editor = false;
             logic.play();
-            if(settings.getBool("savecreate") && !world.isInvalidMap() && !playtest){
+            if (settings.getBool("savecreate") && !world.isInvalidMap() && !playtest) {
                 control.saves.addSave(map.name() + " " + new SimpleDateFormat("MMM dd h:mm", Locale.getDefault()).format(new Date()));
             }
             Events.fire(Trigger.newGame);
 
             //booted out of map, resume editing
-            if(world.isInvalidMap() && playtest){
+            if (world.isInvalidMap() && playtest) {
                 Dialog current = scene.getDialog();
                 ui.editor.resumeAfterPlaytest(map);
-                if(current != null){
+                if (current != null) {
                     current.update(current::toFront);
                 }
             }
         });
     }
 
-    public void playSector(Sector sector){
+    public void playSector(Sector sector) {
         playSector(sector, sector);
     }
 
-    public void playSector(@Nullable Sector origin, Sector sector){
+    public void playSector(@Nullable Sector origin, Sector sector) {
         playSector(origin, sector, new WorldReloader());
     }
 
-    void playSector(@Nullable Sector origin, Sector sector, WorldReloader reloader){
+    void playSector(@Nullable Sector origin, Sector sector, WorldReloader reloader) {
         ui.loadAnd(() -> {
-            if(saves.getCurrent() != null && state.isGame()){
+            if (saves.getCurrent() != null && state.isGame()) {
                 control.saves.getCurrent().save();
                 control.saves.resetSave();
             }
 
             //for planet launches, mostly
-            if(sector.preset != null){
+            if (sector.preset != null) {
                 sector.preset.quietUnlock();
             }
 
             ui.planet.hide();
             SaveSlot slot = sector.save;
             sector.planet.setLastSector(sector);
-            if(slot != null && !clearSectors && (!sector.planet.clearSectorOnLose || sector.info.hasCore)){
+            if (slot != null && !clearSectors && (!sector.planet.clearSectorOnLose || sector.info.hasCore)) {
 
-                try{
+                try {
                     boolean hadNoCore = !sector.info.hasCore;
                     reloader.begin();
                     slot.load();
@@ -403,13 +419,13 @@ public class Control implements ApplicationListener, Loadable{
                     state.rules.cloudColor = sector.planet.landCloudColor;
 
                     //if there is no base, simulate a new game and place the right loadout at the spawn position
-                    if(state.rules.defaultTeam.cores().isEmpty() || hadNoCore){
+                    if (state.rules.defaultTeam.cores().isEmpty() || hadNoCore) {
 
-                        if(sector.planet.clearSectorOnLose){
+                        if (sector.planet.clearSectorOnLose) {
                             playNewSector(origin, sector, reloader);
-                        }else{
+                        } else {
                             //no spawn set -> delete the sector save
-                            if(sector.info.spawnPosition == 0){
+                            if (sector.info.spawnPosition == 0) {
                                 //delete old save
                                 sector.save = null;
                                 slot.delete();
@@ -432,7 +448,7 @@ public class Control implements ApplicationListener, Loadable{
                             //reset captured state
                             sector.info.wasCaptured = false;
 
-                            if(state.rules.sector.planet.allowWaves){
+                            if (state.rules.sector.planet.allowWaves) {
                                 //re-enable waves
                                 state.rules.waves = true;
                                 //reset win wave??
@@ -440,13 +456,13 @@ public class Control implements ApplicationListener, Loadable{
                             }
 
                             //if there's still an enemy base left, fix it
-                            if(state.rules.attackMode){
+                            if (state.rules.attackMode) {
                                 //replace all broken blocks
-                                for(var plan : state.rules.waveTeam.data().plans){
+                                for (var plan : state.rules.waveTeam.data().plans) {
                                     Tile tile = world.tile(plan.x, plan.y);
-                                    if(tile != null){
+                                    if (tile != null) {
                                         tile.setBlock(content.block(plan.block), state.rules.waveTeam, plan.rotation);
-                                        if(plan.config != null && tile.build != null){
+                                        if (plan.config != null && tile.build != null) {
                                             tile.build.configureAny(plan.config);
                                         }
                                     }
@@ -473,12 +489,12 @@ public class Control implements ApplicationListener, Loadable{
                             state.set(State.playing);
                             reloader.end();
                         }
-                    }else{
+                    } else {
                         state.set(State.playing);
                         reloader.end();
                     }
 
-                }catch(SaveException e){
+                } catch (SaveException e) {
                     Log.err(e);
                     sector.save = null;
                     Time.runTask(10f, () -> ui.showErrorMessage("@save.corrupted"));
@@ -486,13 +502,13 @@ public class Control implements ApplicationListener, Loadable{
                     playSector(origin, sector);
                 }
                 ui.planet.hide();
-            }else{
+            } else {
                 playNewSector(origin, sector, reloader);
             }
         });
     }
 
-    public void playNewSector(@Nullable Sector origin, Sector sector, WorldReloader reloader){
+    public void playNewSector(@Nullable Sector origin, Sector sector, WorldReloader reloader) {
         reloader.begin();
         world.loadSector(sector);
         state.rules.sector = sector;
@@ -507,23 +523,23 @@ public class Control implements ApplicationListener, Loadable{
         state.set(State.playing);
     }
 
-    public boolean isHighScore(){
+    public boolean isHighScore() {
         return hiscore;
     }
 
     @Override
-    public void dispose(){
+    public void dispose() {
         //try to save when exiting
-        if(saves != null && saves.getCurrent() != null && saves.getCurrent().isAutosave() && !net.client() && !state.isMenu() && !state.gameOver){
-            try{
+        if (saves != null && saves.getCurrent() != null && saves.getCurrent().isAutosave() && !net.client() && !state.isMenu() && !state.gameOver) {
+            try {
                 SaveIO.save(control.saves.getCurrent().file);
                 Log.info("Saved on exit.");
-            }catch(Throwable t){
+            } catch (Throwable t) {
                 Log.err(t);
             }
         }
 
-        for(Music music : assets.getAll(Music.class, new Seq<>())){
+        for (Music music : assets.getAll(Music.class, new Seq<>())) {
             music.stop();
         }
 
@@ -531,26 +547,26 @@ public class Control implements ApplicationListener, Loadable{
     }
 
     @Override
-    public void pause(){
-        if(settings.getBool("backgroundpause", true) && !net.active()){
+    public void pause() {
+        if (settings.getBool("backgroundpause", true) && !net.active()) {
             wasPaused = state.is(State.paused);
-            if(state.is(State.playing)) state.set(State.paused);
+            if (state.is(State.playing)) state.set(State.paused);
         }
     }
 
     @Override
-    public void resume(){
-        if(state.is(State.paused) && !wasPaused && settings.getBool("backgroundpause", true) && !net.active()){
+    public void resume() {
+        if (state.is(State.paused) && !wasPaused && settings.getBool("backgroundpause", true) && !net.active()) {
             state.set(State.playing);
         }
     }
 
     @Override
-    public void init(){
+    public void init() {
         platform.updateRPC();
 
         //display UI scale changed dialog
-        if(Core.settings.getBool("uiscalechanged", false)){
+        if (Core.settings.getBool("uiscalechanged", false)) {
             Core.app.post(() -> Core.app.post(() -> {
                 BaseDialog dialog = new BaseDialog("@confirm");
                 dialog.setFillParent(true);
@@ -564,10 +580,10 @@ public class Control implements ApplicationListener, Loadable{
                 };
 
                 dialog.cont.label(() -> {
-                    if(countdown[0] <= 0){
+                    if (countdown[0] <= 0) {
                         exit.run();
                     }
-                    return Core.bundle.format("uiscale.reset", (int)((countdown[0] -= Time.delta) / 60f));
+                    return Core.bundle.format("uiscale.reset", (int) ((countdown[0] -= Time.delta) / 60f));
                 }).pad(10f).expand().center();
 
                 dialog.buttons.defaults().size(200f, 60f);
@@ -584,82 +600,82 @@ public class Control implements ApplicationListener, Loadable{
     }
 
     @Override
-    public void update(){
+    public void update() {
         //this happens on Android and nobody knows why
-        if(assets == null) return;
+        if (assets == null) return;
 
         saves.update();
 
         //update and load any requested assets
-        try{
+        try {
             assets.update();
-        }catch(Exception ignored){
+        } catch (Exception ignored) {
         }
 
         input.updateState();
 
         sound.update();
 
-        if(Core.input.keyTap(Binding.fullscreen)){
+        if (Core.input.keyTap(Binding.fullscreen)) {
             boolean full = settings.getBool("fullscreen");
-            if(full){
+            if (full) {
                 graphics.setWindowedMode(graphics.getWidth(), graphics.getHeight());
-            }else{
+            } else {
                 graphics.setFullscreen();
             }
             settings.put("fullscreen", !full);
         }
 
-        if(Float.isNaN(Vars.player.x) || Float.isNaN(Vars.player.y)){
+        if (Float.isNaN(Vars.player.x) || Float.isNaN(Vars.player.y)) {
             player.set(0, 0);
-            if(!player.dead()) player.unit().kill();
+            if (!player.dead()) player.unit().kill();
         }
-        if(Float.isNaN(camera.position.x)) camera.position.x = world.unitWidth()/2f;
-        if(Float.isNaN(camera.position.y)) camera.position.y = world.unitHeight()/2f;
+        if (Float.isNaN(camera.position.x)) camera.position.x = world.unitWidth() / 2f;
+        if (Float.isNaN(camera.position.y)) camera.position.y = world.unitHeight() / 2f;
 
-        if(state.isGame()){
+        if (state.isGame()) {
             input.update();
 
             //auto-update rpc every 5 seconds
-            if(timer.get(0, 60 * 5)){
+            if (timer.get(0, 60 * 5)) {
                 platform.updateRPC();
             }
 
             //unlock core items
             var core = state.rules.defaultTeam.core();
-            if(!net.client() && core != null && state.isCampaign()){
+            if (!net.client() && core != null && state.isCampaign()) {
                 core.items.each((i, a) -> i.unlock());
             }
 
             //cannot launch while paused
-            if(state.is(State.paused) && renderer.isCutscene()){
+            if (state.is(State.paused) && renderer.isCutscene()) {
                 state.set(State.playing);
             }
 
-            if(Core.input.keyTap(Binding.pause) && !renderer.isCutscene() && !scene.hasDialog() && !scene.hasKeyboard() && !ui.restart.isShown() && (state.is(State.paused) || state.is(State.playing))){
+            if (Core.input.keyTap(Binding.pause) && !renderer.isCutscene() && !scene.hasDialog() && !scene.hasKeyboard() && !ui.restart.isShown() && (state.is(State.paused) || state.is(State.playing))) {
                 state.set(state.is(State.playing) ? State.paused : State.playing);
             }
 
-            if(Core.input.keyTap(Binding.menu) && !ui.restart.isShown() && !ui.minimapfrag.shown()){
-                if(ui.chatfrag.shown()){
+            if (Core.input.keyTap(Binding.menu) && !ui.restart.isShown() && !ui.minimapfrag.shown()) {
+                if (ui.chatfrag.shown()) {
                     ui.chatfrag.hide();
-                }else if(!ui.paused.isShown() && !scene.hasDialog()){
+                } else if (!ui.paused.isShown() && !scene.hasDialog()) {
                     ui.paused.show();
                     state.set(State.paused);
                 }
             }
 
-            if(!mobile && Core.input.keyTap(Binding.screenshot) && !scene.hasField() && !scene.hasKeyboard()){
+            if (!mobile && Core.input.keyTap(Binding.screenshot) && !scene.hasField() && !scene.hasKeyboard()) {
                 renderer.takeMapScreenshot();
             }
 
-        }else{
+        } else {
             //this runs in the menu
-            if(!state.isPaused()){
+            if (!state.isPaused()) {
                 Time.update();
             }
 
-            if(!scene.hasDialog() && !scene.root.getChildren().isEmpty() && !(scene.root.getChildren().peek() instanceof Dialog) && Core.input.keyTap(KeyCode.back)){
+            if (!scene.hasDialog() && !scene.root.getChildren().isEmpty() && !(scene.root.getChildren().peek() instanceof Dialog) && Core.input.keyTap(KeyCode.back)) {
                 platform.hide();
             }
         }

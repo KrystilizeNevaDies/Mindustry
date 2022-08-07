@@ -1,78 +1,85 @@
 package mindustry.entities.comp;
 
-import arc.math.geom.*;
-import arc.util.*;
-import mindustry.annotations.Annotations.*;
-import mindustry.content.*;
-import mindustry.core.*;
+import arc.math.geom.Position;
+import arc.util.Nullable;
+import mindustry.annotations.Annotations.Component;
+import mindustry.annotations.Annotations.SyncField;
+import mindustry.annotations.Annotations.SyncLocal;
+import mindustry.content.Blocks;
+import mindustry.core.World;
 import mindustry.gen.*;
-import mindustry.world.*;
-import mindustry.world.blocks.environment.*;
+import mindustry.world.Block;
+import mindustry.world.Tile;
+import mindustry.world.blocks.environment.Floor;
 
-import static mindustry.Vars.*;
+import static mindustry.Vars.world;
 
 @Component
-abstract class PosComp implements Position{
-    @SyncField(true) @SyncLocal float x, y;
+abstract class PosComp implements Position {
+    @SyncField(true)
+    @SyncLocal
+    float x, y;
 
-    void set(float x, float y){
+    void set(float x, float y) {
         this.x = x;
         this.y = y;
     }
 
-    void set(Position pos){
+    void set(Position pos) {
         set(pos.getX(), pos.getY());
     }
 
-    void trns(float x, float y){
+    void trns(float x, float y) {
         set(this.x + x, this.y + y);
     }
 
-    void trns(Position pos){
+    void trns(Position pos) {
         trns(pos.getX(), pos.getY());
     }
 
-    int tileX(){
+    int tileX() {
         return World.toTile(x);
     }
 
-    int tileY(){
+    int tileY() {
         return World.toTile(y);
     }
 
-    /** Returns air if this unit is on a non-air top block. */
-    Floor floorOn(){
+    /**
+     * Returns air if this unit is on a non-air top block.
+     */
+    Floor floorOn() {
         Tile tile = tileOn();
-        return tile == null || tile.block() != Blocks.air ? (Floor)Blocks.air : tile.floor();
+        return tile == null || tile.block() != Blocks.air ? (Floor) Blocks.air : tile.floor();
     }
 
-    Block blockOn(){
+    Block blockOn() {
         Tile tile = tileOn();
         return tile == null ? Blocks.air : tile.block();
     }
 
     @Nullable
-    Building buildOn(){
+    Building buildOn() {
         return world.buildWorld(x, y);
     }
 
     @Nullable
-    Tile tileOn(){
+    Tile tileOn() {
         return world.tileWorld(x, y);
     }
 
-    boolean onSolid(){
+    boolean onSolid() {
         Tile tile = tileOn();
         return tile == null || tile.solid();
     }
 
     @Override
-    public float getX(){
+    public float getX() {
         return x;
     }
 
     @Override
-    public float getY(){
+    public float getY() {
         return y;
     }
 }

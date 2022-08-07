@@ -1,89 +1,99 @@
 package mindustry.editor;
 
-import arc.struct.*;
-import mindustry.annotations.Annotations.*;
-import mindustry.game.*;
+import arc.struct.LongSeq;
+import mindustry.annotations.Annotations.Struct;
+import mindustry.game.Team;
 import mindustry.gen.*;
-import mindustry.world.*;
-import mindustry.world.blocks.environment.*;
+import mindustry.world.Block;
+import mindustry.world.Tile;
+import mindustry.world.blocks.environment.Floor;
 
-import static mindustry.Vars.*;
+import static mindustry.Vars.content;
+import static mindustry.Vars.editor;
 
-public class DrawOperation{
+public class DrawOperation {
     private LongSeq array = new LongSeq();
 
-    public boolean isEmpty(){
+    public boolean isEmpty() {
         return array.isEmpty();
     }
 
-    public void addOperation(long op){
+    public void addOperation(long op) {
         array.add(op);
     }
 
-    public void undo(){
-        for(int i = array.size - 1; i >= 0; i--){
+    public void undo() {
+        for (int i = array.size - 1; i >= 0; i--) {
             updateTile(i);
         }
     }
 
-    public void redo(){
-        for(int i = 0; i < array.size; i++){
+    public void redo() {
+        for (int i = 0; i < array.size; i++) {
             updateTile(i);
         }
     }
 
-    private void updateTile(int i){
+    private void updateTile(int i) {
         long l = array.get(i);
-        array.set(i, TileOp.get(TileOp.x(l), TileOp.y(l), TileOp.type(l), getTile(editor.tile(TileOp.x(l), TileOp.y(l)), TileOp.type(l))));
+        array.set(
+                i,
+                TileOp.get(
+                        TileOp.x(l),
+                        TileOp.y(l),
+                        TileOp.type(l),
+                        getTile(editor.tile(TileOp.x(l), TileOp.y(l)), TileOp.type(l))));
         setTile(editor.tile(TileOp.x(l), TileOp.y(l)), TileOp.type(l), TileOp.value(l));
     }
 
-    short getTile(Tile tile, byte type){
-        if(type == OpType.floor.ordinal()){
+    short getTile(Tile tile, byte type) {
+        if (type == OpType.floor.ordinal()) {
             return tile.floorID();
-        }else if(type == OpType.block.ordinal()){
+        } else if (type == OpType.block.ordinal()) {
             return tile.blockID();
-        }else if(type == OpType.rotation.ordinal()){
-            return tile.build == null ? 0 : (byte)tile.build.rotation;
-        }else if(type == OpType.team.ordinal()){
-            return (byte)tile.getTeamID();
-        }else if(type == OpType.overlay.ordinal()){
+        } else if (type == OpType.rotation.ordinal()) {
+            return tile.build == null ? 0 : (byte) tile.build.rotation;
+        } else if (type == OpType.team.ordinal()) {
+            return (byte) tile.getTeamID();
+        } else if (type == OpType.overlay.ordinal()) {
             return tile.overlayID();
         }
         throw new IllegalArgumentException("Invalid type.");
     }
 
-    void setTile(Tile tile, byte type, short to){
-        editor.load(() -> {
-            if(type == OpType.floor.ordinal()){
-                tile.setFloor((Floor)content.block(to));
-            }else if(type == OpType.block.ordinal()){
-                tile.getLinkedTiles(t -> editor.renderer.updatePoint(t.x, t.y));
+    void setTile(Tile tile, byte type, short to) {
+        editor.load(
+                () -> {
+                    if (type == OpType.floor.ordinal()) {
+                        tile.setFloor((Floor) content.block(to));
+                    } else if (type == OpType.block.ordinal()) {
+                        tile.getLinkedTiles(t -> editor.renderer.updatePoint(t.x, t.y));
 
-                Block block = content.block(to);
-                tile.setBlock(block, tile.team(), tile.build == null ? 0 : tile.build.rotation);
+                        Block block = content.block(to);
+                        tile.setBlock(
+                                block, tile.team(), tile.build == null ? 0 : tile.build.rotation);
 
-                tile.getLinkedTiles(t -> editor.renderer.updatePoint(t.x, t.y));
-            }else if(type == OpType.rotation.ordinal()){
-                if(tile.build != null) tile.build.rotation = to;
-            }else if(type == OpType.team.ordinal()){
-                tile.setTeam(Team.get(to));
-            }else if(type == OpType.overlay.ordinal()){
-                tile.setOverlayID(to);
-            }
-        });
+                        tile.getLinkedTiles(t -> editor.renderer.updatePoint(t.x, t.y));
+                    } else if (type == OpType.rotation.ordinal()) {
+                        if (tile.build != null) tile.build.rotation = to;
+                    } else if (type == OpType.team.ordinal()) {
+                        tile.setTeam(Team.get(to));
+                    } else if (type == OpType.overlay.ordinal()) {
+                        tile.setOverlayID(to);
+                    }
+                });
         editor.renderer.updatePoint(tile.x, tile.y);
     }
 
     @Struct
-    class TileOpStruct{
+    class TileOpStruct {
         short x;
         short y;
         byte type;
         short value;
     }
 
-    public enum OpType{
+    public enum OpType {
         floor,
         block,
         rotation,

@@ -1,16 +1,18 @@
 package mindustry.world.modules;
 
-import arc.math.*;
-import arc.struct.*;
-import arc.util.*;
-import arc.util.io.*;
-import mindustry.type.*;
+import arc.math.WindowedMean;
+import arc.struct.Bits;
+import arc.util.Interval;
+import arc.util.Nullable;
+import arc.util.io.Reads;
+import arc.util.io.Writes;
+import mindustry.type.Liquid;
 
-import java.util.*;
+import java.util.Arrays;
 
-import static mindustry.Vars.*;
+import static mindustry.Vars.content;
 
-public class LiquidModule extends BlockModule{
+public class LiquidModule extends BlockModule {
     private static final int windowSize = 3;
     private static final Interval flowTimer = new Interval(2);
     private static final float pollScl = 20f;
@@ -25,18 +27,18 @@ public class LiquidModule extends BlockModule{
 
     private @Nullable WindowedMean[] flow;
 
-    public void updateFlow(){
-        if(flowTimer.get(1, pollScl)){
-            if(flow == null){
-                if(cacheFlow == null || cacheFlow.length != liquids.length){
+    public void updateFlow() {
+        if (flowTimer.get(1, pollScl)) {
+            if (flow == null) {
+                if (cacheFlow == null || cacheFlow.length != liquids.length) {
                     cacheFlow = new WindowedMean[liquids.length];
-                    for(int i = 0; i < liquids.length; i++){
+                    for (int i = 0; i < liquids.length; i++) {
                         cacheFlow[i] = new WindowedMean(windowSize);
                     }
                     cacheSums = new float[liquids.length];
                     displayFlow = new float[liquids.length];
-                }else{
-                    for(int i = 0; i < liquids.length; i++){
+                } else {
+                    for (int i = 0; i < liquids.length; i++) {
                         cacheFlow[i].reset();
                     }
                     Arrays.fill(cacheSums, 0);
@@ -50,88 +52,92 @@ public class LiquidModule extends BlockModule{
 
             boolean updateFlow = flowTimer.get(30);
 
-            for(int i = 0; i < liquids.length; i++){
+            for (int i = 0; i < liquids.length; i++) {
                 flow[i].add(cacheSums[i]);
-                if(cacheSums[i] > 0){
+                if (cacheSums[i] > 0) {
                     cacheBits.set(i);
                 }
                 cacheSums[i] = 0;
 
-                if(updateFlow){
+                if (updateFlow) {
                     displayFlow[i] = flow[i].hasEnoughData() ? flow[i].mean() / pollScl : -1;
                 }
             }
         }
     }
 
-    public void stopFlow(){
+    public void stopFlow() {
         flow = null;
     }
 
-    /** @return current liquid's flow rate in u/s; any value < 0 means 'not ready'. */
-    public float getFlowRate(Liquid liquid){
+    /**
+     * @return current liquid's flow rate in u/s; any value < 0 means 'not ready'.
+     */
+    public float getFlowRate(Liquid liquid) {
         return flow == null ? -1f : displayFlow[liquid.id] * 60;
     }
 
-    public boolean hasFlowLiquid(Liquid liquid){
+    public boolean hasFlowLiquid(Liquid liquid) {
         return flow != null && cacheBits.get(liquid.id);
     }
 
-    /** Last received or loaded liquid. Only valid for liquid modules with 1 type of liquid. */
-    public Liquid current(){
+    /**
+     * Last received or loaded liquid. Only valid for liquid modules with 1 type of liquid.
+     */
+    public Liquid current() {
         return current;
     }
 
-    public void reset(Liquid liquid, float amount){
+    public void reset(Liquid liquid, float amount) {
         Arrays.fill(liquids, 0f);
         liquids[liquid.id] = amount;
         current = liquid;
     }
 
-    public float currentAmount(){
+    public float currentAmount() {
         return liquids[current.id];
     }
 
-    public float get(Liquid liquid){
+    public float get(Liquid liquid) {
         return liquids[liquid.id];
     }
 
-    public void clear(){
+    public void clear() {
         Arrays.fill(liquids, 0);
     }
 
-    public void add(Liquid liquid, float amount){
+    public void add(Liquid liquid, float amount) {
         liquids[liquid.id] += amount;
         current = liquid;
 
-        if(flow != null){
+        if (flow != null) {
             cacheSums[liquid.id] += Math.max(amount, 0);
         }
     }
 
-    public void handleFlow(Liquid liquid, float amount){
-        if(flow != null){
+    public void handleFlow(Liquid liquid, float amount) {
+        if (flow != null) {
             cacheSums[liquid.id] += Math.max(amount, 0);
         }
     }
 
-    public void remove(Liquid liquid, float amount){
-        //cap to prevent negative removal
+    public void remove(Liquid liquid, float amount) {
+        // cap to prevent negative removal
         add(liquid, Math.max(-amount, -liquids[liquid.id]));
     }
 
-    public void each(LiquidConsumer cons){
-        for(int i = 0; i < liquids.length; i++){
-            if(liquids[i] > 0){
+    public void each(LiquidConsumer cons) {
+        for (int i = 0; i < liquids.length; i++) {
+            if (liquids[i] > 0) {
                 cons.accept(content.liquid(i), liquids[i]);
             }
         }
     }
 
-    public float sum(LiquidCalculator calc){
+    public float sum(LiquidCalculator calc) {
         float sum = 0f;
-        for(int i = 0; i < liquids.length; i++){
-            if(liquids[i] > 0){
+        for (int i = 0; i < liquids.length; i++) {
+            if (liquids[i] > 0) {
                 sum += calc.get(content.liquid(i), liquids[i]);
             }
         }
@@ -139,45 +145,45 @@ public class LiquidModule extends BlockModule{
     }
 
     @Override
-    public void write(Writes write){
+    public void write(Writes write) {
         int amount = 0;
-        for(float liquid : liquids){
-            if(liquid > 0) amount++;
+        for (float liquid : liquids) {
+            if (liquid > 0) amount++;
         }
 
-        write.s(amount); //amount of liquids
+        write.s(amount); // amount of liquids
 
-        for(int i = 0; i < liquids.length; i++){
-            if(liquids[i] > 0){
-                write.s(i); //liquid ID
-                write.f(liquids[i]); //liquid amount
+        for (int i = 0; i < liquids.length; i++) {
+            if (liquids[i] > 0) {
+                write.s(i); // liquid ID
+                write.f(liquids[i]); // liquid amount
             }
         }
     }
 
     @Override
-    public void read(Reads read, boolean legacy){
+    public void read(Reads read, boolean legacy) {
         Arrays.fill(liquids, 0);
         int count = legacy ? read.ub() : read.s();
 
-        for(int j = 0; j < count; j++){
+        for (int j = 0; j < count; j++) {
             Liquid liq = content.liquid(legacy ? read.ub() : read.s());
             float amount = read.f();
-            if(liq != null){
+            if (liq != null) {
                 int liquidid = liq.id;
                 liquids[liquidid] = amount;
-                if(amount > 0){
+                if (amount > 0) {
                     current = liq;
                 }
             }
         }
     }
 
-    public interface LiquidConsumer{
+    public interface LiquidConsumer {
         void accept(Liquid liquid, float amount);
     }
 
-    public interface LiquidCalculator{
+    public interface LiquidCalculator {
         float get(Liquid liquid, float amount);
     }
 }

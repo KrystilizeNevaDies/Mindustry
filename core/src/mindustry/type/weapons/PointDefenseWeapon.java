@@ -1,29 +1,29 @@
 package mindustry.type.weapons;
 
-import arc.graphics.*;
-import arc.math.*;
-import arc.math.geom.*;
-import mindustry.content.*;
-import mindustry.entities.*;
-import mindustry.entities.units.*;
+import arc.graphics.Color;
+import arc.math.Mathf;
+import arc.math.geom.Vec2;
+import mindustry.content.Fx;
+import mindustry.entities.Effect;
+import mindustry.entities.units.WeaponMount;
 import mindustry.gen.*;
-import mindustry.type.*;
+import mindustry.type.Weapon;
 
 /**
  * Note that this requires several things:
  * - A bullet with positive maxRange
  * - A bullet with positive damage
  * - Rotation
- * */
-public class PointDefenseWeapon extends Weapon{
+ */
+public class PointDefenseWeapon extends Weapon {
     public Color color = Color.white;
     public Effect beamEffect = Fx.pointBeam;
 
-    public PointDefenseWeapon(String name){
+    public PointDefenseWeapon(String name) {
         super(name);
     }
 
-    public PointDefenseWeapon(){
+    public PointDefenseWeapon() {
     }
 
     {
@@ -35,22 +35,22 @@ public class PointDefenseWeapon extends Weapon{
     }
 
     @Override
-    protected Teamc findTarget(Unit unit, float x, float y, float range, boolean air, boolean ground){
-        return Groups.bullet.intersect(x - range, y - range, range*2, range*2).min(b -> b.team != unit.team && b.type().hittable, b -> b.dst2(x, y));
+    protected Teamc findTarget(Unit unit, float x, float y, float range, boolean air, boolean ground) {
+        return Groups.bullet.intersect(x - range, y - range, range * 2, range * 2).min(b -> b.team != unit.team && b.type().hittable, b -> b.dst2(x, y));
     }
 
     @Override
-    protected boolean checkTarget(Unit unit, Teamc target, float x, float y, float range){
+    protected boolean checkTarget(Unit unit, Teamc target, float x, float y, float range) {
         return !(target.within(unit, range) && target.team() != unit.team && target instanceof Bullet bullet && bullet.type != null && bullet.type.hittable);
     }
 
     @Override
-    protected void shoot(Unit unit, WeaponMount mount, float shootX, float shootY, float rotation){
-        if(!(mount.target instanceof Bullet target)) return;
+    protected void shoot(Unit unit, WeaponMount mount, float shootX, float shootY, float rotation) {
+        if (!(mount.target instanceof Bullet target)) return;
 
-        if(target.damage() > bullet.damage){
+        if (target.damage() > bullet.damage) {
             target.damage(target.damage() - bullet.damage);
-        }else{
+        } else {
             target.remove();
         }
 

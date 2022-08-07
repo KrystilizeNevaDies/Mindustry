@@ -1,6 +1,6 @@
 package mindustry.logic;
 
-public enum MessageType{
+public enum MessageType {
     notify,
     announce,
     toast,

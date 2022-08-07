@@ -1,11 +1,11 @@
 package mindustry.type.weather;
 
-import mindustry.type.*;
+import mindustry.type.Weather;
 
-//TODO
-public class MagneticStorm extends Weather{
+// TODO
+public class MagneticStorm extends Weather {
 
-    public MagneticStorm(String name){
+    public MagneticStorm(String name) {
         super(name);
     }
 }

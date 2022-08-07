@@ -1,23 +1,29 @@
 package mindustry.world.blocks.distribution;
 
-import arc.graphics.g2d.*;
-import arc.math.*;
-import arc.util.*;
-import mindustry.annotations.Annotations.*;
-import mindustry.entities.*;
-import mindustry.entities.units.*;
+import arc.graphics.g2d.Draw;
+import arc.graphics.g2d.TextureRegion;
+import arc.math.Mathf;
+import arc.util.Eachable;
+import arc.util.Nullable;
+import mindustry.annotations.Annotations.Load;
+import mindustry.entities.TargetPriority;
+import mindustry.entities.units.BuildPlan;
 import mindustry.gen.*;
-import mindustry.type.*;
-import mindustry.world.*;
-import mindustry.world.meta.*;
+import mindustry.type.Item;
+import mindustry.world.Block;
+import mindustry.world.Edges;
+import mindustry.world.meta.BlockGroup;
+import mindustry.world.meta.Env;
+import mindustry.world.meta.Stat;
+import mindustry.world.meta.StatUnit;
 
-public class OverflowDuct extends Block{
+public class OverflowDuct extends Block {
     public float speed = 5f;
     public boolean invert = false;
 
     public @Load(value = "@-top") TextureRegion topRegion;
 
-    public OverflowDuct(String name){
+    public OverflowDuct(String name) {
         super(name);
 
         group = BlockGroup.transportation;
@@ -36,92 +42,92 @@ public class OverflowDuct extends Block{
     }
 
     @Override
-    public void setStats(){
+    public void setStats() {
         super.setStats();
 
         stats.add(Stat.itemsMoved, 60f / speed, StatUnit.itemsSecond);
     }
 
     @Override
-    public TextureRegion[] icons(){
+    public TextureRegion[] icons() {
         return new TextureRegion[]{region, topRegion};
     }
 
     @Override
-    public void drawPlanRegion(BuildPlan plan, Eachable<BuildPlan> list){
+    public void drawPlanRegion(BuildPlan plan, Eachable<BuildPlan> list) {
         Draw.rect(region, plan.drawx(), plan.drawy());
         Draw.rect(topRegion, plan.drawx(), plan.drawy(), plan.rotation * 90);
     }
 
     @Override
-    public boolean rotatedOutput(int x, int y){
+    public boolean rotatedOutput(int x, int y) {
         return false;
     }
 
-    public class OverflowDuctBuild extends Building{
+    public class OverflowDuctBuild extends Building {
         public float progress;
         public @Nullable Item current;
 
         @Override
-        public void draw(){
+        public void draw() {
             Draw.rect(region, x, y);
             Draw.rect(topRegion, x, y, rotdeg());
         }
 
         @Override
-        public void updateTile(){
+        public void updateTile() {
             progress += edelta() / speed * 2f;
 
-            if(current != null){
-                if(progress >= (1f - 1f/speed)){
+            if (current != null) {
+                if (progress >= (1f - 1f / speed)) {
                     var target = target();
-                    if(target != null){
+                    if (target != null) {
                         target.handleItem(this, current);
-                        cdump = (byte)(cdump == 0 ? 2 : 0);
+                        cdump = (byte) (cdump == 0 ? 2 : 0);
                         items.remove(current, 1);
                         current = null;
-                        progress %= (1f - 1f/speed);
+                        progress %= (1f - 1f / speed);
                     }
                 }
-            }else{
+            } else {
                 progress = 0;
             }
 
-            if(current == null && items.total() > 0){
+            if (current == null && items.total() > 0) {
                 current = items.first();
             }
         }
 
         @Nullable
-        public Building target(){
-            if(current == null) return null;
+        public Building target() {
+            if (current == null) return null;
 
-            if(invert){ //Lots of extra code. Make separate UnderflowDuct class?
+            if (invert) { // Lots of extra code. Make separate UnderflowDuct class?
                 Building l = left(), r = right();
                 boolean lc = l != null && l.team == team && l.acceptItem(this, current),
-                    rc = r != null && r.team == team && r.acceptItem(this, current);
+                        rc = r != null && r.team == team && r.acceptItem(this, current);
 
-                if(lc && !rc){
+                if (lc && !rc) {
                     return l;
-                }else if(rc && !lc){
+                } else if (rc && !lc) {
                     return r;
-                }else if(lc && rc){
+                } else if (lc && rc) {
                     return cdump == 0 ? l : r;
                 }
             }
 
             Building front = front();
-            if(front != null && front.team == team && front.acceptItem(this, current)){
+            if (front != null && front.team == team && front.acceptItem(this, current)) {
                 return front;
             }
 
-            if(invert) return null;
+            if (invert) return null;
 
-            for(int i = -1; i <= 1; i++){
+            for (int i = -1; i <= 1; i++) {
                 int dir = Mathf.mod(rotation + (((i + cdump + 1) % 3) - 1), 4);
-                if(dir == rotation) continue;
+                if (dir == rotation) continue;
                 Building other = nearby(dir);
-                if(other != null && other.team == team && other.acceptItem(this, current)){
+                if (other != null && other.team == team && other.acceptItem(this, current)) {
                     return other;
                 }
             }
@@ -130,26 +136,27 @@ public class OverflowDuct extends Block{
         }
 
         @Override
-        public boolean acceptItem(Building source, Item item){
-            return current == null && items.total() == 0 &&
-                (Edges.getFacingEdge(source.tile(), tile).relativeTo(tile) == rotation);
+        public boolean acceptItem(Building source, Item item) {
+            return current == null
+                    && items.total() == 0
+                    && (Edges.getFacingEdge(source.tile(), tile).relativeTo(tile) == rotation);
         }
 
         @Override
-        public int removeStack(Item item, int amount){
+        public int removeStack(Item item, int amount) {
             int removed = super.removeStack(item, amount);
-            if(item == current) current = null;
+            if (item == current) current = null;
             return removed;
         }
 
         @Override
-        public void handleStack(Item item, int amount, Teamc source){
+        public void handleStack(Item item, int amount, Teamc source) {
             super.handleStack(item, amount, source);
             current = item;
         }
 
         @Override
-        public void handleItem(Building source, Item item){
+        public void handleItem(Building source, Item item) {
             current = item;
             progress = -1f;
             items.add(item, 1);

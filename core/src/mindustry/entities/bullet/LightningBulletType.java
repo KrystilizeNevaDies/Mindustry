@@ -1,17 +1,18 @@
 package mindustry.entities.bullet;
 
-import arc.graphics.*;
-import arc.math.*;
-import mindustry.content.*;
-import mindustry.entities.*;
+import arc.graphics.Color;
+import arc.math.Mathf;
+import mindustry.content.Fx;
+import mindustry.content.StatusEffects;
+import mindustry.entities.Lightning;
 import mindustry.gen.*;
-import mindustry.graphics.*;
+import mindustry.graphics.Pal;
 
-public class LightningBulletType extends BulletType{
+public class LightningBulletType extends BulletType {
     public Color lightningColor = Pal.lancerLaser;
     public int lightningLength = 25, lightningLengthRand = 0;
 
-    public LightningBulletType(){
+    public LightningBulletType() {
         damage = 1f;
         speed = 0f;
         lifetime = 1;
@@ -19,26 +20,33 @@ public class LightningBulletType extends BulletType{
         hitEffect = Fx.hitLancer;
         keepVelocity = false;
         hittable = false;
-        //for stats
+        // for stats
         status = StatusEffects.shocked;
     }
 
     @Override
-    protected float calculateRange(){
-        return (lightningLength + lightningLengthRand/2f) * 6f;
+    protected float calculateRange() {
+        return (lightningLength + lightningLengthRand / 2f) * 6f;
     }
 
     @Override
-    public float estimateDPS(){
+    public float estimateDPS() {
         return super.estimateDPS() * Math.max(lightningLength / 10f, 1);
     }
 
     @Override
-    public void draw(Bullet b){
+    public void draw(Bullet b) {
     }
 
     @Override
-    public void init(Bullet b){
-        Lightning.create(b, lightningColor, damage, b.x, b.y, b.rotation(), lightningLength + Mathf.random(lightningLengthRand));
+    public void init(Bullet b) {
+        Lightning.create(
+                b,
+                lightningColor,
+                damage,
+                b.x,
+                b.y,
+                b.rotation(),
+                lightningLength + Mathf.random(lightningLengthRand));
     }
 }

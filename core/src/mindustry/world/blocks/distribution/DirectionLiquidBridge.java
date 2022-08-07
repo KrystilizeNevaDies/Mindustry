@@ -1,15 +1,16 @@
 package mindustry.world.blocks.distribution;
 
-import arc.graphics.g2d.*;
-import arc.util.*;
-import mindustry.annotations.Annotations.*;
+import arc.graphics.g2d.Draw;
+import arc.graphics.g2d.TextureRegion;
+import arc.util.Tmp;
+import mindustry.annotations.Annotations.Load;
 import mindustry.gen.*;
-import mindustry.graphics.*;
-import mindustry.type.*;
-import mindustry.world.blocks.liquid.*;
-import mindustry.world.meta.*;
+import mindustry.graphics.Layer;
+import mindustry.type.Liquid;
+import mindustry.world.blocks.liquid.LiquidBlock;
+import mindustry.world.meta.BlockGroup;
 
-public class DirectionLiquidBridge extends DirectionBridge{
+public class DirectionLiquidBridge extends DirectionBridge {
     public final int timerFlow = timers++;
 
     public float speed = 5f;
@@ -17,7 +18,7 @@ public class DirectionLiquidBridge extends DirectionBridge{
 
     public @Load("@-bottom") TextureRegion bottomRegion;
 
-    public DirectionLiquidBridge(String name){
+    public DirectionLiquidBridge(String name) {
         super(name);
 
         outputsLiquid = true;
@@ -29,17 +30,17 @@ public class DirectionLiquidBridge extends DirectionBridge{
 
 
     @Override
-    public TextureRegion[] icons(){
+    public TextureRegion[] icons() {
         return new TextureRegion[]{bottomRegion, region, dirRegion};
     }
 
-    public class DuctBridgeBuild extends DirectionBridgeBuild{
+    public class DuctBridgeBuild extends DirectionBridgeBuild {
 
         @Override
-        public void draw(){
+        public void draw() {
             Draw.rect(bottomRegion, x, y);
 
-            if(liquids.currentAmount() > 0.001f){
+            if (liquids.currentAmount() > 0.001f) {
                 LiquidBlock.drawTiledFrames(size, x, y, liquidPadding, liquids.current(), liquids.currentAmount() / liquidCapacity);
             }
 
@@ -47,45 +48,45 @@ public class DirectionLiquidBridge extends DirectionBridge{
 
             Draw.rect(dirRegion, x, y, rotdeg());
             var link = findLink();
-            if(link != null){
+            if (link != null) {
                 Draw.z(Layer.power - 1);
                 drawBridge(rotation, x, y, link.x, link.y, Tmp.c1.set(liquids.current().color).a(liquids.currentAmount() / liquidCapacity * liquids.current().color.a));
             }
         }
 
         @Override
-        public void updateTile(){
+        public void updateTile() {
             var link = findLink();
-            if(link != null){
+            if (link != null) {
                 moveLiquid(link, liquids.current());
                 link.occupied[rotation % 4] = this;
             }
 
-            if(link == null){
-                if(liquids.currentAmount() > 0.0001f && timer(timerFlow, 1)){
+            if (link == null) {
+                if (liquids.currentAmount() > 0.0001f && timer(timerFlow, 1)) {
                     moveLiquidForward(false, liquids.current());
                 }
             }
 
-            for(int i = 0; i < 4; i++){
-                if(occupied[i] == null || occupied[i].rotation != i || !occupied[i].isValid()){
+            for (int i = 0; i < 4; i++) {
+                if (occupied[i] == null || occupied[i].rotation != i || !occupied[i].isValid()) {
                     occupied[i] = null;
                 }
             }
         }
 
         @Override
-        public boolean acceptLiquid(Building source, Liquid liquid){
+        public boolean acceptLiquid(Building source, Liquid liquid) {
             var link = findLink();
             //only accept if there's an output point, or it comes from a link
-            if(link == null && !(source instanceof DirectionBridgeBuild b && b.findLink() == this)) return false;
+            if (link == null && !(source instanceof DirectionBridgeBuild b && b.findLink() == this)) return false;
 
             int rel = this.relativeToEdge(source.tile);
 
             return
-                hasLiquids && team == source.team &&
-                (liquids.current() == liquid || liquids.get(liquids.current()) < 0.2f) && rel != rotation &&
-                (occupied[(rel + 2) % 4] == null || occupied[(rel + 2) % 4] == source);
+                    hasLiquids && team == source.team &&
+                            (liquids.current() == liquid || liquids.get(liquids.current()) < 0.2f) && rel != rotation &&
+                            (occupied[(rel + 2) % 4] == null || occupied[(rel + 2) % 4] == source);
         }
     }
 }

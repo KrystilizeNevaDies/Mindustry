@@ -1,24 +1,28 @@
 package mindustry.ui.fragments;
 
-import arc.*;
-import arc.Input.*;
-import arc.graphics.*;
-import arc.graphics.g2d.*;
-import arc.math.*;
-import arc.scene.*;
-import arc.scene.ui.*;
-import arc.scene.ui.Label.*;
-import arc.scene.ui.TextField.*;
-import arc.scene.ui.layout.*;
-import arc.struct.*;
-import arc.util.*;
-import mindustry.input.*;
-import mindustry.ui.*;
+import arc.Core;
+import arc.Input.TextInput;
+import arc.graphics.Color;
+import arc.graphics.g2d.Draw;
+import arc.graphics.g2d.Font;
+import arc.graphics.g2d.GlyphLayout;
+import arc.math.Mathf;
+import arc.scene.Group;
+import arc.scene.ui.Label;
+import arc.scene.ui.Label.LabelStyle;
+import arc.scene.ui.TextField;
+import arc.scene.ui.TextField.TextFieldStyle;
+import arc.scene.ui.layout.Scl;
+import arc.scene.ui.layout.Table;
+import arc.struct.Seq;
+import arc.util.Align;
+import mindustry.input.Binding;
+import mindustry.ui.Fonts;
 
 import static arc.Core.*;
 import static mindustry.Vars.*;
 
-public class ConsoleFragment extends Table{
+public class ConsoleFragment extends Table {
     private static final int messagesShown = 30;
     private Seq<String> messages = new Seq<>();
     private boolean open = false, shown;
@@ -26,67 +30,85 @@ public class ConsoleFragment extends Table{
     private Label fieldlabel = new Label(">");
     private Font font;
     private GlyphLayout layout = new GlyphLayout();
-    private float offsetx = Scl.scl(4), offsety = Scl.scl(4), fontoffsetx = Scl.scl(2), chatspace = Scl.scl(50);
+    private float offsetx = Scl.scl(4),
+            offsety = Scl.scl(4),
+            fontoffsetx = Scl.scl(2),
+            chatspace = Scl.scl(50);
     private Color shadowColor = new Color(0, 0, 0, 0.4f);
     private float textspacing = Scl.scl(10);
     private Seq<String> history = new Seq<>();
     private int historyPos = 0;
     private int scrollPos = 0;
 
-    public ConsoleFragment(){
+    public ConsoleFragment() {
         setFillParent(true);
         font = Fonts.def;
 
-        visible(() -> {
-            if(input.keyTap(Binding.console) && settings.getBool("console") && (scene.getKeyboardFocus() == chatfield || scene.getKeyboardFocus() == null) && !ui.chatfrag.shown()){
-                shown = !shown;
-                if(shown && !open && settings.getBool("console")){
-                    toggle();
-                }
-                if(shown){
-                    chatfield.requestKeyboard();
-                }
-                clearChatInput();
-            }
+        visible(
+                () -> {
+                    if (input.keyTap(Binding.console)
+                            && settings.getBool("console")
+                            && (scene.getKeyboardFocus() == chatfield
+                            || scene.getKeyboardFocus() == null)
+                            && !ui.chatfrag.shown()) {
+                        shown = !shown;
+                        if (shown && !open && settings.getBool("console")) {
+                            toggle();
+                        }
+                        if (shown) {
+                            chatfield.requestKeyboard();
+                        }
+                        clearChatInput();
+                    }
 
-            return shown;
-        });
+                    return shown;
+                });
 
-        update(() -> {
-            if(input.keyTap(Binding.chat) && settings.getBool("console") && (scene.getKeyboardFocus() == chatfield || scene.getKeyboardFocus() == null)){
-                toggle();
-            }
+        update(
+                () -> {
+                    if (input.keyTap(Binding.chat)
+                            && settings.getBool("console")
+                            && (scene.getKeyboardFocus() == chatfield
+                            || scene.getKeyboardFocus() == null)) {
+                        toggle();
+                    }
 
-            if(open){
-                if(input.keyTap(Binding.chat_history_prev) && historyPos < history.size - 1){
-                    if(historyPos == 0) history.set(0, chatfield.getText());
-                    historyPos++;
-                    updateChat();
-                }
-                if(input.keyTap(Binding.chat_history_next) && historyPos > 0){
-                    historyPos--;
-                    updateChat();
-                }
-            }
+                    if (open) {
+                        if (input.keyTap(Binding.chat_history_prev)
+                                && historyPos < history.size - 1) {
+                            if (historyPos == 0) history.set(0, chatfield.getText());
+                            historyPos++;
+                            updateChat();
+                        }
+                        if (input.keyTap(Binding.chat_history_next) && historyPos > 0) {
+                            historyPos--;
+                            updateChat();
+                        }
+                    }
 
-            scrollPos = (int)Mathf.clamp(scrollPos + input.axis(Binding.chat_scroll), 0, Math.max(0, messages.size - messagesShown));
-        });
+                    scrollPos =
+                            (int)
+                                    Mathf.clamp(
+                                            scrollPos + input.axis(Binding.chat_scroll),
+                                            0,
+                                            Math.max(0, messages.size - messagesShown));
+                });
 
         history.insert(0, "");
         setup();
     }
 
-    public void build(Group parent){
+    public void build(Group parent) {
         scene.add(this);
     }
 
-    public void clearMessages(){
+    public void clearMessages() {
         messages.clear();
         history.clear();
         history.insert(0, "");
     }
 
-    private void setup(){
+    private void setup() {
         fieldlabel.setStyle(new LabelStyle(fieldlabel.getStyle()));
         fieldlabel.getStyle().font = font;
         fieldlabel.setStyle(fieldlabel.getStyle());
@@ -101,19 +123,23 @@ public class ConsoleFragment extends Table{
         add(chatfield).padBottom(offsety).padLeft(offsetx).growX().padRight(offsetx).height(28);
     }
 
-    protected void rect(float x, float y, float w, float h){
-        Draw.rect("whiteui", x + w/2f, y + h/2f, w, h);
+    protected void rect(float x, float y, float w, float h) {
+        Draw.rect("whiteui", x + w / 2f, y + h / 2f, w, h);
     }
 
     @Override
-    public void draw(){
+    public void draw() {
         float opacity = 1f;
-        float textWidth = graphics.getWidth() - offsetx*2f;
+        float textWidth = graphics.getWidth() - offsetx * 2f;
 
         Draw.color(shadowColor);
 
-        if(open){
-            rect(offsetx, chatfield.y + scene.marginBottom, chatfield.getWidth() + 15f, chatfield.getHeight() - 1);
+        if (open) {
+            rect(
+                    offsetx,
+                    chatfield.y + scene.marginBottom,
+                    chatfield.getWidth() + 15f,
+                    chatfield.getHeight() - 1);
         }
 
         super.draw();
@@ -127,24 +153,35 @@ public class ConsoleFragment extends Table{
         Draw.alpha(shadowColor.a * opacity);
 
         float theight = offsety + spacing + getMarginBottom() + scene.marginBottom;
-        for(int i = scrollPos; i < messages.size && i < messagesShown + scrollPos; i++){
+        for (int i = scrollPos; i < messages.size && i < messagesShown + scrollPos; i++) {
 
             layout.setText(font, messages.get(i), Color.white, textWidth, Align.bottomLeft, true);
             theight += layout.height + textspacing;
-            if(i - scrollPos == 0) theight -= textspacing + 1;
+            if (i - scrollPos == 0) theight -= textspacing + 1;
 
             font.getCache().clear();
             font.getCache().setColor(Color.white);
-            font.getCache().addText(messages.get(i), fontoffsetx + offsetx, offsety + theight, textWidth, Align.bottomLeft, true);
+            font.getCache()
+                    .addText(
+                            messages.get(i),
+                            fontoffsetx + offsetx,
+                            offsety + theight,
+                            textWidth,
+                            Align.bottomLeft,
+                            true);
 
-            if(!open){
+            if (!open) {
                 font.getCache().setAlphas(opacity);
                 Draw.color(0, 0, 0, shadowColor.a * opacity);
-            }else{
+            } else {
                 font.getCache().setAlphas(opacity);
             }
 
-            rect(offsetx, theight - layout.height - 2, textWidth + Scl.scl(4f), layout.height + textspacing);
+            rect(
+                    offsetx,
+                    theight - layout.height - 2,
+                    textWidth + Scl.scl(4f),
+                    layout.height + textspacing);
             Draw.color(shadowColor);
             Draw.alpha(opacity * shadowColor.a);
 
@@ -154,14 +191,14 @@ public class ConsoleFragment extends Table{
         Draw.color();
     }
 
-    private void sendMessage(){
+    private void sendMessage() {
         String message = chatfield.getText();
         clearChatInput();
 
-        if(message.replace(" ", "").isEmpty()) return;
+        if (message.replace(" ", "").isEmpty()) return;
 
-        //special case for 'clear' command
-        if(message.equals("clear")){
+        // special case for 'clear' command
+        if (message.equals("clear")) {
             clearMessages();
             return;
         }
@@ -172,25 +209,26 @@ public class ConsoleFragment extends Table{
         addMessage(mods.getScripts().runConsole(message).replace("[", "[["));
     }
 
-    public void toggle(){
+    public void toggle() {
 
-        if(!open){
+        if (!open) {
             scene.setKeyboardFocus(chatfield);
             open = !open;
-            if(mobile){
+            if (mobile) {
                 TextInput input = new TextInput();
-                input.accepted = text -> {
-                    chatfield.setText(text);
-                    sendMessage();
-                    hide();
-                    Core.input.setOnscreenKeyboardVisible(false);
-                };
+                input.accepted =
+                        text -> {
+                            chatfield.setText(text);
+                            sendMessage();
+                            hide();
+                            Core.input.setOnscreenKeyboardVisible(false);
+                        };
                 input.canceled = this::hide;
                 Core.input.getTextInput(input);
-            }else{
+            } else {
                 chatfield.fireClick();
             }
-        }else{
+        } else {
             scene.setKeyboardFocus(null);
             open = !open;
             scrollPos = 0;
@@ -198,32 +236,32 @@ public class ConsoleFragment extends Table{
         }
     }
 
-    public void hide(){
+    public void hide() {
         scene.setKeyboardFocus(null);
         open = false;
         clearChatInput();
     }
 
-    public void updateChat(){
+    public void updateChat() {
         chatfield.setText(history.get(historyPos));
         chatfield.setCursorPosition(chatfield.getText().length());
     }
 
-    public void clearChatInput(){
+    public void clearChatInput() {
         historyPos = 0;
         history.set(0, "");
         chatfield.setText("");
     }
 
-    public boolean open(){
+    public boolean open() {
         return open;
     }
 
-    public boolean shown(){
+    public boolean shown() {
         return shown;
     }
 
-    public void addMessage(String message){
+    public void addMessage(String message) {
         messages.insert(0, message);
     }
 }

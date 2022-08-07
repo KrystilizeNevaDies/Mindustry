@@ -1,22 +1,22 @@
 package mindustry.world.blocks.production;
 
-import arc.util.*;
-import mindustry.content.*;
-import mindustry.world.*;
-import mindustry.world.blocks.payloads.*;
+import arc.util.Nullable;
+import mindustry.content.Blocks;
+import mindustry.world.Block;
+import mindustry.world.blocks.payloads.BlockProducer;
 
-public class SingleBlockProducer extends BlockProducer{
+public class SingleBlockProducer extends BlockProducer {
     public Block result = Blocks.router;
 
-    public SingleBlockProducer(String name){
+    public SingleBlockProducer(String name) {
         super(name);
     }
 
-    public class SingleBlockProducerBuild extends BlockProducerBuild{
+    public class SingleBlockProducerBuild extends BlockProducerBuild {
 
         @Nullable
         @Override
-        public Block recipe(){
+        public Block recipe() {
             return result;
         }
     }

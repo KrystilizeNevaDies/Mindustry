@@ -1,23 +1,31 @@
 package mindustry.entities.abilities;
 
-import arc.*;
-import arc.audio.*;
-import arc.graphics.*;
-import arc.graphics.g2d.*;
-import arc.math.*;
-import arc.struct.*;
-import arc.util.*;
-import mindustry.*;
-import mindustry.content.*;
-import mindustry.entities.*;
-import mindustry.game.*;
+import arc.Core;
+import arc.audio.Sound;
+import arc.graphics.Color;
+import arc.graphics.g2d.Draw;
+import arc.graphics.g2d.Fill;
+import arc.graphics.g2d.Lines;
+import arc.math.Mathf;
+import arc.struct.Seq;
+import arc.util.Time;
+import arc.util.Tmp;
+import mindustry.Vars;
+import mindustry.content.Fx;
+import mindustry.content.StatusEffects;
+import mindustry.entities.Damage;
+import mindustry.entities.Effect;
+import mindustry.entities.Units;
+import mindustry.game.Team;
 import mindustry.gen.*;
-import mindustry.graphics.*;
-import mindustry.type.*;
+import mindustry.graphics.Drawf;
+import mindustry.graphics.Layer;
+import mindustry.graphics.Pal;
+import mindustry.type.StatusEffect;
 
-import static mindustry.Vars.*;
+import static mindustry.Vars.state;
 
-public class EnergyFieldAbility extends Ability{
+public class EnergyFieldAbility extends Ability {
     private static final Seq<Healthc> all = new Seq<>();
 
     public float damage = 1, reload = 100, range = 60;
@@ -39,21 +47,22 @@ public class EnergyFieldAbility extends Ability{
     protected float timer, curStroke;
     protected boolean anyNearby = false;
 
-    EnergyFieldAbility(){}
+    EnergyFieldAbility() {
+    }
 
-    public EnergyFieldAbility(float damage, float reload, float range){
+    public EnergyFieldAbility(float damage, float reload, float range) {
         this.damage = damage;
         this.reload = reload;
         this.range = range;
     }
 
     @Override
-    public String localized(){
+    public String localized() {
         return Core.bundle.format("ability.energyfield", damage, range / Vars.tilesize, maxTargets);
     }
 
     @Override
-    public void draw(Unit unit){
+    public void draw(Unit unit) {
         super.draw(unit);
 
         Draw.z(layer);
@@ -68,16 +77,16 @@ public class EnergyFieldAbility extends Ability{
 
         Lines.stroke((0.7f + Mathf.absin(blinkScl, 0.7f)), color);
 
-        for(int i = 0; i < sectors; i++){
-            float rot = unit.rotation + i * 360f/sectors - Time.time * rotateSpeed;
+        for (int i = 0; i < sectors; i++) {
+            float rot = unit.rotation + i * 360f / sectors - Time.time * rotateSpeed;
             Lines.arc(rx, ry, orbRadius + 3f, sectorRad, rot);
         }
 
         Lines.stroke(Lines.getStroke() * curStroke);
 
-        if(curStroke > 0){
-            for(int i = 0; i < sectors; i++){
-                float rot = unit.rotation + i * 360f/sectors + Time.time * rotateSpeed;
+        if (curStroke > 0) {
+            for (int i = 0; i < sectors; i++) {
+                float rot = unit.rotation + i * 360f / sectors + Time.time * rotateSpeed;
                 Lines.arc(rx, ry, range, sectorRad, rot);
             }
         }
@@ -88,28 +97,28 @@ public class EnergyFieldAbility extends Ability{
     }
 
     @Override
-    public void update(Unit unit){
+    public void update(Unit unit) {
 
         curStroke = Mathf.lerpDelta(curStroke, anyNearby ? 1 : 0, 0.09f);
 
-        if((timer += Time.delta) >= reload && (!useAmmo || unit.ammo > 0 || !state.rules.unitAmmo)){
+        if ((timer += Time.delta) >= reload && (!useAmmo || unit.ammo > 0 || !state.rules.unitAmmo)) {
             Tmp.v1.trns(unit.rotation - 90, x, y).add(unit.x, unit.y);
             float rx = Tmp.v1.x, ry = Tmp.v1.y;
             anyNearby = false;
 
             all.clear();
 
-            if(hitUnits){
+            if (hitUnits) {
                 Units.nearby(null, rx, ry, range, other -> {
-                    if(other != unit && (other.isFlying() ? targetAir : targetGround)){
+                    if (other != unit && (other.isFlying() ? targetAir : targetGround)) {
                         all.add(other);
                     }
                 });
             }
 
-            if(hitBuildings && targetGround){
+            if (hitBuildings && targetGround) {
                 Units.nearbyBuildings(rx, ry, range, b -> {
-                    if(b.team != Team.derelict || state.rules.coreCapture){
+                    if (b.team != Team.derelict || state.rules.coreCapture) {
                         all.add(b);
                     }
                 });
@@ -117,35 +126,35 @@ public class EnergyFieldAbility extends Ability{
 
             all.sort(h -> h.dst2(rx, ry));
             int len = Math.min(all.size, maxTargets);
-            for(int i = 0; i < len; i++){
+            for (int i = 0; i < len; i++) {
                 Healthc other = all.get(i);
 
                 //lightning gets absorbed by plastanium
                 var absorber = Damage.findAbsorber(unit.team, rx, ry, other.getX(), other.getY());
-                if(absorber != null){
+                if (absorber != null) {
                     other = absorber;
                 }
 
-                if(((Teamc)other).team() == unit.team){
-                    if(other.damaged()){
+                if (((Teamc) other).team() == unit.team) {
+                    if (other.damaged()) {
                         anyNearby = true;
                         other.heal(healPercent / 100f * other.maxHealth());
                         healEffect.at(other);
                         damageEffect.at(rx, ry, 0f, color, other);
                         hitEffect.at(rx, ry, unit.angleTo(other), color);
 
-                        if(other instanceof Building b){
+                        if (other instanceof Building b) {
                             Fx.healBlockFull.at(b.x, b.y, 0f, color, b.block);
                         }
                     }
-                }else{
+                } else {
                     anyNearby = true;
-                    if(other instanceof Building b){
+                    if (other instanceof Building b) {
                         b.damage(unit.team, damage);
-                    }else{
+                    } else {
                         other.damage(damage);
                     }
-                    if(other instanceof Statusc s){
+                    if (other instanceof Statusc s) {
                         s.apply(status, statusDuration);
                     }
                     hitEffect.at(other.x(), other.y(), unit.angleTo(other), color);
@@ -154,11 +163,11 @@ public class EnergyFieldAbility extends Ability{
                 }
             }
 
-            if(anyNearby){
+            if (anyNearby) {
                 shootSound.at(unit);
 
-                if(useAmmo && state.rules.unitAmmo){
-                    unit.ammo --;
+                if (useAmmo && state.rules.unitAmmo) {
+                    unit.ammo--;
                 }
             }
 

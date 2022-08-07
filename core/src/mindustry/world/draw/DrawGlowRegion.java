@@ -1,14 +1,16 @@
 package mindustry.world.draw;
 
-import arc.*;
-import arc.graphics.*;
-import arc.graphics.g2d.*;
-import arc.math.*;
+import arc.Core;
+import arc.graphics.Blending;
+import arc.graphics.Color;
+import arc.graphics.g2d.Draw;
+import arc.graphics.g2d.TextureRegion;
+import arc.math.Mathf;
 import mindustry.gen.*;
-import mindustry.graphics.*;
-import mindustry.world.*;
+import mindustry.graphics.Layer;
+import mindustry.world.Block;
 
-public class DrawGlowRegion extends DrawBlock{
+public class DrawGlowRegion extends DrawBlock {
     public Blending blending = Blending.additive;
     public String suffix = "-glow";
     public float alpha = 0.9f, glowScale = 10f, glowIntensity = 0.5f;
@@ -18,39 +20,47 @@ public class DrawGlowRegion extends DrawBlock{
     public Color color = Color.red.cpy();
     public TextureRegion region;
 
-    public DrawGlowRegion(){
+    public DrawGlowRegion() {
     }
 
-    public DrawGlowRegion(float layer){
+    public DrawGlowRegion(float layer) {
         this.layer = layer;
     }
 
-    public DrawGlowRegion(boolean rotate){
+    public DrawGlowRegion(boolean rotate) {
         this.rotate = rotate;
     }
 
-
-    public DrawGlowRegion(String suffix){
+    public DrawGlowRegion(String suffix) {
         this.suffix = suffix;
     }
 
     @Override
-    public void draw(Building build){
-        if(build.warmup() <= 0.001f) return;
+    public void draw(Building build) {
+        if (build.warmup() <= 0.001f) return;
 
         float z = Draw.z();
-        if(layer > 0) Draw.z(layer);
+        if (layer > 0) Draw.z(layer);
         Draw.blend(blending);
         Draw.color(color);
-        Draw.alpha((Mathf.absin(build.totalProgress(), glowScale, alpha) * glowIntensity + 1f - glowIntensity) * build.warmup() * alpha);
-        Draw.rect(region, build.x, build.y, build.totalProgress() * rotateSpeed + (rotate ? build.rotdeg() : 0f));
+        Draw.alpha(
+                (Mathf.absin(build.totalProgress(), glowScale, alpha) * glowIntensity
+                        + 1f
+                        - glowIntensity)
+                        * build.warmup()
+                        * alpha);
+        Draw.rect(
+                region,
+                build.x,
+                build.y,
+                build.totalProgress() * rotateSpeed + (rotate ? build.rotdeg() : 0f));
         Draw.reset();
         Draw.blend();
         Draw.z(z);
     }
 
     @Override
-    public void load(Block block){
+    public void load(Block block) {
         region = Core.atlas.find(block.name + suffix);
     }
 }

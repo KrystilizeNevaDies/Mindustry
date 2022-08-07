@@ -1,72 +1,109 @@
 package mindustry.mod;
 
-import arc.*;
-import arc.assets.*;
-import arc.assets.loaders.SoundLoader.*;
-import arc.audio.*;
-import arc.files.*;
-import arc.func.*;
-import arc.graphics.*;
-import arc.graphics.g2d.*;
-import arc.math.*;
-import arc.math.geom.*;
-import arc.struct.*;
+import arc.Core;
+import arc.assets.AssetDescriptor;
+import arc.assets.loaders.SoundLoader.SoundParameter;
+import arc.audio.Sound;
+import arc.files.Fi;
+import arc.func.Func;
+import arc.func.Prov;
+import arc.graphics.Blending;
+import arc.graphics.Color;
+import arc.graphics.g2d.TextureRegion;
+import arc.math.Interp;
+import arc.math.geom.Mat3D;
+import arc.math.geom.Vec3;
+import arc.struct.ObjectMap;
+import arc.struct.ObjectSet;
+import arc.struct.Seq;
 import arc.util.*;
-import arc.util.serialization.*;
-import arc.util.serialization.Json.*;
-import arc.util.serialization.Jval.*;
-import mindustry.*;
-import mindustry.ai.*;
-import mindustry.ai.types.*;
-import mindustry.content.*;
-import mindustry.content.TechTree.*;
-import mindustry.ctype.*;
-import mindustry.entities.*;
-import mindustry.entities.Units.*;
-import mindustry.entities.abilities.*;
-import mindustry.entities.bullet.*;
-import mindustry.entities.effect.*;
-import mindustry.entities.part.*;
-import mindustry.entities.part.DrawPart.*;
-import mindustry.entities.pattern.*;
-import mindustry.game.*;
-import mindustry.game.Objectives.*;
+import arc.util.serialization.Json;
+import arc.util.serialization.Json.FieldMetadata;
+import arc.util.serialization.JsonValue;
+import arc.util.serialization.Jval;
+import arc.util.serialization.Jval.Jformat;
+import arc.util.serialization.Jval.JsonParseException;
+import arc.util.serialization.SerializationException;
+import mindustry.Vars;
+import mindustry.ai.UnitCommand;
+import mindustry.ai.types.FlyingAI;
+import mindustry.content.Bullets;
+import mindustry.content.Fx;
+import mindustry.content.Loadouts;
+import mindustry.content.TechTree;
+import mindustry.content.TechTree.TechNode;
+import mindustry.ctype.Content;
+import mindustry.ctype.ContentType;
+import mindustry.ctype.MappableContent;
+import mindustry.ctype.UnlockableContent;
+import mindustry.entities.Effect;
+import mindustry.entities.UnitSorts;
+import mindustry.entities.Units.Sortf;
+import mindustry.entities.abilities.Ability;
+import mindustry.entities.bullet.BasicBulletType;
+import mindustry.entities.bullet.BulletType;
+import mindustry.entities.effect.MultiEffect;
+import mindustry.entities.effect.ParticleEffect;
+import mindustry.entities.part.DrawPart;
+import mindustry.entities.part.DrawPart.PartProgress;
+import mindustry.entities.part.RegionPart;
+import mindustry.entities.pattern.ShootPattern;
+import mindustry.game.Objectives;
+import mindustry.game.Objectives.Objective;
+import mindustry.game.Objectives.Produce;
+import mindustry.game.Objectives.Research;
+import mindustry.game.Objectives.SectorComplete;
+import mindustry.game.Schematic;
+import mindustry.game.Schematics;
+import mindustry.game.SpawnGroup;
 import mindustry.gen.*;
-import mindustry.graphics.*;
-import mindustry.graphics.g3d.*;
-import mindustry.graphics.g3d.PlanetGrid.*;
-import mindustry.io.*;
-import mindustry.maps.generators.*;
-import mindustry.maps.planet.*;
-import mindustry.mod.Mods.*;
+import mindustry.graphics.CacheLayer;
+import mindustry.graphics.g3d.GenericMesh;
+import mindustry.graphics.g3d.MatMesh;
+import mindustry.graphics.g3d.MultiMesh;
+import mindustry.graphics.g3d.NoiseMesh;
+import mindustry.graphics.g3d.PlanetGrid.Ptile;
+import mindustry.io.SaveVersion;
+import mindustry.maps.generators.PlanetGenerator;
+import mindustry.maps.planet.AsteroidGenerator;
+import mindustry.mod.Mods.LoadedMod;
 import mindustry.type.*;
-import mindustry.type.ammo.*;
-import mindustry.type.weather.*;
-import mindustry.world.*;
-import mindustry.world.blocks.units.*;
-import mindustry.world.blocks.units.UnitFactory.*;
+import mindustry.type.ammo.ItemAmmoType;
+import mindustry.type.ammo.PowerAmmoType;
+import mindustry.type.weather.ParticleWeather;
+import mindustry.world.Block;
+import mindustry.world.blocks.units.Reconstructor;
+import mindustry.world.blocks.units.UnitFactory;
+import mindustry.world.blocks.units.UnitFactory.UnitPlan;
 import mindustry.world.consumers.*;
-import mindustry.world.draw.*;
-import mindustry.world.meta.*;
+import mindustry.world.draw.DrawBlock;
+import mindustry.world.draw.DrawDefault;
+import mindustry.world.draw.DrawMulti;
+import mindustry.world.meta.Attribute;
+import mindustry.world.meta.BuildVisibility;
+import mindustry.world.meta.Env;
 
-import java.lang.reflect.*;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 
-import static mindustry.Vars.*;
+import static mindustry.Vars.maxBlockSize;
+import static mindustry.Vars.mods;
 
 @SuppressWarnings("unchecked")
-public class ContentParser{
+public class ContentParser {
     private static final boolean ignoreUnknownFields = true;
     ObjectMap<Class<?>, ContentType> contentTypes = new ObjectMap<>();
     ObjectSet<Class<?>> implicitNullable = ObjectSet.with(TextureRegion.class, TextureRegion[].class, TextureRegion[][].class, TextureRegion[][][].class);
     ObjectMap<String, AssetDescriptor<?>> sounds = new ObjectMap<>();
     Seq<ParseListener> listeners = new Seq<>();
 
-    ObjectMap<Class<?>, FieldParser> classParsers = new ObjectMap<>(){{
+    ObjectMap<Class<?>, FieldParser> classParsers = new ObjectMap<>() {{
         put(Effect.class, (type, data) -> {
-            if(data.isString()){
+            if (data.isString()) {
                 return field(Fx.class, data);
             }
-            if(data.isArray()){
+            if (data.isArray()) {
                 return new MultiEffect(parser.readValue(Effect[].class, data));
             }
             Class<? extends Effect> bc = resolve(data.getString("type", ""), ParticleEffect.class);
@@ -82,22 +119,22 @@ public class ContentParser{
         put(Attribute.class, (type, data) -> Attribute.get(data.asString()));
         put(Schematic.class, (type, data) -> {
             Object result = fieldOpt(Loadouts.class, data);
-            if(result != null){
+            if (result != null) {
                 return result;
-            }else{
+            } else {
                 String str = data.asString();
-                if(str.startsWith(Vars.schematicBaseStart)){
+                if (str.startsWith(Vars.schematicBaseStart)) {
                     return Schematics.readBase64(str);
-                }else{
+                } else {
                     return Schematics.read(Vars.tree.get("schematics/" + str + "." + Vars.schematicExtension));
                 }
             }
         });
         put(Color.class, (type, data) -> Color.valueOf(data.asString()));
         put(StatusEffect.class, (type, data) -> {
-            if(data.isString()){
+            if (data.isString()) {
                 StatusEffect result = locate(ContentType.status, data.asString());
-                if(result != null) return result;
+                if (result != null) return result;
                 throw new IllegalArgumentException("Unknown status effect: '" + data.asString() + "'");
             }
             StatusEffect effect = new StatusEffect(currentMod.name + "-" + data.getString("name"));
@@ -106,33 +143,33 @@ public class ContentParser{
             return effect;
         });
         put(UnitCommand.class, (type, data) -> {
-            if(data.isString()){
-               var cmd = UnitCommand.all.find(u -> u.name.equals(data.asString()));
-               if(cmd != null){
-                   return cmd;
-               }else{
-                   throw new IllegalArgumentException("Unknown unit command name: " + data.asString());
-               }
-            }else{
+            if (data.isString()) {
+                var cmd = UnitCommand.all.find(u -> u.name.equals(data.asString()));
+                if (cmd != null) {
+                    return cmd;
+                } else {
+                    throw new IllegalArgumentException("Unknown unit command name: " + data.asString());
+                }
+            } else {
                 throw new IllegalArgumentException("Unit commands must be strings.");
             }
         });
         put(BulletType.class, (type, data) -> {
-            if(data.isString()){
+            if (data.isString()) {
                 return field(Bullets.class, data);
             }
             Class<?> bc = resolve(data.getString("type", ""), BasicBulletType.class);
             data.remove("type");
-            BulletType result = (BulletType)make(bc);
+            BulletType result = (BulletType) make(bc);
             readFields(result, data);
             return result;
         });
         put(AmmoType.class, (type, data) -> {
             //string -> item
             //if liquid ammo support is added, this should scan for liquids as well
-            if(data.isString()) return new ItemAmmoType(find(ContentType.item, data.asString()));
+            if (data.isString()) return new ItemAmmoType(find(ContentType.item, data.asString()));
             //number -> power
-            if(data.isNumber()) return new PowerAmmoType(data.asFloat());
+            if (data.isNumber()) return new PowerAmmoType(data.asFloat());
 
             var bc = resolve(data.getString("type", ""), ItemAmmoType.class);
             data.remove("type");
@@ -141,12 +178,12 @@ public class ContentParser{
             return result;
         });
         put(DrawBlock.class, (type, data) -> {
-            if(data.isString()){
+            if (data.isString()) {
                 //try to instantiate
                 return make(resolve(data.asString()));
             }
             //array is shorthand for DrawMulti
-            if(data.isArray()){
+            if (data.isArray()) {
                 return new DrawMulti(parser.readValue(DrawBlock[].class, data));
             }
             var bc = resolve(data.getString("type", ""), DrawDefault.class);
@@ -172,21 +209,21 @@ public class ContentParser{
         //TODO this is untested
         put(PartProgress.class, (type, data) -> {
             //simple case: it's a string or number constant
-            if(data.isString()) return field(PartProgress.class, data.asString());
-            if(data.isNumber()) return PartProgress.constant(data.asFloat());
+            if (data.isString()) return field(PartProgress.class, data.asString());
+            if (data.isNumber()) return PartProgress.constant(data.asFloat());
 
-            if(!data.has("type")){
+            if (!data.has("type")) {
                 throw new RuntimeException("PartProgress object need a 'type' string field. Check the PartProgress class for a list of constants.");
             }
 
-            PartProgress base = (PartProgress)field(PartProgress.class, data.getString("type"));
+            PartProgress base = (PartProgress) field(PartProgress.class, data.getString("type"));
 
             JsonValue opval =
-                data.has("operation") ? data.get("operation") :
-                data.has("op") ? data.get("op") : null;
+                    data.has("operation") ? data.get("operation") :
+                            data.has("op") ? data.get("op") : null;
 
             //no operations I guess (why would you do this?)
-            if(opval == null){
+            if (opval == null) {
                 return base;
             }
 
@@ -194,21 +231,25 @@ public class ContentParser{
             String op = opval.asString();
 
             //I have to hard-code this, no easy way of getting parameter names, unfortunately
-            return switch(op){
+            return switch (op) {
                 case "inv" -> base.inv();
                 case "slope" -> base.slope();
                 case "clamp" -> base.clamp();
                 case "delay" -> base.delay(data.getFloat("amount"));
-                case "sustain" -> base.sustain(data.getFloat("offset", 0f), data.getFloat("grow", 0f), data.getFloat("sustain"));
+                case "sustain" ->
+                        base.sustain(data.getFloat("offset", 0f), data.getFloat("grow", 0f), data.getFloat("sustain"));
                 case "shorten" -> base.shorten(data.getFloat("amount"));
-                case "add" -> data.has("amount") ? base.add(data.getFloat("amount")) : base.add(parser.readValue(PartProgress.class, data.get("other")));
-                case "blend" -> base.blend(parser.readValue(PartProgress.class, data.get("other")), data.getFloat("amount"));
+                case "add" ->
+                        data.has("amount") ? base.add(data.getFloat("amount")) : base.add(parser.readValue(PartProgress.class, data.get("other")));
+                case "blend" ->
+                        base.blend(parser.readValue(PartProgress.class, data.get("other")), data.getFloat("amount"));
                 case "mul" -> base.mul(parser.readValue(PartProgress.class, data.get("other")));
                 case "min" -> base.min(parser.readValue(PartProgress.class, data.get("other")));
                 case "sin" -> base.sin(data.getFloat("scl"), data.getFloat("mag"));
                 case "absin" -> base.absin(data.getFloat("scl"), data.getFloat("mag"));
                 case "curve" -> base.curve(parser.readValue(Interp.class, data.get("interp")));
-                default -> throw new RuntimeException("Unknown operation '" + op + "', check PartProgress class for a list of methods.");
+                default ->
+                        throw new RuntimeException("Unknown operation '" + op + "', check PartProgress class for a list of methods.");
             };
         });
         put(PlanetGenerator.class, (type, data) -> {
@@ -217,48 +258,52 @@ public class ContentParser{
             return result;
         });
         put(GenericMesh.class, (type, data) -> {
-            if(!data.isObject()) throw new RuntimeException("Meshes must be objects.");
-            if(!(currentContent instanceof Planet planet)) throw new RuntimeException("Meshes can only be parsed as parts of planets.");
+            if (!data.isObject()) throw new RuntimeException("Meshes must be objects.");
+            if (!(currentContent instanceof Planet planet))
+                throw new RuntimeException("Meshes can only be parsed as parts of planets.");
 
             String tname = Strings.capitalize(data.getString("type", "NoiseMesh"));
 
-            return switch(tname){
+            return switch (tname) {
                 //TODO NoiseMesh is bad
                 case "NoiseMesh" -> new NoiseMesh(planet,
-                    data.getInt("seed", 0), data.getInt("divisions", 1), data.getFloat("radius", 1f),
-                    data.getInt("octaves", 1), data.getFloat("persistence", 0.5f), data.getFloat("scale", 1f), data.getFloat("mag", 0.5f),
-                    Color.valueOf(data.getString("color1", data.getString("color", "ffffff"))),
-                    Color.valueOf(data.getString("color2", data.getString("color", "ffffff"))),
-                    data.getInt("colorOct", 1), data.getFloat("colorPersistence", 0.5f), data.getFloat("colorScale", 1f),
-                    data.getFloat("colorThreshold", 0.5f));
+                        data.getInt("seed", 0), data.getInt("divisions", 1), data.getFloat("radius", 1f),
+                        data.getInt("octaves", 1), data.getFloat("persistence", 0.5f), data.getFloat("scale", 1f), data.getFloat("mag", 0.5f),
+                        Color.valueOf(data.getString("color1", data.getString("color", "ffffff"))),
+                        Color.valueOf(data.getString("color2", data.getString("color", "ffffff"))),
+                        data.getInt("colorOct", 1), data.getFloat("colorPersistence", 0.5f), data.getFloat("colorScale", 1f),
+                        data.getFloat("colorThreshold", 0.5f));
                 case "MultiMesh" -> new MultiMesh(parser.readValue(GenericMesh[].class, data.get("meshes")));
-                case "MatMesh" -> new MatMesh(parser.readValue(GenericMesh.class, data.get("mesh")), parser.readValue(Mat3D.class, data.get("mat")));
+                case "MatMesh" ->
+                        new MatMesh(parser.readValue(GenericMesh.class, data.get("mesh")), parser.readValue(Mat3D.class, data.get("mat")));
                 default -> throw new RuntimeException("Unknown mesh type: " + tname);
             };
         });
         put(Mat3D.class, (type, data) -> {
-            if(data == null) return new Mat3D();
+            if (data == null) return new Mat3D();
 
             //transform x y z format
-            if(data.has("x") && data.has("y") && data.has("z")){
+            if (data.has("x") && data.has("y") && data.has("z")) {
                 return new Mat3D().translate(data.getFloat("x", 0f), data.getFloat("y", 0f), data.getFloat("z", 0f));
             }
 
             //transform array format
-            if(data.isArray() && data.size == 3){
+            if (data.isArray() && data.size == 3) {
                 return new Mat3D().setToTranslation(new Vec3(data.asFloatArray()));
             }
 
             Mat3D mat = new Mat3D();
 
             //TODO this is kinda bad
-            for(var val : data){
-                switch(val.name){
+            for (var val : data) {
+                switch (val.name) {
                     case "translate", "trans" -> mat.translate(parser.readValue(Vec3.class, data));
                     case "scale", "scl" -> mat.scale(parser.readValue(Vec3.class, data));
-                    case "rotate", "rot" -> mat.rotate(parser.readValue(Vec3.class, data), data.getFloat("degrees", 0f));
+                    case "rotate", "rot" ->
+                            mat.rotate(parser.readValue(Vec3.class, data), data.getFloat("degrees", 0f));
                     case "multiply", "mul" -> mat.mul(parser.readValue(Mat3D.class, data));
-                    case "x", "y", "z" -> {}
+                    case "x", "y", "z" -> {
+                    }
                     default -> throw new RuntimeException("Unknown matrix transformation: '" + val.name + "'");
                 }
             }
@@ -266,17 +311,17 @@ public class ContentParser{
             return mat;
         });
         put(Vec3.class, (type, data) -> {
-            if(data.isArray()) return new Vec3(data.asFloatArray());
+            if (data.isArray()) return new Vec3(data.asFloatArray());
             return new Vec3(data.getFloat("x", 0f), data.getFloat("y", 0f), data.getFloat("z", 0f));
         });
         put(Sound.class, (type, data) -> {
-            if(fieldOpt(Sounds.class, data) != null) return fieldOpt(Sounds.class, data);
-            if(Vars.headless) return new Sound();
+            if (fieldOpt(Sounds.class, data) != null) return fieldOpt(Sounds.class, data);
+            if (Vars.headless) return new Sound();
 
             String name = "sounds/" + data.asString();
             String path = Vars.tree.get(name + ".ogg").exists() ? name + ".ogg" : name + ".mp3";
 
-            if(sounds.containsKey(path)) return ((SoundParameter)sounds.get(path).params).sound;
+            if (sounds.containsKey(path)) return ((SoundParameter) sounds.get(path).params).sound;
             var sound = new Sound();
             AssetDescriptor<?> desc = Core.assets.load(path, Sound.class, new SoundParameter(sound));
             desc.errored = Throwable::printStackTrace;
@@ -284,10 +329,10 @@ public class ContentParser{
             return sound;
         });
         put(Objectives.Objective.class, (type, data) -> {
-            if(data.isString()){
+            if (data.isString()) {
                 var cont = locateAny(data.asString());
-                if(cont == null) throw new IllegalArgumentException("Unknown objective content: " + data.asString());
-                return new Research((UnlockableContent)cont);
+                if (cont == null) throw new IllegalArgumentException("Unknown objective content: " + data.asString());
+                return new Research((UnlockableContent) cont);
             }
             var oc = resolve(data.getString("type", ""), SectorComplete.class);
             data.remove("type");
@@ -311,8 +356,10 @@ public class ContentParser{
             return weapon;
         });
     }};
-    /** Stores things that need to be parsed fully, e.g. reading fields of content.
-     * This is done to accommodate binding of content names first.*/
+    /**
+     * Stores things that need to be parsed fully, e.g. reading fields of content.
+     * This is done to accommodate binding of content names first.
+     */
     private Seq<Runnable> reads = new Seq<>();
     private Seq<Runnable> postreads = new Seq<>();
     private ObjectSet<Object> toBeParsed = new ObjectSet<>();
@@ -320,64 +367,65 @@ public class ContentParser{
     LoadedMod currentMod;
     Content currentContent;
 
-    private Json parser = new Json(){
+    private Json parser = new Json() {
         @Override
-        public <T> T readValue(Class<T> type, Class elementType, JsonValue jsonData, Class keyType){
+        public <T> T readValue(Class<T> type, Class elementType, JsonValue jsonData, Class keyType) {
             T t = internalRead(type, elementType, jsonData, keyType);
-            if(t != null && !Reflect.isWrapper(t.getClass()) && (type == null || !type.isPrimitive())){
+            if (t != null && !Reflect.isWrapper(t.getClass()) && (type == null || !type.isPrimitive())) {
                 checkNullFields(t);
                 listeners.each(hook -> hook.parsed(type, jsonData, t));
             }
             return t;
         }
 
-        private <T> T internalRead(Class<T> type, Class elementType, JsonValue jsonData, Class keyType){
-            if(type != null){
-                if(classParsers.containsKey(type)){
-                    try{
-                        return (T)classParsers.get(type).parse(type, jsonData);
-                    }catch(Exception e){
+        private <T> T internalRead(Class<T> type, Class elementType, JsonValue jsonData, Class keyType) {
+            if (type != null) {
+                if (classParsers.containsKey(type)) {
+                    try {
+                        return (T) classParsers.get(type).parse(type, jsonData);
+                    } catch (Exception e) {
                         throw new RuntimeException(e);
                     }
                 }
 
                 //try to parse env bits
-                if((type == int.class || type == Integer.class) && jsonData.isArray()){
+                if ((type == int.class || type == Integer.class) && jsonData.isArray()) {
                     int value = 0;
-                    for(var str : jsonData){
-                        if(!str.isString()) throw new SerializationException("Integer bitfield values must all be strings. Found: " + str);
+                    for (var str : jsonData) {
+                        if (!str.isString())
+                            throw new SerializationException("Integer bitfield values must all be strings. Found: " + str);
                         String field = str.asString();
                         value |= Reflect.<Integer>get(Env.class, field);
                     }
 
-                    return (T)(Integer)value;
+                    return (T) (Integer) value;
                 }
 
                 //try to parse "item/amount" syntax
-                if(type == ItemStack.class && jsonData.isString() && jsonData.asString().contains("/")){
+                if (type == ItemStack.class && jsonData.isString() && jsonData.asString().contains("/")) {
                     String[] split = jsonData.asString().split("/");
 
-                    return (T)fromJson(ItemStack.class, "{item: " + split[0] + ", amount: " + split[1] + "}");
+                    return (T) fromJson(ItemStack.class, "{item: " + split[0] + ", amount: " + split[1] + "}");
                 }
 
                 //try to parse "liquid/amount" syntax
-                if(jsonData.isString() && jsonData.asString().contains("/")){
+                if (jsonData.isString() && jsonData.asString().contains("/")) {
                     String[] split = jsonData.asString().split("/");
-                    if(type == LiquidStack.class){
-                        return (T)fromJson(LiquidStack.class, "{liquid: " + split[0] + ", amount: " + split[1] + "}");
-                    }else if(type == ConsumeLiquid.class){
-                        return (T)fromJson(ConsumeLiquid.class, "{liquid: " + split[0] + ", amount: " + split[1] + "}");
+                    if (type == LiquidStack.class) {
+                        return (T) fromJson(LiquidStack.class, "{liquid: " + split[0] + ", amount: " + split[1] + "}");
+                    } else if (type == ConsumeLiquid.class) {
+                        return (T) fromJson(ConsumeLiquid.class, "{liquid: " + split[0] + ", amount: " + split[1] + "}");
                     }
                 }
 
-                if(Content.class.isAssignableFrom(type)){
+                if (Content.class.isAssignableFrom(type)) {
                     ContentType ctype = contentTypes.getThrow(type, () -> new IllegalArgumentException("No content type for class: " + type.getSimpleName()));
                     String prefix = currentMod != null ? currentMod.name + "-" : "";
-                    T one = (T)Vars.content.getByName(ctype, prefix + jsonData.asString());
-                    if(one != null) return one;
-                    T two = (T)Vars.content.getByName(ctype, jsonData.asString());
+                    T one = (T) Vars.content.getByName(ctype, prefix + jsonData.asString());
+                    if (one != null) return one;
+                    T two = (T) Vars.content.getByName(ctype, jsonData.asString());
 
-                    if(two != null) return two;
+                    if (two != null) return two;
                     throw new IllegalArgumentException("\"" + jsonData.name + "\": No " + ctype + " found with name '" + jsonData.asString() + "'.\nMake sure '" + jsonData.asString() + "' is spelled correctly, and that it really exists!\nThis may also occur because its file failed to parse.");
                 }
             }
@@ -387,208 +435,217 @@ public class ContentParser{
     };
 
     private ObjectMap<ContentType, TypeParser<?>> parsers = ObjectMap.of(
-        ContentType.block, (TypeParser<Block>)(mod, name, value) -> {
-            readBundle(ContentType.block, name, value);
+            ContentType.block, (TypeParser<Block>) (mod, name, value) -> {
+                readBundle(ContentType.block, name, value);
 
-            Block block;
+                Block block;
 
-            if(locate(ContentType.block, name) != null){
-                if(value.has("type")){
-                    Log.warn("Warning: '" + currentMod.name + "-" + name + "' re-declares a type. This will be interpreted as a new block. If you wish to override a vanilla block, omit the 'type' section, as vanilla block `type`s cannot be changed.");
+                if (locate(ContentType.block, name) != null) {
+                    if (value.has("type")) {
+                        Log.warn("Warning: '" + currentMod.name + "-" + name + "' re-declares a type. This will be interpreted as a new block. If you wish to override a vanilla block, omit the 'type' section, as vanilla block `type`s cannot be changed.");
+                        block = make(resolve(value.getString("type", ""), Block.class), mod + "-" + name);
+                    } else {
+                        block = locate(ContentType.block, name);
+                    }
+                } else {
                     block = make(resolve(value.getString("type", ""), Block.class), mod + "-" + name);
-                }else{
-                    block = locate(ContentType.block, name);
                 }
-            }else{
-                block = make(resolve(value.getString("type", ""), Block.class), mod + "-" + name);
-            }
 
-            currentContent = block;
+                currentContent = block;
 
-            read(() -> {
-                if(value.has("consumes") && value.get("consumes").isObject()){
-                    for(JsonValue child : value.get("consumes")){
-                        switch(child.name){
-                            case "item" -> block.consumeItem(find(ContentType.item, child.asString()));
-                            case "itemCharged" -> block.consume((Consume)parser.readValue(ConsumeItemCharged.class, child));
-                            case "itemFlammable" -> block.consume((Consume)parser.readValue(ConsumeItemFlammable.class, child));
-                            case "itemRadioactive" -> block.consume((Consume)parser.readValue(ConsumeItemRadioactive.class, child));
-                            case "itemExplosive" -> block.consume((Consume)parser.readValue(ConsumeItemExplosive.class, child));
-                            case "itemExplode" -> block.consume((Consume)parser.readValue(ConsumeItemExplode.class, child));
-                            case "items" -> block.consume(child.isArray() ?
-                                    new ConsumeItems(parser.readValue(ItemStack[].class, child)) :
-                                    parser.readValue(ConsumeItems.class, child));
-                            case "liquidFlammable" -> block.consume((Consume)parser.readValue(ConsumeLiquidFlammable.class, child));
-                            case "liquid" -> block.consume((Consume)parser.readValue(ConsumeLiquid.class, child));
-                            case "liquids" -> block.consume(child.isArray() ?
-                                    new ConsumeLiquids(parser.readValue(LiquidStack[].class, child)) :
-                                    parser.readValue(ConsumeLiquids.class, child));
-                            case "coolant" -> block.consume((Consume)parser.readValue(ConsumeCoolant.class, child));
-                            case "power" -> {
-                                if(child.isNumber()){
-                                    block.consumePower(child.asFloat());
-                                }else{
-                                    block.consume((Consume)parser.readValue(ConsumePower.class, child));
+                read(() -> {
+                    if (value.has("consumes") && value.get("consumes").isObject()) {
+                        for (JsonValue child : value.get("consumes")) {
+                            switch (child.name) {
+                                case "item" -> block.consumeItem(find(ContentType.item, child.asString()));
+                                case "itemCharged" ->
+                                        block.consume((Consume) parser.readValue(ConsumeItemCharged.class, child));
+                                case "itemFlammable" ->
+                                        block.consume((Consume) parser.readValue(ConsumeItemFlammable.class, child));
+                                case "itemRadioactive" ->
+                                        block.consume((Consume) parser.readValue(ConsumeItemRadioactive.class, child));
+                                case "itemExplosive" ->
+                                        block.consume((Consume) parser.readValue(ConsumeItemExplosive.class, child));
+                                case "itemExplode" ->
+                                        block.consume((Consume) parser.readValue(ConsumeItemExplode.class, child));
+                                case "items" -> block.consume(child.isArray() ?
+                                        new ConsumeItems(parser.readValue(ItemStack[].class, child)) :
+                                        parser.readValue(ConsumeItems.class, child));
+                                case "liquidFlammable" ->
+                                        block.consume((Consume) parser.readValue(ConsumeLiquidFlammable.class, child));
+                                case "liquid" -> block.consume((Consume) parser.readValue(ConsumeLiquid.class, child));
+                                case "liquids" -> block.consume(child.isArray() ?
+                                        new ConsumeLiquids(parser.readValue(LiquidStack[].class, child)) :
+                                        parser.readValue(ConsumeLiquids.class, child));
+                                case "coolant" ->
+                                        block.consume((Consume) parser.readValue(ConsumeCoolant.class, child));
+                                case "power" -> {
+                                    if (child.isNumber()) {
+                                        block.consumePower(child.asFloat());
+                                    } else {
+                                        block.consume((Consume) parser.readValue(ConsumePower.class, child));
+                                    }
                                 }
+                                case "powerBuffered" -> block.consumePowerBuffered(child.asFloat());
+                                default ->
+                                        throw new IllegalArgumentException("Unknown consumption type: '" + child.name + "' for block '" + block.name + "'.");
                             }
-                            case "powerBuffered" -> block.consumePowerBuffered(child.asFloat());
-                            default -> throw new IllegalArgumentException("Unknown consumption type: '" + child.name + "' for block '" + block.name + "'.");
                         }
+                        value.remove("consumes");
                     }
-                    value.remove("consumes");
+
+                    readFields(block, value, true);
+
+                    if (block.size > maxBlockSize) {
+                        throw new IllegalArgumentException("Blocks cannot be larger than " + maxBlockSize);
+                    }
+
+                    //make block visible by default if there are requirements and no visibility set
+                    if (value.has("requirements") && block.buildVisibility == BuildVisibility.hidden) {
+                        block.buildVisibility = BuildVisibility.shown;
+                    }
+                });
+
+                return block;
+            },
+            ContentType.unit, (TypeParser<UnitType>) (mod, name, value) -> {
+                readBundle(ContentType.unit, name, value);
+
+                UnitType unit;
+                if (locate(ContentType.unit, name) == null) {
+
+                    unit = make(resolve(value.getString("template", ""), UnitType.class), mod + "-" + name);
+
+                    if (value.has("template")) {
+                        value.remove("template");
+                    }
+
+                    var typeVal = value.get("type");
+
+                    if (typeVal != null && !typeVal.isString()) {
+                        throw new RuntimeException("Unit '" + name + "' has an incorrect type. Types must be strings.");
+                    }
+
+                    unit.constructor = unitType(typeVal);
+                } else {
+                    unit = locate(ContentType.unit, name);
                 }
 
-                readFields(block, value, true);
+                currentContent = unit;
+                //TODO test this!
+                read(() -> {
+                    //add reconstructor type
+                    if (value.has("requirements")) {
+                        JsonValue rec = value.remove("requirements");
 
-                if(block.size > maxBlockSize){
-                    throw new IllegalArgumentException("Blocks cannot be larger than " + maxBlockSize);
-                }
+                        UnitReq req = parser.readValue(UnitReq.class, rec);
 
-                //make block visible by default if there are requirements and no visibility set
-                if(value.has("requirements") && block.buildVisibility == BuildVisibility.hidden){
-                    block.buildVisibility = BuildVisibility.shown;
-                }
-            });
-
-            return block;
-        },
-        ContentType.unit, (TypeParser<UnitType>)(mod, name, value) -> {
-            readBundle(ContentType.unit, name, value);
-
-            UnitType unit;
-            if(locate(ContentType.unit, name) == null){
-
-                unit = make(resolve(value.getString("template", ""), UnitType.class), mod + "-" + name);
-
-                if(value.has("template")){
-                    value.remove("template");
-                }
-
-                var typeVal = value.get("type");
-
-                if(typeVal != null && !typeVal.isString()){
-                    throw new RuntimeException("Unit '" + name + "' has an incorrect type. Types must be strings.");
-                }
-
-                unit.constructor = unitType(typeVal);
-            }else{
-                unit = locate(ContentType.unit, name);
-            }
-
-            currentContent = unit;
-            //TODO test this!
-            read(() -> {
-                //add reconstructor type
-                if(value.has("requirements")){
-                    JsonValue rec = value.remove("requirements");
-
-                    UnitReq req = parser.readValue(UnitReq.class, rec);
-
-                    if(req.block instanceof Reconstructor r){
-                        if(req.previous != null){
-                            r.upgrades.add(new UnitType[]{req.previous, unit});
+                        if (req.block instanceof Reconstructor r) {
+                            if (req.previous != null) {
+                                r.upgrades.add(new UnitType[]{req.previous, unit});
+                            }
+                        } else if (req.block instanceof UnitFactory f) {
+                            f.plans.add(new UnitPlan(unit, req.time, req.requirements));
+                        } else {
+                            throw new IllegalArgumentException("Missing a valid 'block' in 'requirements'");
                         }
-                    }else if(req.block instanceof UnitFactory f){
-                        f.plans.add(new UnitPlan(unit, req.time, req.requirements));
-                    }else{
-                        throw new IllegalArgumentException("Missing a valid 'block' in 'requirements'");
+
                     }
 
-                }
-
-                if(value.has("controller") || value.has("aiController")){
-                    unit.aiController = supply(resolve(value.getString("controller", value.getString("aiController", "")), FlyingAI.class));
-                    value.remove("controller");
-                }
-
-                if(value.has("defaultController")){
-                    var sup = supply(resolve(value.getString("defaultController"), FlyingAI.class));
-                    unit.controller = u -> sup.get();
-                    value.remove("defaultController");
-                }
-
-                //read extra default waves
-                if(value.has("waves")){
-                    JsonValue waves = value.remove("waves");
-                    SpawnGroup[] groups = parser.readValue(SpawnGroup[].class, waves);
-                    for(SpawnGroup group : groups){
-                        group.type = unit;
+                    if (value.has("controller") || value.has("aiController")) {
+                        unit.aiController = supply(resolve(value.getString("controller", value.getString("aiController", "")), FlyingAI.class));
+                        value.remove("controller");
                     }
 
-                    Vars.waves.get().addAll(groups);
+                    if (value.has("defaultController")) {
+                        var sup = supply(resolve(value.getString("defaultController"), FlyingAI.class));
+                        unit.controller = u -> sup.get();
+                        value.remove("defaultController");
+                    }
+
+                    //read extra default waves
+                    if (value.has("waves")) {
+                        JsonValue waves = value.remove("waves");
+                        SpawnGroup[] groups = parser.readValue(SpawnGroup[].class, waves);
+                        for (SpawnGroup group : groups) {
+                            group.type = unit;
+                        }
+
+                        Vars.waves.get().addAll(groups);
+                    }
+
+                    readFields(unit, value, true);
+                });
+
+                return unit;
+            },
+            ContentType.weather, (TypeParser<Weather>) (mod, name, value) -> {
+                Weather item;
+                if (locate(ContentType.weather, name) != null) {
+                    item = locate(ContentType.weather, name);
+                    readBundle(ContentType.weather, name, value);
+                } else {
+                    readBundle(ContentType.weather, name, value);
+                    item = make(resolve(getType(value), ParticleWeather.class), mod + "-" + name);
+                    value.remove("type");
+                }
+                currentContent = item;
+                read(() -> readFields(item, value));
+                return item;
+            },
+            ContentType.item, parser(ContentType.item, Item::new),
+            ContentType.liquid, (TypeParser<Liquid>) (mod, name, value) -> {
+                Liquid liquid;
+                if (locate(ContentType.liquid, name) != null) {
+                    liquid = locate(ContentType.liquid, name);
+                    readBundle(ContentType.liquid, name, value);
+                } else {
+                    readBundle(ContentType.liquid, name, value);
+                    liquid = make(resolve(value.getString("type", null), Liquid.class), mod + "-" + name);
+                    value.remove("type");
+                }
+                currentContent = liquid;
+                read(() -> readFields(liquid, value));
+                return liquid;
+            },
+            ContentType.status, parser(ContentType.status, StatusEffect::new),
+            ContentType.sector, (TypeParser<SectorPreset>) (mod, name, value) -> {
+                if (value.isString()) {
+                    return locate(ContentType.sector, name);
                 }
 
-                readFields(unit, value, true);
-            });
+                if (!value.has("sector") || !value.get("sector").isNumber())
+                    throw new RuntimeException("SectorPresets must have a sector number.");
 
-            return unit;
-        },
-        ContentType.weather, (TypeParser<Weather>)(mod, name, value) -> {
-            Weather item;
-            if(locate(ContentType.weather, name) != null){
-                item = locate(ContentType.weather, name);
-                readBundle(ContentType.weather, name, value);
-            }else{
-                readBundle(ContentType.weather, name, value);
-                item = make(resolve(getType(value), ParticleWeather.class), mod + "-" + name);
-                value.remove("type");
+                SectorPreset out = new SectorPreset(name, locate(ContentType.planet, value.getString("planet", "serpulo")), value.getInt("sector"));
+                value.remove("sector");
+                value.remove("planet");
+                currentContent = out;
+                read(() -> readFields(out, value));
+                return out;
+            },
+            ContentType.planet, (TypeParser<Planet>) (mod, name, value) -> {
+                if (value.isString()) return locate(ContentType.planet, name);
+
+                Planet parent = locate(ContentType.planet, value.getString("parent"));
+                Planet planet = new Planet(name, parent, value.getFloat("radius", 1f), value.getInt("sectorSize", 0));
+
+                if (value.has("mesh")) {
+                    planet.meshLoader = () -> parser.readValue(GenericMesh.class, value.get("mesh"));
+                }
+
+                //always one sector right now...
+                planet.sectors.add(new Sector(planet, Ptile.empty));
+
+                currentContent = planet;
+                read(() -> readFields(planet, value));
+                return planet;
             }
-            currentContent = item;
-            read(() -> readFields(item, value));
-            return item;
-        },
-        ContentType.item, parser(ContentType.item, Item::new),
-        ContentType.liquid, (TypeParser<Liquid>)(mod, name, value) -> {
-            Liquid liquid;
-            if(locate(ContentType.liquid, name) != null){
-                liquid = locate(ContentType.liquid, name);
-                readBundle(ContentType.liquid, name, value);
-            }else{
-                readBundle(ContentType.liquid, name, value);
-                liquid = make(resolve(value.getString("type", null), Liquid.class), mod + "-" + name);
-                value.remove("type");
-            }
-            currentContent = liquid;
-            read(() -> readFields(liquid, value));
-            return liquid;
-        },
-        ContentType.status, parser(ContentType.status, StatusEffect::new),
-        ContentType.sector, (TypeParser<SectorPreset>)(mod, name, value) -> {
-            if(value.isString()){
-                return locate(ContentType.sector, name);
-            }
-
-            if(!value.has("sector") || !value.get("sector").isNumber()) throw new RuntimeException("SectorPresets must have a sector number.");
-
-            SectorPreset out = new SectorPreset(name, locate(ContentType.planet, value.getString("planet", "serpulo")), value.getInt("sector"));
-            value.remove("sector");
-            value.remove("planet");
-            currentContent = out;
-            read(() -> readFields(out, value));
-            return out;
-        },
-        ContentType.planet, (TypeParser<Planet>)(mod, name, value) -> {
-            if(value.isString()) return locate(ContentType.planet, name);
-
-            Planet parent = locate(ContentType.planet, value.getString("parent"));
-            Planet planet = new Planet(name, parent, value.getFloat("radius", 1f), value.getInt("sectorSize", 0));
-
-            if(value.has("mesh")){
-                planet.meshLoader = () -> parser.readValue(GenericMesh.class, value.get("mesh"));
-            }
-
-            //always one sector right now...
-            planet.sectors.add(new Sector(planet, Ptile.empty));
-
-            currentContent = planet;
-            read(() -> readFields(planet, value));
-            return planet;
-        }
     );
 
-    private Prov<Unit> unitType(JsonValue value){
-        if(value == null) return UnitEntity::create;
-        return switch(value.asString()){
+    private Prov<Unit> unitType(JsonValue value) {
+        if (value == null) return UnitEntity::create;
+        return switch (value.asString()) {
             case "flying" -> UnitEntity::create;
             case "mech" -> MechUnit::create;
             case "legs" -> LegsUnit::create;
@@ -599,36 +656,37 @@ public class ContentParser{
             case "hover" -> ElevationMoveUnit::create;
             case "tether" -> BuildingTetherPayloadUnit::create;
             case "crawl" -> CrawlUnit::create;
-            default -> throw new RuntimeException("Invalid unit type: '" + value + "'. Must be 'flying/mech/legs/naval/payload/missile/tether/crawl'.");
+            default ->
+                    throw new RuntimeException("Invalid unit type: '" + value + "'. Must be 'flying/mech/legs/naval/payload/missile/tether/crawl'.");
         };
     }
 
-    private String getString(JsonValue value, String key){
-        if(value.has(key)){
+    private String getString(JsonValue value, String key) {
+        if (value.has(key)) {
             return value.getString(key);
-        }else{
+        } else {
             throw new IllegalArgumentException("You are missing a \"" + key + "\". It must be added before the file can be parsed.");
         }
     }
 
-    private String getType(JsonValue value){
+    private String getType(JsonValue value) {
         return getString(value, "type");
     }
 
-    private <T extends Content> T find(ContentType type, String name){
+    private <T extends Content> T find(ContentType type, String name) {
         Content c = Vars.content.getByName(type, name);
-        if(c == null) c = Vars.content.getByName(type, currentMod.name + "-" + name);
-        if(c == null) throw new IllegalArgumentException("No " + type + " found with name '" + name + "'");
-        return (T)c;
+        if (c == null) c = Vars.content.getByName(type, currentMod.name + "-" + name);
+        if (c == null) throw new IllegalArgumentException("No " + type + " found with name '" + name + "'");
+        return (T) c;
     }
 
-    private <T extends Content> TypeParser<T> parser(ContentType type, Func<String, T> constructor){
+    private <T extends Content> TypeParser<T> parser(ContentType type, Func<String, T> constructor) {
         return (mod, name, value) -> {
             T item;
-            if(locate(type, name) != null){
-                item = (T)locate(type, name);
+            if (locate(type, name) != null) {
+                item = (T) locate(type, name);
                 readBundle(type, name, value);
-            }else{
+            } else {
                 readBundle(type, name, value);
                 item = constructor.get(mod + "-" + name);
             }
@@ -638,32 +696,34 @@ public class ContentParser{
         };
     }
 
-    private void readBundle(ContentType type, String name, JsonValue value){
+    private void readBundle(ContentType type, String name, JsonValue value) {
         UnlockableContent cont = locate(type, name) instanceof UnlockableContent ? locate(type, name) : null;
 
         String entryName = cont == null ? type + "." + currentMod.name + "-" + name + "." : type + "." + cont.name + ".";
         I18NBundle bundle = Core.bundle;
-        while(bundle.getParent() != null) bundle = bundle.getParent();
+        while (bundle.getParent() != null) bundle = bundle.getParent();
 
-        if(value.has("name")){
-            if(!Core.bundle.has(entryName + "name")){
+        if (value.has("name")) {
+            if (!Core.bundle.has(entryName + "name")) {
                 bundle.getProperties().put(entryName + "name", value.getString("name"));
-                if(cont != null) cont.localizedName = value.getString("name");
+                if (cont != null) cont.localizedName = value.getString("name");
             }
             value.remove("name");
         }
 
-        if(value.has("description")){
-            if(!Core.bundle.has(entryName + "description")){
+        if (value.has("description")) {
+            if (!Core.bundle.has(entryName + "description")) {
                 bundle.getProperties().put(entryName + "description", value.getString("description"));
-                if(cont != null) cont.description = value.getString("description");
+                if (cont != null) cont.description = value.getString("description");
             }
             value.remove("description");
         }
     }
 
-    /** Call to read a content's extra info later.*/
-    private void read(Runnable run){
+    /**
+     * Call to read a content's extra info later.
+     */
+    private void read(Runnable run) {
         Content cont = currentContent;
         LoadedMod mod = currentMod;
         reads.add(() -> {
@@ -672,20 +732,20 @@ public class ContentParser{
             run.run();
 
             //check nulls after parsing
-            if(cont != null){
+            if (cont != null) {
                 toBeParsed.remove(cont);
                 checkNullFields(cont);
             }
         });
     }
 
-    private void init(){
-        for(ContentType type : ContentType.all){
+    private void init() {
+        for (ContentType type : ContentType.all) {
             Seq<Content> arr = Vars.content.getBy(type);
-            if(!arr.isEmpty()){
+            if (!arr.isEmpty()) {
                 Class<?> c = arr.first().getClass();
                 //get base content class, skipping intermediates
-                while(!(c.getSuperclass() == Content.class || c.getSuperclass() == UnlockableContent.class || Modifier.isAbstract(c.getSuperclass().getModifiers()))){
+                while (!(c.getSuperclass() == Content.class || c.getSuperclass() == UnlockableContent.class || Modifier.isAbstract(c.getSuperclass().getModifiers()))) {
                     c = c.getSuperclass();
                 }
 
@@ -694,17 +754,17 @@ public class ContentParser{
         }
     }
 
-    private void attempt(Runnable run){
-        try{
+    private void attempt(Runnable run) {
+        try {
             run.run();
-        }catch(Throwable t){
+        } catch (Throwable t) {
             Log.err(t);
             //don't overwrite double errors
             markError(currentContent, t);
         }
     }
 
-    public void finishParsing(){
+    public void finishParsing() {
         reads.each(this::attempt);
         postreads.each(this::attempt);
         reads.clear();
@@ -714,25 +774,26 @@ public class ContentParser{
 
     /**
      * Parses content from a json file.
+     *
      * @param name the name of the file without its extension
      * @param json the json to parse
      * @param type the type of content this is
      * @param file file that this content is being parsed from
      * @return the content that was parsed
      */
-    public Content parse(LoadedMod mod, String name, String json, Fi file, ContentType type) throws Exception{
-        if(contentTypes.isEmpty()){
+    public Content parse(LoadedMod mod, String name, String json, Fi file, ContentType type) throws Exception {
+        if (contentTypes.isEmpty()) {
             init();
         }
 
         //remove extra # characters to make it valid json... apparently some people have *unquoted* # characters in their json
-        if(file.extension().equals("json")){
+        if (file.extension().equals("json")) {
             json = json.replace("#", "\\#");
         }
 
         JsonValue value = parser.fromJson(null, Jval.read(json).toString(Jformat.plain));
 
-        if(!parsers.containsKey(type)){
+        if (!parsers.containsKey(type)) {
             throw new SerializationException("No parsers for content type '" + type + "'");
         }
 
@@ -742,173 +803,176 @@ public class ContentParser{
         c.minfo.sourceFile = file;
         toBeParsed.add(c);
 
-        if(!located){
+        if (!located) {
             c.minfo.mod = mod;
         }
         return c;
     }
 
-    public void markError(Content content, LoadedMod mod, Fi file, Throwable error){
+    public void markError(Content content, LoadedMod mod, Fi file, Throwable error) {
         Log.err("Error for @ / @:\n@\n", content, file, Strings.getStackTrace(error));
 
         content.minfo.mod = mod;
         content.minfo.sourceFile = file;
         content.minfo.error = makeError(error, file);
         content.minfo.baseError = error;
-        if(mod != null){
+        if (mod != null) {
             mod.erroredContent.add(content);
         }
     }
 
-    public void markError(Content content, Throwable error){
-        if(content.minfo != null && !content.hasErrored()){
+    public void markError(Content content, Throwable error) {
+        if (content.minfo != null && !content.hasErrored()) {
             markError(content, content.minfo.mod, content.minfo.sourceFile, error);
         }
     }
 
-    private String makeError(Throwable t, Fi file){
+    private String makeError(Throwable t, Fi file) {
         StringBuilder builder = new StringBuilder();
         builder.append("[lightgray]").append("File: ").append(file.name()).append("[]\n\n");
 
-        if(t.getMessage() != null && t instanceof JsonParseException){
+        if (t.getMessage() != null && t instanceof JsonParseException) {
             builder.append("[accent][[JsonParse][] ").append(":\n").append(t.getMessage());
-        }else if(t instanceof NullPointerException){
+        } else if (t instanceof NullPointerException) {
             builder.append(Strings.neatError(t));
-        }else{
+        } else {
             Seq<Throwable> causes = Strings.getCauses(t);
-            for(Throwable e : causes){
+            for (Throwable e : causes) {
                 builder.append("[accent][[").append(e.getClass().getSimpleName().replace("Exception", ""))
-                .append("][] ")
-                .append(e.getMessage() != null ?
-                e.getMessage().replace("mindustry.", "").replace("arc.", "") : "").append("\n");
+                        .append("][] ")
+                        .append(e.getMessage() != null ?
+                                e.getMessage().replace("mindustry.", "").replace("arc.", "") : "").append("\n");
             }
         }
         return builder.toString();
     }
 
-    private <T extends MappableContent> T locate(ContentType type, String name){
+    private <T extends MappableContent> T locate(ContentType type, String name) {
         T first = Vars.content.getByName(type, name); //try vanilla replacement
         return first != null ? first : Vars.content.getByName(type, currentMod.name + "-" + name);
     }
 
-    private <T extends MappableContent> T locateAny(String name){
-        for(ContentType t : ContentType.all){
+    private <T extends MappableContent> T locateAny(String name) {
+        for (ContentType t : ContentType.all) {
             var out = locate(t, name);
-            if(out != null){
-                return (T)out;
+            if (out != null) {
+                return (T) out;
             }
         }
         return null;
     }
 
-    <T> T make(Class<T> type){
-        try{
+    <T> T make(Class<T> type) {
+        try {
             Constructor<T> cons = type.getDeclaredConstructor();
             cons.setAccessible(true);
             return cons.newInstance();
-        }catch(Exception e){
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
-    private <T> T make(Class<T> type, String name){
-        try{
+    private <T> T make(Class<T> type, String name) {
+        try {
             Constructor<T> cons = type.getDeclaredConstructor(String.class);
             cons.setAccessible(true);
             return cons.newInstance(name);
-        }catch(Exception e){
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
-    private <T> Prov<T> supply(Class<T> type){
-        try{
+    private <T> Prov<T> supply(Class<T> type) {
+        try {
             Constructor<T> cons = type.getDeclaredConstructor();
             return () -> {
-                try{
+                try {
                     return cons.newInstance();
-                }catch(Exception e){
+                } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
             };
-        }catch(Exception e){
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
-    Object field(Class<?> type, JsonValue value){
+    Object field(Class<?> type, JsonValue value) {
         return field(type, value.asString());
     }
 
-    /** Gets a field from a static class by name, throwing a descriptive exception if not found. */
-    private Object field(Class<?> type, String name){
-        try{
+    /**
+     * Gets a field from a static class by name, throwing a descriptive exception if not found.
+     */
+    private Object field(Class<?> type, String name) {
+        try {
             Object b = type.getField(name).get(null);
-            if(b == null) throw new IllegalArgumentException(type.getSimpleName() + ": not found: '" + name + "'");
+            if (b == null) throw new IllegalArgumentException(type.getSimpleName() + ": not found: '" + name + "'");
             return b;
-        }catch(Exception e){
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
-    Object fieldOpt(Class<?> type, JsonValue value){
-        try{
+    Object fieldOpt(Class<?> type, JsonValue value) {
+        try {
             return type.getField(value.asString()).get(null);
-        }catch(Exception e){
+        } catch (Exception e) {
             return null;
         }
     }
 
-    void checkNullFields(Object object){
-        if(object == null || object instanceof Number || object instanceof String || toBeParsed.contains(object) || object.getClass().getName().startsWith("arc.")) return;
+    void checkNullFields(Object object) {
+        if (object == null || object instanceof Number || object instanceof String || toBeParsed.contains(object) || object.getClass().getName().startsWith("arc."))
+            return;
 
         parser.getFields(object.getClass()).values().toSeq().each(field -> {
-            try{
-                if(field.field.getType().isPrimitive()) return;
+            try {
+                if (field.field.getType().isPrimitive()) return;
 
-                if(!field.field.isAnnotationPresent(Nullable.class) && field.field.get(object) == null && !implicitNullable.contains(field.field.getType())){
+                if (!field.field.isAnnotationPresent(Nullable.class) && field.field.get(object) == null && !implicitNullable.contains(field.field.getType())) {
                     throw new RuntimeException("'" + field.field.getName() + "' in " +
-                        ((object.getClass().isAnonymousClass() ? object.getClass().getSuperclass() : object.getClass()).getSimpleName()) +
-                        " is missing! Object = " + object + ", field = (" + field.field.getName() + " = " + field.field.get(object) + ")");
+                            ((object.getClass().isAnonymousClass() ? object.getClass().getSuperclass() : object.getClass()).getSimpleName()) +
+                            " is missing! Object = " + object + ", field = (" + field.field.getName() + " = " + field.field.get(object) + ")");
                 }
-            }catch(Exception e){
+            } catch (Exception e) {
                 throw new RuntimeException(e);
             }
         });
     }
 
-    private void readFields(Object object, JsonValue jsonMap, boolean stripType){
-        if(stripType) jsonMap.remove("type");
+    private void readFields(Object object, JsonValue jsonMap, boolean stripType) {
+        if (stripType) jsonMap.remove("type");
         readFields(object, jsonMap);
     }
 
-    void readFields(Object object, JsonValue jsonMap){
+    void readFields(Object object, JsonValue jsonMap) {
         JsonValue research = jsonMap.remove("research");
 
         toBeParsed.remove(object);
         var type = object.getClass();
         var fields = parser.getFields(type);
-        for(JsonValue child = jsonMap.child; child != null; child = child.next){
+        for (JsonValue child = jsonMap.child; child != null; child = child.next) {
             FieldMetadata metadata = fields.get(child.name().replace(" ", "_"));
-            if(metadata == null){
-                if(ignoreUnknownFields){
+            if (metadata == null) {
+                if (ignoreUnknownFields) {
                     Log.warn("[@]: Ignoring unknown field: @ (@)", currentContent.minfo.sourceFile.name(), child.name, type.getSimpleName());
                     continue;
-                }else{
+                } else {
                     SerializationException ex = new SerializationException("Field not found: " + child.name + " (" + type.getName() + ")");
                     ex.addTrace(child.trace());
                     throw ex;
                 }
             }
             Field field = metadata.field;
-            try{
+            try {
                 field.set(object, parser.readValue(field.getType(), metadata.elementType, child, metadata.keyType));
-            }catch(IllegalAccessException ex){
+            } catch (IllegalAccessException ex) {
                 throw new SerializationException("Error accessing field: " + field.getName() + " (" + type.getName() + ")", ex);
-            }catch(SerializationException ex){
+            } catch (SerializationException ex) {
                 ex.addTrace(field.getName() + " (" + type.getName() + ")");
                 throw ex;
-            }catch(RuntimeException runtimeEx){
+            } catch (RuntimeException runtimeEx) {
                 SerializationException ex = new SerializationException(runtimeEx);
                 ex.addTrace(child.trace());
                 ex.addTrace(field.getName() + " (" + type.getName() + ")");
@@ -916,24 +980,24 @@ public class ContentParser{
             }
         }
 
-        if(object instanceof UnlockableContent unlock && research != null){
+        if (object instanceof UnlockableContent unlock && research != null) {
 
             //add research tech node
             String researchName;
             ItemStack[] customRequirements;
 
             //research can be a single string or an object with parent and requirements
-            if(research.isString()){
+            if (research.isString()) {
                 researchName = research.asString();
                 customRequirements = null;
-            }else{
+            } else {
                 researchName = research.getString("parent", null);
                 customRequirements = research.has("requirements") ? parser.readValue(ItemStack[].class, research.get("requirements")) : null;
             }
 
             //remove old node
             TechNode lastNode = TechTree.all.find(t -> t.content == unlock);
-            if(lastNode != null){
+            if (lastNode != null) {
                 lastNode.remove();
             }
 
@@ -945,44 +1009,44 @@ public class ContentParser{
                 currentMod = cur;
 
                 //add custom objectives
-                if(research.has("objectives")){
+                if (research.has("objectives")) {
                     node.objectives.addAll(parser.readValue(Objective[].class, research.get("objectives")));
                 }
 
                 //all items have a produce requirement unless already specified
-                if(object instanceof Item i && !node.objectives.contains(o -> o instanceof Produce p && p.content == i)){
+                if (object instanceof Item i && !node.objectives.contains(o -> o instanceof Produce p && p.content == i)) {
                     node.objectives.add(new Produce(i));
                 }
 
                 //remove old node from parent
-                if(node.parent != null){
+                if (node.parent != null) {
                     node.parent.children.remove(node);
                 }
 
-                if(customRequirements == null){
+                if (customRequirements == null) {
                     node.setupRequirements(unlock.researchRequirements());
                 }
 
-                if(research.getBoolean("root", false)){
+                if (research.getBoolean("root", false)) {
                     node.name = research.getString("name", unlock.name);
                     node.requiresUnlock = research.getBoolean("requiresUnlock", false);
                     TechTree.roots.add(node);
-                }else{
-                    if(researchName != null){
+                } else {
+                    if (researchName != null) {
                         //find parent node.
                         TechNode parent = TechTree.all.find(t -> t.content.name.equals(researchName) || t.content.name.equals(currentMod.name + "-" + researchName) || t.content.name.equals(SaveVersion.mapFallback(researchName)));
 
-                        if(parent == null){
+                        if (parent == null) {
                             Log.warn("Content '" + researchName + "' isn't in the tech tree, but '" + unlock.name + "' requires it to be researched.");
-                        }else{
+                        } else {
                             //add this node to the parent
-                            if(!parent.children.contains(node)){
+                            if (!parent.children.contains(node)) {
                                 parent.children.add(node);
                             }
                             //reparent the node
                             node.parent = parent;
                         }
-                    }else{
+                    } else {
                         Log.warn(unlock.name + " is not a root node, and does not have a `parent: ` property. Ignoring.");
                     }
                 }
@@ -990,49 +1054,54 @@ public class ContentParser{
         }
     }
 
-    /** Tries to resolve a class from the class type map. */
-    <T> Class<T> resolve(String base){
+    /**
+     * Tries to resolve a class from the class type map.
+     */
+    <T> Class<T> resolve(String base) {
         return resolve(base, null);
     }
 
-    /** Tries to resolve a class from the class type map. */
-    <T> Class<T> resolve(String base, Class<T> def){
+    /**
+     * Tries to resolve a class from the class type map.
+     */
+    <T> Class<T> resolve(String base, Class<T> def) {
         //no base class specified
-        if((base == null || base.isEmpty()) && def != null) return def;
+        if ((base == null || base.isEmpty()) && def != null) return def;
 
         //return mapped class if found in the global map
         var out = ClassMap.classes.get(!base.isEmpty() && Character.isLowerCase(base.charAt(0)) ? Strings.capitalize(base) : base);
-        if(out != null) return (Class<T>)out;
+        if (out != null) return (Class<T>) out;
 
         //try to resolve it as a raw class name
-        if(base.indexOf('.') != -1){
-            try{
-                return (Class<T>)Class.forName(base);
-            }catch(Exception ignored){
+        if (base.indexOf('.') != -1) {
+            try {
+                return (Class<T>) Class.forName(base);
+            } catch (Exception ignored) {
                 //try to use mod class loader
-                try{
-                    return (Class<T>)Class.forName(base, true, mods.mainLoader());
-                }catch(Exception ignore){}
+                try {
+                    return (Class<T>) Class.forName(base, true, mods.mainLoader());
+                } catch (Exception ignore) {
+                }
             }
         }
 
-        if(def != null){
+        if (def != null) {
             Log.warn("[@] No type '" + base + "' found, defaulting to type '" + def.getSimpleName() + "'", currentContent == null ? currentMod.name : "");
             return def;
         }
         throw new IllegalArgumentException("Type not found: " + base);
     }
 
-    private interface FieldParser{
+    private interface FieldParser {
         Object parse(Class<?> type, JsonValue value) throws Exception;
     }
 
-    private interface TypeParser<T extends Content>{
+    private interface TypeParser<T extends Content> {
         T parse(String mod, String name, JsonValue value) throws Exception;
     }
 
     //intermediate class for parsing
-    static class UnitReq{
+    static class UnitReq {
         public Block block;
         public ItemStack[] requirements = {};
         @Nullable
@@ -1040,7 +1109,7 @@ public class ContentParser{
         public float time = 60f * 10f;
     }
 
-    public interface ParseListener{
+    public interface ParseListener {
         void parsed(Class<?> type, JsonValue jsonData, Object result);
     }
 

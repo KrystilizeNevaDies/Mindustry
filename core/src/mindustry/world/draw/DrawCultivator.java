@@ -1,14 +1,16 @@
 package mindustry.world.draw;
 
-import arc.*;
-import arc.graphics.*;
-import arc.graphics.g2d.*;
-import arc.util.*;
+import arc.Core;
+import arc.graphics.Color;
+import arc.graphics.g2d.Draw;
+import arc.graphics.g2d.Lines;
+import arc.graphics.g2d.TextureRegion;
+import arc.util.Time;
 import mindustry.gen.*;
-import mindustry.graphics.*;
-import mindustry.world.*;
+import mindustry.graphics.Drawf;
+import mindustry.world.Block;
 
-public class DrawCultivator extends DrawBlock{
+public class DrawCultivator extends DrawBlock {
     public Color plantColor = Color.valueOf("5541b1");
     public Color plantColorLight = Color.valueOf("7457ce");
     public Color bottomColor = Color.valueOf("474747");
@@ -20,17 +22,17 @@ public class DrawCultivator extends DrawBlock{
     public TextureRegion middle;
 
     @Override
-    public void draw(Building build){
+    public void draw(Building build) {
         Drawf.liquid(middle, build.x, build.y, build.warmup(), plantColor);
 
         Draw.color(bottomColor, plantColorLight, build.warmup());
 
         rand.setSeed(build.pos());
-        for(int i = 0; i < bubbles; i++){
+        for (int i = 0; i < bubbles; i++) {
             float x = rand.range(spread), y = rand.range(spread);
             float life = 1f - ((Time.time / timeScl + rand.random(recurrence)) % recurrence);
 
-            if(life > 0){
+            if (life > 0) {
                 Lines.stroke(build.warmup() * (life + strokeMin));
                 Lines.poly(build.x + x, build.y + y, sides, (1f - life) * radius);
             }
@@ -40,7 +42,7 @@ public class DrawCultivator extends DrawBlock{
     }
 
     @Override
-    public void load(Block block){
+    public void load(Block block) {
         middle = Core.atlas.find(block.name + "-middle");
     }
 }

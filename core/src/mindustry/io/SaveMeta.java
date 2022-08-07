@@ -1,12 +1,12 @@
 package mindustry.io;
 
-import arc.struct.*;
-import mindustry.game.*;
-import mindustry.maps.*;
+import arc.struct.StringMap;
+import mindustry.game.Rules;
+import mindustry.maps.Map;
 
-import static mindustry.Vars.*;
+import static mindustry.Vars.maps;
 
-public class SaveMeta{
+public class SaveMeta {
     public int version;
     public int build;
     public long timestamp;
@@ -17,7 +17,15 @@ public class SaveMeta{
     public StringMap tags;
     public String[] mods;
 
-    public SaveMeta(int version, long timestamp, long timePlayed, int build, String map, int wave, Rules rules, StringMap tags){
+    public SaveMeta(
+            int version,
+            long timestamp,
+            long timePlayed,
+            int build,
+            String map,
+            int wave,
+            Rules rules,
+            StringMap tags) {
         this.version = version;
         this.build = build;
         this.timestamp = timestamp;

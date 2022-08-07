@@ -1,40 +1,46 @@
 package mindustry.world.blocks.logic;
 
-import arc.*;
-import arc.graphics.*;
-import arc.graphics.g2d.*;
-import arc.graphics.gl.*;
-import arc.struct.*;
-import arc.util.*;
-import mindustry.*;
-import mindustry.annotations.Annotations.*;
+import arc.Core;
+import arc.graphics.Blending;
+import arc.graphics.Color;
+import arc.graphics.g2d.Draw;
+import arc.graphics.g2d.Fill;
+import arc.graphics.g2d.Lines;
+import arc.graphics.gl.FrameBuffer;
+import arc.struct.LongQueue;
+import arc.util.Tmp;
+import mindustry.Vars;
+import mindustry.annotations.Annotations.Struct;
+import mindustry.annotations.Annotations.StructField;
 import mindustry.gen.*;
-import mindustry.graphics.*;
-import mindustry.ui.*;
-import mindustry.world.*;
-import mindustry.world.meta.*;
+import mindustry.graphics.Pal;
+import mindustry.ui.Fonts;
+import mindustry.world.Block;
+import mindustry.world.meta.BlockGroup;
+import mindustry.world.meta.Env;
+import mindustry.world.meta.Stat;
 
-public class LogicDisplay extends Block{
+public class LogicDisplay extends Block {
     public static final byte
-        commandClear = 0,
-        commandColor = 1,
-        //virtual command, unpacked in instruction
-        commandColorPack = 2,
-        commandStroke = 3,
-        commandLine = 4,
-        commandRect = 5,
-        commandLineRect = 6,
-        commandPoly = 7,
-        commandLinePoly = 8,
-        commandTriangle = 9,
-        commandImage = 10;
+            commandClear = 0,
+            commandColor = 1,
+    //virtual command, unpacked in instruction
+    commandColorPack = 2,
+            commandStroke = 3,
+            commandLine = 4,
+            commandRect = 5,
+            commandLineRect = 6,
+            commandPoly = 7,
+            commandLinePoly = 8,
+            commandTriangle = 9,
+            commandImage = 10;
 
     public int maxSides = 25;
 
     public int displaySize = 64;
     public float scaleFactor = 1f;
 
-    public LogicDisplay(String name){
+    public LogicDisplay(String name) {
         super(name);
         update = true;
         solid = true;
@@ -45,27 +51,27 @@ public class LogicDisplay extends Block{
     }
 
     @Override
-    public void setStats(){
+    public void setStats() {
         super.setStats();
 
         stats.add(Stat.displaySize, "@x@", displaySize, displaySize);
     }
 
-    public class LogicDisplayBuild extends Building{
+    public class LogicDisplayBuild extends Building {
         public FrameBuffer buffer;
         public float color = Color.whiteFloatBits;
         public float stroke = 1f;
         public LongQueue commands = new LongQueue(256);
 
         @Override
-        public void draw(){
+        public void draw() {
             super.draw();
 
             //don't even bother processing anything when displays are off.
-            if(!Vars.renderer.drawDisplays) return;
+            if (!Vars.renderer.drawDisplays) return;
 
             Draw.draw(Draw.z(), () -> {
-                if(buffer == null){
+                if (buffer == null) {
                     buffer = new FrameBuffer(displaySize, displaySize);
                     //clear the buffer - some OSs leave garbage in it
                     buffer.begin(Pal.darkerMetal);
@@ -74,7 +80,7 @@ public class LogicDisplay extends Block{
             });
 
             //don't bother processing commands if displays are off
-            if(!commands.isEmpty()){
+            if (!commands.isEmpty()) {
                 Draw.draw(Draw.z(), () -> {
                     Tmp.m1.set(Draw.proj());
                     Draw.proj(0, 0, displaySize, displaySize);
@@ -82,13 +88,13 @@ public class LogicDisplay extends Block{
                     Draw.color(color);
                     Lines.stroke(stroke);
 
-                    while(!commands.isEmpty()){
+                    while (!commands.isEmpty()) {
                         long c = commands.removeFirst();
                         byte type = DisplayCmd.type(c);
                         int x = unpackSign(DisplayCmd.x(c)), y = unpackSign(DisplayCmd.y(c)),
-                        p1 = unpackSign(DisplayCmd.p1(c)), p2 = unpackSign(DisplayCmd.p2(c)), p3 = unpackSign(DisplayCmd.p3(c)), p4 = unpackSign(DisplayCmd.p4(c));
+                                p1 = unpackSign(DisplayCmd.p1(c)), p2 = unpackSign(DisplayCmd.p2(c)), p3 = unpackSign(DisplayCmd.p3(c)), p4 = unpackSign(DisplayCmd.p4(c));
 
-                        switch(type){
+                        switch (type) {
                             case commandClear -> Core.graphics.clear(x / 255f, y / 255f, p1 / 255f, 1f);
                             case commandLine -> Lines.line(x, y, p1, p2);
                             case commandRect -> Fill.crect(x, y, p1, p2);
@@ -110,7 +116,7 @@ public class LogicDisplay extends Block{
 
             Draw.blend(Blending.disabled);
             Draw.draw(Draw.z(), () -> {
-                if(buffer != null){
+                if (buffer != null) {
                     Draw.rect(Draw.wrap(buffer.getTexture()), x, y, buffer.getWidth() * scaleFactor * Draw.scl, -buffer.getHeight() * scaleFactor * Draw.scl);
                 }
             });
@@ -118,20 +124,20 @@ public class LogicDisplay extends Block{
         }
 
         @Override
-        public void remove(){
+        public void remove() {
             super.remove();
-            if(buffer != null){
+            if (buffer != null) {
                 buffer.dispose();
                 buffer = null;
             }
         }
     }
 
-    static int unpackSign(int value){
+    static int unpackSign(int value) {
         return (value & 0b0111111111) * ((value & (0b1000000000)) != 0 ? -1 : 1);
     }
 
-    public enum GraphicsType{
+    public enum GraphicsType {
         clear,
         color,
         //virtual
@@ -143,13 +149,14 @@ public class LogicDisplay extends Block{
         poly,
         linePoly,
         triangle,
-        image,;
+        image,
+        ;
 
         public static final GraphicsType[] all = values();
     }
 
     @Struct
-    static class DisplayCmdStruct{
+    static class DisplayCmdStruct {
         @StructField(4)
         public byte type;
 

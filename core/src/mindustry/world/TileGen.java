@@ -1,8 +1,8 @@
 package mindustry.world;
 
-import mindustry.content.*;
+import mindustry.content.Blocks;
 
-public class TileGen{
+public class TileGen {
     public Block floor;
     public Block block;
     public Block overlay;
@@ -11,7 +11,7 @@ public class TileGen{
         reset();
     }
 
-    public void reset(){
+    public void reset() {
         floor = Blocks.stone;
         block = Blocks.air;
         overlay = Blocks.air;

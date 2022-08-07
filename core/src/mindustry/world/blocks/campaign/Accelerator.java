@@ -1,30 +1,36 @@
 package mindustry.world.blocks.campaign;
 
-import arc.*;
-import arc.Graphics.*;
-import arc.Graphics.Cursor.*;
-import arc.graphics.g2d.*;
-import arc.math.*;
-import arc.scene.ui.layout.*;
-import arc.util.*;
-import mindustry.annotations.Annotations.*;
-import mindustry.content.*;
-import mindustry.game.EventType.*;
+import arc.Events;
+import arc.Graphics.Cursor;
+import arc.Graphics.Cursor.SystemCursor;
+import arc.graphics.g2d.Draw;
+import arc.graphics.g2d.Lines;
+import arc.graphics.g2d.TextureRegion;
+import arc.math.Angles;
+import arc.math.Mathf;
+import arc.scene.ui.layout.Table;
+import arc.util.Time;
+import arc.util.Tmp;
+import mindustry.annotations.Annotations.Load;
+import mindustry.content.Blocks;
+import mindustry.game.EventType.Trigger;
 import mindustry.gen.*;
-import mindustry.graphics.*;
-import mindustry.type.*;
-import mindustry.world.*;
+import mindustry.graphics.Layer;
+import mindustry.graphics.Pal;
+import mindustry.type.Item;
+import mindustry.type.ItemStack;
+import mindustry.world.Block;
 
 import static mindustry.Vars.*;
 
-public class Accelerator extends Block{
+public class Accelerator extends Block {
     public @Load("launch-arrow") TextureRegion arrowRegion;
 
-    //TODO dynamic
+    // TODO dynamic
     public Block launching = Blocks.coreNucleus;
     public int[] capacities = {};
 
-    public Accelerator(String name){
+    public Accelerator(String name) {
         super(name);
         update = true;
         solid = true;
@@ -34,10 +40,10 @@ public class Accelerator extends Block{
     }
 
     @Override
-    public void init(){
+    public void init() {
         itemCapacity = 0;
         capacities = new int[content.items().size];
-        for(ItemStack stack : launching.requirements){
+        for (ItemStack stack : launching.requirements) {
             capacities[stack.item.id] = stack.amount;
             itemCapacity += stack.amount;
         }
@@ -46,35 +52,42 @@ public class Accelerator extends Block{
     }
 
     @Override
-    public boolean outputsItems(){
+    public boolean outputsItems() {
         return false;
     }
 
-    public class AcceleratorBuild extends Building{
+    public class AcceleratorBuild extends Building {
         public float heat, statusLerp;
 
         @Override
-        public void updateTile(){
+        public void updateTile() {
             super.updateTile();
             heat = Mathf.lerpDelta(heat, efficiency, 0.05f);
             statusLerp = Mathf.lerpDelta(statusLerp, power.status, 0.05f);
         }
 
         @Override
-        public void draw(){
+        public void draw() {
             super.draw();
 
-            for(int l = 0; l < 4; l++){
+            for (int l = 0; l < 4; l++) {
                 float length = 7f + l * 5f;
-                Draw.color(Tmp.c1.set(Pal.darkMetal).lerp(team.color, statusLerp), Pal.darkMetal, Mathf.absin(Time.time + l*50f, 10f, 1f));
+                Draw.color(
+                        Tmp.c1.set(Pal.darkMetal).lerp(team.color, statusLerp),
+                        Pal.darkMetal,
+                        Mathf.absin(Time.time + l * 50f, 10f, 1f));
 
-                for(int i = 0; i < 4; i++){
-                    float rot = i*90f + 45f;
-                    Draw.rect(arrowRegion, x + Angles.trnsx(rot, length), y + Angles.trnsy(rot, length), rot + 180f);
+                for (int i = 0; i < 4; i++) {
+                    float rot = i * 90f + 45f;
+                    Draw.rect(
+                            arrowRegion,
+                            x + Angles.trnsx(rot, length),
+                            y + Angles.trnsy(rot, length),
+                            rot + 180f);
                 }
             }
 
-            if(heat < 0.0001f) return;
+            if (heat < 0.0001f) return;
 
             float rad = size * tilesize / 2f * 0.74f;
             float scl = 2f;
@@ -90,46 +103,54 @@ public class Accelerator extends Block{
             Draw.color(team.color);
             Draw.alpha(Mathf.clamp(heat * 3f));
 
-            for(int i = 0; i < 4; i++){
-                float rot = i*90f + 45f + (-Time.time /3f)%360f;
+            for (int i = 0; i < 4; i++) {
+                float rot = i * 90f + 45f + (-Time.time / 3f) % 360f;
                 float length = 26f * heat;
-                Draw.rect(arrowRegion, x + Angles.trnsx(rot, length), y + Angles.trnsy(rot, length), rot + 180f);
+                Draw.rect(
+                        arrowRegion,
+                        x + Angles.trnsx(rot, length),
+                        y + Angles.trnsy(rot, length),
+                        rot + 180f);
             }
 
             Draw.reset();
         }
 
         @Override
-        public Cursor getCursor(){
+        public Cursor getCursor() {
             return !state.isCampaign() || efficiency <= 0f ? SystemCursor.arrow : super.getCursor();
         }
 
         @Override
-        public void buildConfiguration(Table table){
+        public void buildConfiguration(Table table) {
             deselect();
 
-            if(!state.isCampaign() || efficiency <= 0f) return;
+            if (!state.isCampaign() || efficiency <= 0f) return;
 
-            ui.planet.showPlanetLaunch(state.rules.sector, sector -> {
-                //TODO cutscene, etc...
+            ui.planet.showPlanetLaunch(
+                    state.rules.sector,
+                    sector -> {
+                        // TODO cutscene, etc...
 
-                //TODO should consume resources based on destination schem
-                consume();
+                        // TODO should consume resources based on destination schem
+                        consume();
 
-                universe.clearLoadoutInfo();
-                universe.updateLoadout(sector.planet.generator.getDefaultLoadout().findCore(), sector.planet.generator.getDefaultLoadout());
-            });
+                        universe.clearLoadoutInfo();
+                        universe.updateLoadout(
+                                sector.planet.generator.getDefaultLoadout().findCore(),
+                                sector.planet.generator.getDefaultLoadout());
+                    });
 
             Events.fire(Trigger.acceleratorUse);
         }
 
         @Override
-        public int getMaximumAccepted(Item item){
+        public int getMaximumAccepted(Item item) {
             return capacities[item.id];
         }
 
         @Override
-        public boolean acceptItem(Building source, Item item){
+        public boolean acceptItem(Building source, Item item) {
             return items.get(item) < getMaximumAccepted(item);
         }
     }

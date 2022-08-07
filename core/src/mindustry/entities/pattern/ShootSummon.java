@@ -1,12 +1,12 @@
 package mindustry.entities.pattern;
 
-import arc.math.*;
-import arc.util.*;
+import arc.math.Mathf;
+import arc.util.Tmp;
 
-public class ShootSummon extends ShootPattern{
+public class ShootSummon extends ShootPattern {
     public float x, y, radius, spread;
 
-    public ShootSummon(float x, float y, float radius, float spread){
+    public ShootSummon(float x, float y, float radius, float spread) {
         this.x = x;
         this.y = y;
         this.radius = radius;
@@ -14,13 +14,16 @@ public class ShootSummon extends ShootPattern{
     }
 
     @Override
-    public void shoot(int totalShots, BulletHandler handler){
+    public void shoot(int totalShots, BulletHandler handler) {
 
-
-        for(int i = 0; i < shots; i++){
+        for (int i = 0; i < shots; i++) {
             Tmp.v1.trns(Mathf.random(360f), Mathf.random(radius));
 
-            handler.shoot(x + Tmp.v1.x, y + Tmp.v1.y, Mathf.range(spread), firstShotDelay + shotDelay * i);
+            handler.shoot(
+                    x + Tmp.v1.x,
+                    y + Tmp.v1.y,
+                    Mathf.range(spread),
+                    firstShotDelay + shotDelay * i);
         }
     }
 }

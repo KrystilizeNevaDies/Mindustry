@@ -1,37 +1,43 @@
 package mindustry.audio;
 
-import arc.*;
-import arc.audio.*;
-import arc.math.*;
-import arc.util.*;
+import arc.Core;
+import arc.audio.Sound;
+import arc.math.Mathf;
+import arc.util.Time;
 
-/** A simple class for playing a looping sound at a position.*/
-public class SoundLoop{
+/**
+ * A simple class for playing a looping sound at a position.
+ */
+public class SoundLoop {
     private static final float fadeSpeed = 0.05f;
 
     private final Sound sound;
     private int id = -1;
     private float volume, baseVolume;
 
-    public SoundLoop(Sound sound, float baseVolume){
+    public SoundLoop(Sound sound, float baseVolume) {
         this.sound = sound;
         this.baseVolume = baseVolume;
     }
 
-    public void update(float x, float y, boolean play){
-        if(baseVolume <= 0) return;
+    public void update(float x, float y, boolean play) {
+        if (baseVolume <= 0) return;
 
-        if(id < 0){
-            if(play){
-                id = sound.loop(sound.calcVolume(x, y) * volume * baseVolume, 1f, sound.calcPan(x, y));
+        if (id < 0) {
+            if (play) {
+                id =
+                        sound.loop(
+                                sound.calcVolume(x, y) * volume * baseVolume,
+                                1f,
+                                sound.calcPan(x, y));
             }
-        }else{
-            //fade the sound in or out
-            if(play){
+        } else {
+            // fade the sound in or out
+            if (play) {
                 volume = Mathf.clamp(volume + fadeSpeed * Time.delta);
-            }else{
+            } else {
                 volume = Mathf.clamp(volume - fadeSpeed * Time.delta);
-                if(volume <= 0.001f){
+                if (volume <= 0.001f) {
                     Core.audio.stop(id);
                     id = -1;
                     return;
@@ -42,8 +48,8 @@ public class SoundLoop{
         }
     }
 
-    public void stop(){
-        if(id != -1){
+    public void stop() {
+        if (id != -1) {
             Core.audio.stop(id);
             id = -1;
             volume = baseVolume = -1;

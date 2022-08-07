@@ -1,6 +1,6 @@
 package mindustry.logic;
 
-public enum CutsceneAction{
+public enum CutsceneAction {
     pan,
     zoom,
     stop;

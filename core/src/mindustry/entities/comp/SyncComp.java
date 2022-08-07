@@ -1,48 +1,63 @@
 package mindustry.entities.comp;
 
-import arc.util.io.*;
-import mindustry.*;
-import mindustry.annotations.Annotations.*;
+import arc.util.io.Reads;
+import arc.util.io.Writes;
+import mindustry.Vars;
+import mindustry.annotations.Annotations.Component;
 import mindustry.gen.*;
 
-import java.nio.*;
+import java.nio.FloatBuffer;
 
 @Component
-abstract class SyncComp implements Entityc{
+abstract class SyncComp implements Entityc {
     transient long lastUpdated, updateSpacing;
 
-    //all these method bodies are internally generated
-    void snapSync(){}
-    void snapInterpolation(){}
-    void readSync(Reads read){}
-    void writeSync(Writes write){}
-    void readSyncManual(FloatBuffer buffer){}
-    void writeSyncManual(FloatBuffer buffer){}
-    void afterSync(){}
-    void interpolate(){}
+    // all these method bodies are internally generated
+    void snapSync() {
+    }
 
-    boolean isSyncHidden(Player player){
+    void snapInterpolation() {
+    }
+
+    void readSync(Reads read) {
+    }
+
+    void writeSync(Writes write) {
+    }
+
+    void readSyncManual(FloatBuffer buffer) {
+    }
+
+    void writeSyncManual(FloatBuffer buffer) {
+    }
+
+    void afterSync() {
+    }
+
+    void interpolate() {
+    }
+
+    boolean isSyncHidden(Player player) {
         return false;
     }
 
-    void handleSyncHidden(){
-
+    void handleSyncHidden() {
     }
 
     @Override
-    public void update(){
-        //interpolate the player if:
-        //- this is a client and the entity is everything except the local player
-        //- this is a server and the entity is a remote player
-        if((Vars.net.client() && !isLocal()) || isRemote()){
+    public void update() {
+        // interpolate the player if:
+        // - this is a client and the entity is everything except the local player
+        // - this is a server and the entity is a remote player
+        if ((Vars.net.client() && !isLocal()) || isRemote()) {
             interpolate();
         }
     }
 
     @Override
-    public void remove(){
-        //notify client of removal
-        if(Vars.net.client()){
+    public void remove() {
+        // notify client of removal
+        if (Vars.net.client()) {
             Vars.netClient.addRemovedEntity(id());
         }
     }

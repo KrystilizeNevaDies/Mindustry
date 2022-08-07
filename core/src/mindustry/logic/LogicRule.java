@@ -1,6 +1,6 @@
 package mindustry.logic;
 
-public enum LogicRule{
+public enum LogicRule {
     currentWaveTime,
     waveTimer,
     waves,
@@ -15,7 +15,7 @@ public enum LogicRule{
     ambientLight,
     solarMultiplier,
 
-    //team specific
+    // team specific
     buildSpeed,
     unitBuildSpeed,
     unitDamage,

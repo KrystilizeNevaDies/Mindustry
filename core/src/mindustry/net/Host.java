@@ -1,10 +1,10 @@
 package mindustry.net;
 
-import arc.util.*;
-import mindustry.*;
-import mindustry.game.*;
+import arc.util.Nullable;
+import mindustry.Vars;
+import mindustry.game.Gamemode;
 
-public class Host{
+public class Host {
     public final String name;
     public final String address;
     public final String mapname, description;
@@ -16,7 +16,19 @@ public class Host{
     public final @Nullable String modeName;
     public int ping, port = Vars.port;
 
-    public Host(int ping, String name, String address, String mapname, int wave, int players, int version, String versionType, Gamemode mode, int playerLimit, String description, String modeName){
+    public Host(
+            int ping,
+            String name,
+            String address,
+            String mapname,
+            int wave,
+            int players,
+            int version,
+            String versionType,
+            Gamemode mode,
+            int playerLimit,
+            String description,
+            String modeName) {
         this.ping = ping;
         this.name = name;
         this.address = address;

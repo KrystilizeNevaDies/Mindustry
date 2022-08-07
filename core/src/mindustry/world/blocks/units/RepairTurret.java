@@ -1,26 +1,38 @@
 package mindustry.world.blocks.units;
 
-import arc.graphics.*;
-import arc.graphics.g2d.*;
-import arc.math.*;
-import arc.math.geom.*;
-import arc.struct.*;
-import arc.util.*;
-import arc.util.io.*;
-import mindustry.annotations.Annotations.*;
-import mindustry.content.*;
-import mindustry.entities.*;
-import mindustry.game.*;
+import arc.graphics.Color;
+import arc.graphics.g2d.Draw;
+import arc.graphics.g2d.Lines;
+import arc.graphics.g2d.TextureRegion;
+import arc.math.Angles;
+import arc.math.Interp;
+import arc.math.Mathf;
+import arc.math.Rand;
+import arc.math.geom.Rect;
+import arc.math.geom.Vec2;
+import arc.struct.EnumSet;
+import arc.util.Nullable;
+import arc.util.Time;
+import arc.util.io.Reads;
+import arc.util.io.Writes;
+import mindustry.annotations.Annotations.Load;
+import mindustry.content.Fx;
+import mindustry.entities.Effect;
+import mindustry.entities.Sized;
+import mindustry.entities.Units;
+import mindustry.game.Team;
 import mindustry.gen.*;
-import mindustry.graphics.*;
-import mindustry.logic.*;
-import mindustry.world.*;
-import mindustry.world.consumers.*;
+import mindustry.graphics.Drawf;
+import mindustry.graphics.Layer;
+import mindustry.graphics.Pal;
+import mindustry.logic.Ranged;
+import mindustry.world.Block;
+import mindustry.world.consumers.ConsumeCoolant;
 import mindustry.world.meta.*;
 
-import static mindustry.Vars.*;
+import static mindustry.Vars.tilesize;
 
-public class RepairTurret extends Block{
+public class RepairTurret extends Block {
     static final Rect rect = new Rect();
     static final Rand rand = new Rand();
 
@@ -37,9 +49,13 @@ public class RepairTurret extends Block{
     public boolean acceptCoolant = false;
 
     public float coolantUse = 0.5f;
-    /** Effect displayed when coolant is used. */
+    /**
+     * Effect displayed when coolant is used.
+     */
     public Effect coolEffect = Fx.fuelburn;
-    /** How much healing is increased by with heat capacity. */
+    /**
+     * How much healing is increased by with heat capacity.
+     */
     public float coolantMultiplier = 1f;
 
     public @Load(value = "@-base", fallback = "block-@size") TextureRegion baseRegion;
@@ -50,7 +66,7 @@ public class RepairTurret extends Block{
 
     public Color laserColor = Color.valueOf("98ffa9"), laserTopColor = Color.white.cpy();
 
-    public RepairTurret(String name){
+    public RepairTurret(String name) {
         super(name);
         update = true;
         solid = true;
@@ -64,19 +80,19 @@ public class RepairTurret extends Block{
     }
 
     @Override
-    public void setStats(){
+    public void setStats() {
         super.setStats();
         stats.add(Stat.range, repairRadius / tilesize, StatUnit.blocks);
         stats.add(Stat.repairSpeed, repairSpeed * 60f, StatUnit.perSecond);
 
-        if(acceptCoolant){
+        if (acceptCoolant) {
             stats.add(Stat.booster, StatValues.strengthBoosters(coolantMultiplier, this::consumesLiquid));
         }
     }
 
     @Override
-    public void init(){
-        if(acceptCoolant){
+    public void init() {
+        if (acceptCoolant) {
             hasLiquids = true;
             consume(new ConsumeCoolant(coolantUse)).optional(true, true);
         }
@@ -87,14 +103,14 @@ public class RepairTurret extends Block{
     }
 
     @Override
-    public void drawPlace(int x, int y, int rotation, boolean valid){
+    public void drawPlace(int x, int y, int rotation, boolean valid) {
         super.drawPlace(x, y, rotation, valid);
 
         Drawf.dashCircle(x * tilesize + offset, y * tilesize + offset, repairRadius, Pal.accent);
     }
 
     @Override
-    public TextureRegion[] icons(){
+    public TextureRegion[] icons() {
         return new TextureRegion[]{baseRegion, region};
     }
 
@@ -102,29 +118,29 @@ public class RepairTurret extends Block{
                                 float strength, float pulseStroke, float pulseRadius, float beamWidth,
                                 Vec2 lastEnd, Vec2 offset,
                                 Color laserColor, Color laserTopColor,
-                                TextureRegion laser, TextureRegion laserEnd, TextureRegion laserTop, TextureRegion laserTopEnd){
+                                TextureRegion laser, TextureRegion laserEnd, TextureRegion laserTop, TextureRegion laserTopEnd) {
         rand.setSeed(id + (target instanceof Entityc e ? e.id() : 0));
 
-        if(target != null){
+        if (target != null) {
             float
-            originX = x + Angles.trnsx(rotation, length),
-            originY = y + Angles.trnsy(rotation, length);
+                    originX = x + Angles.trnsx(rotation, length),
+                    originY = y + Angles.trnsy(rotation, length);
 
             lastEnd.set(target).sub(originX, originY);
             lastEnd.setLength(Math.max(2f, lastEnd.len()));
 
             lastEnd.add(offset.trns(
-            rand.random(360f) + Time.time/2f,
-            Mathf.sin(Time.time + rand.random(200f), 55f, rand.random(target.hitSize() * 0.2f, target.hitSize() * 0.45f))
+                    rand.random(360f) + Time.time / 2f,
+                    Mathf.sin(Time.time + rand.random(200f), 55f, rand.random(target.hitSize() * 0.2f, target.hitSize() * 0.45f))
             ).rotate(target instanceof Rotc rot ? rot.rotation() : 0f));
 
             lastEnd.add(originX, originY);
         }
 
-        if(strength > 0.01f){
+        if (strength > 0.01f) {
             float
-            originX = x + Angles.trnsx(rotation, length),
-            originY = y + Angles.trnsy(rotation, length);
+                    originX = x + Angles.trnsx(rotation, length),
+                    originY = y + Angles.trnsy(rotation, length);
 
             Draw.z(Layer.flyingUnit + 1); //above all units
 
@@ -145,13 +161,13 @@ public class RepairTurret extends Block{
         }
     }
 
-    public class RepairPointBuild extends Building implements Ranged{
+    public class RepairPointBuild extends Building implements Ranged {
         public Unit target;
         public Vec2 offset = new Vec2(), lastEnd = new Vec2();
         public float strength, rotation = 90;
 
         @Override
-        public void draw(){
+        public void draw() {
             Draw.rect(baseRegion, x, y);
 
             Draw.z(Layer.turret);
@@ -159,35 +175,35 @@ public class RepairTurret extends Block{
             Draw.rect(region, x, y, rotation - 90);
 
             drawBeam(x, y, rotation, length, id, target, team, strength,
-                pulseStroke, pulseRadius, beamWidth, lastEnd, offset, laserColor, laserTopColor,
-                laser, laserEnd, laserTop, laserTopEnd);
+                    pulseStroke, pulseRadius, beamWidth, lastEnd, offset, laserColor, laserTopColor,
+                    laser, laserEnd, laserTop, laserTopEnd);
         }
 
         @Override
-        public void drawSelect(){
+        public void drawSelect() {
             Drawf.dashCircle(x, y, repairRadius, Pal.accent);
         }
 
         @Override
-        public void updateTile(){
+        public void updateTile() {
             float multiplier = 1f;
-            if(acceptCoolant){
+            if (acceptCoolant) {
                 multiplier = 1f + liquids.current().heatCapacity * coolantMultiplier * optionalEfficiency;
             }
 
-            if(target != null && (target.dead() || target.dst(this) - target.hitSize/2f > repairRadius || target.health() >= target.maxHealth())){
+            if (target != null && (target.dead() || target.dst(this) - target.hitSize / 2f > repairRadius || target.health() >= target.maxHealth())) {
                 target = null;
             }
 
-            if(target == null){
+            if (target == null) {
                 offset.setZero();
             }
 
             boolean healed = false;
 
-            if(target != null && efficiency > 0){
+            if (target != null && efficiency > 0) {
                 float angle = Angles.angle(x, y, target.x + offset.x, target.y + offset.y);
-                if(Angles.angleDist(angle, rotation) < 30f){
+                if (Angles.angleDist(angle, rotation) < 30f) {
                     healed = true;
                     target.heal(repairSpeed * strength * edelta() * multiplier);
                 }
@@ -196,45 +212,45 @@ public class RepairTurret extends Block{
 
             strength = Mathf.lerpDelta(strength, healed ? 1f : 0f, 0.08f * Time.delta);
 
-            if(timer(timerTarget, 20)){
+            if (timer(timerTarget, 20)) {
                 rect.setSize(repairRadius * 2).setCenter(x, y);
                 target = Units.closest(team, x, y, repairRadius, Unit::damaged);
             }
         }
 
         @Override
-        public boolean shouldConsume(){
+        public boolean shouldConsume() {
             return target != null && enabled;
         }
 
         @Override
-        public BlockStatus status(){
+        public BlockStatus status() {
             return Mathf.equal(efficiency, 0f, 0.01f) ? BlockStatus.noInput : super.status();
         }
 
         @Override
-        public float range(){
+        public float range() {
             return repairRadius;
         }
 
         @Override
-        public void write(Writes write){
+        public void write(Writes write) {
             super.write(write);
-            
+
             write.f(rotation);
         }
 
         @Override
-        public void read(Reads read, byte revision){
+        public void read(Reads read, byte revision) {
             super.read(read, revision);
 
-            if(revision >= 1){
+            if (revision >= 1) {
                 rotation = read.f();
             }
         }
 
         @Override
-        public byte version(){
+        public byte version() {
             return 1;
         }
     }

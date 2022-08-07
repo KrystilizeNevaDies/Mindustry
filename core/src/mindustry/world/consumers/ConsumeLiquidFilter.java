@@ -1,70 +1,79 @@
 package mindustry.world.consumers;
 
-import arc.func.*;
-import arc.scene.ui.layout.*;
-import arc.struct.*;
-import arc.util.*;
+import arc.func.Boolf;
+import arc.scene.ui.layout.Table;
+import arc.struct.Seq;
+import arc.util.Nullable;
 import mindustry.gen.*;
-import mindustry.type.*;
-import mindustry.ui.*;
-import mindustry.world.*;
-import mindustry.world.meta.*;
+import mindustry.type.Liquid;
+import mindustry.ui.MultiReqImage;
+import mindustry.ui.ReqImage;
+import mindustry.world.Block;
+import mindustry.world.meta.Stat;
+import mindustry.world.meta.StatValues;
+import mindustry.world.meta.Stats;
 
-import static mindustry.Vars.*;
+import static mindustry.Vars.content;
 
-public class ConsumeLiquidFilter extends ConsumeLiquidBase{
+public class ConsumeLiquidFilter extends ConsumeLiquidBase {
     public Boolf<Liquid> filter = l -> false;
 
-    public ConsumeLiquidFilter(Boolf<Liquid> liquid, float amount){
+    public ConsumeLiquidFilter(Boolf<Liquid> liquid, float amount) {
         super(amount);
         this.filter = liquid;
     }
 
-    public ConsumeLiquidFilter(){
+    public ConsumeLiquidFilter() {
     }
 
     @Override
-    public void apply(Block block){
+    public void apply(Block block) {
         block.hasLiquids = true;
         content.liquids().each(filter, item -> block.liquidFilter[item.id] = true);
     }
 
     @Override
-    public void build(Building build, Table table){
+    public void build(Building build, Table table) {
         Seq<Liquid> list = content.liquids().select(l -> !l.isHidden() && filter.get(l));
         MultiReqImage image = new MultiReqImage();
-        list.each(liquid -> image.add(new ReqImage(liquid.uiIcon, () ->
-            build.liquids != null && build.liquids.get(liquid) > 0)));
+        list.each(
+                liquid ->
+                        image.add(
+                                new ReqImage(
+                                        liquid.uiIcon,
+                                        () ->
+                                                build.liquids != null
+                                                        && build.liquids.get(liquid) > 0)));
 
         table.add(image).size(8 * 4);
     }
 
     @Override
-    public void update(Building build){
+    public void update(Building build) {
         Liquid liq = getConsumed(build);
-        if(liq != null){
+        if (liq != null) {
             build.liquids.remove(liq, amount * build.edelta());
         }
     }
 
     @Override
-    public float efficiency(Building build){
+    public float efficiency(Building build) {
         var liq = getConsumed(build);
         float ed = build.edelta();
-        if(ed <= 0.00000001f) return 0f;
+        if (ed <= 0.00000001f) return 0f;
         return liq != null ? Math.min(build.liquids.get(liq) / (amount * ed), 1f) : 0f;
     }
-    
-    public @Nullable Liquid getConsumed(Building build){
-        if(filter.get(build.liquids.current()) && build.liquids.currentAmount() > 0){
+
+    public @Nullable Liquid getConsumed(Building build) {
+        if (filter.get(build.liquids.current()) && build.liquids.currentAmount() > 0) {
             return build.liquids.current();
         }
 
         var liqs = content.liquids();
 
-        for(int i = 0; i < liqs.size; i++){
+        for (int i = 0; i < liqs.size; i++) {
             var liq = liqs.get(i);
-            if(filter.get(liq) && build.liquids.get(liq) > 0){
+            if (filter.get(liq) && build.liquids.get(liq) > 0) {
                 return liq;
             }
         }
@@ -72,7 +81,9 @@ public class ConsumeLiquidFilter extends ConsumeLiquidBase{
     }
 
     @Override
-    public void display(Stats stats){
-        stats.add(booster ? Stat.booster : Stat.input, StatValues.liquids(filter, amount * 60f, true));
+    public void display(Stats stats) {
+        stats.add(
+                booster ? Stat.booster : Stat.input,
+                StatValues.liquids(filter, amount * 60f, true));
     }
 }

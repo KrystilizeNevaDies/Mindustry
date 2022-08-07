@@ -1,36 +1,47 @@
 package mindustry.entities.abilities;
 
-import arc.*;
-import arc.scene.ui.layout.*;
+import arc.Core;
+import arc.scene.ui.layout.Table;
 import mindustry.gen.*;
-import mindustry.type.*;
+import mindustry.type.UnitType;
 
-public abstract class Ability implements Cloneable{
-    /** If false, this ability does not show in unit stats. */
+public abstract class Ability implements Cloneable {
+    /**
+     * If false, this ability does not show in unit stats.
+     */
     public boolean display = true;
-    //the one and only data variable that is synced.
+    // the one and only data variable that is synced.
     public float data;
 
-    public void update(Unit unit){}
-    public void draw(Unit unit){}
-    public void death(Unit unit){}
-    public void init(UnitType type){}
+    public void update(Unit unit) {
+    }
 
-    public Ability copy(){
-        try{
-            return (Ability)clone();
-        }catch(CloneNotSupportedException e){
-            //I am disgusted
+    public void draw(Unit unit) {
+    }
+
+    public void death(Unit unit) {
+    }
+
+    public void init(UnitType type) {
+    }
+
+    public Ability copy() {
+        try {
+            return (Ability) clone();
+        } catch (CloneNotSupportedException e) {
+            // I am disgusted
             throw new RuntimeException("java sucks", e);
         }
     }
 
-    public void displayBars(Unit unit, Table bars){
-
+    public void displayBars(Unit unit, Table bars) {
     }
 
-    /** @return localized ability name; mods should override this. */
-    public String localized(){
-        return Core.bundle.get("ability." + getClass().getSimpleName().replace("Ability", "").toLowerCase());
+    /**
+     * @return localized ability name; mods should override this.
+     */
+    public String localized() {
+        return Core.bundle.get(
+                "ability." + getClass().getSimpleName().replace("Ability", "").toLowerCase());
     }
 }

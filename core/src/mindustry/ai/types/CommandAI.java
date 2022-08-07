@@ -1,17 +1,19 @@
 package mindustry.ai.types;
 
-import arc.math.*;
-import arc.math.geom.*;
-import arc.struct.*;
-import arc.util.*;
-import mindustry.*;
-import mindustry.ai.*;
-import mindustry.entities.*;
-import mindustry.entities.units.*;
+import arc.math.Mathf;
+import arc.math.geom.Vec2;
+import arc.struct.Seq;
+import arc.util.Nullable;
+import arc.util.Structs;
+import mindustry.Vars;
+import mindustry.ai.Pathfinder;
+import mindustry.ai.UnitCommand;
+import mindustry.entities.Sized;
+import mindustry.entities.units.AIController;
 import mindustry.gen.*;
-import mindustry.world.*;
+import mindustry.world.Tile;
 
-public class CommandAI extends AIController{
+public class CommandAI extends AIController {
     protected static final float localInterval = 40f;
     protected static final Vec2 vecOut = new Vec2(), flockVec = new Vec2(), separation = new Vec2(), cohesion = new Vec2(), massCenter = new Vec2();
 
@@ -24,20 +26,28 @@ public class CommandAI extends AIController{
     protected Seq<Unit> local = new Seq<>(false);
     protected boolean flocked;
 
-    /** Current command this unit is following. */
+    /**
+     * Current command this unit is following.
+     */
     public @Nullable UnitCommand command;
-    /** Current controller instance based on command. */
+    /**
+     * Current controller instance based on command.
+     */
     protected @Nullable AIController commandController;
-    /** Last command type assigned. Used for detecting command changes. */
+    /**
+     * Last command type assigned. Used for detecting command changes.
+     */
     protected @Nullable UnitCommand lastCommand;
 
-    public @Nullable UnitCommand currentCommand(){
+    public @Nullable UnitCommand currentCommand() {
         return command;
     }
 
-    /** Attempts to assign a command to this unit. If not supported by the unit type, does nothing. */
-    public void command(UnitCommand command){
-        if(Structs.contains(unit.type.commands, command)){
+    /**
+     * Attempts to assign a command to this unit. If not supported by the unit type, does nothing.
+     */
+    public void command(UnitCommand command) {
+        if (Structs.contains(unit.type.commands, command)) {
             //clear old state.
             unit.mineTile = null;
             unit.clearBuilding();
@@ -46,23 +56,23 @@ public class CommandAI extends AIController{
     }
 
     @Override
-    public void updateUnit(){
+    public void updateUnit() {
 
         //assign defaults
-        if(command == null && unit.type.commands.length > 0){
+        if (command == null && unit.type.commands.length > 0) {
             command = unit.type.defaultCommand == null ? unit.type.commands[0] : unit.type.defaultCommand;
         }
 
         //update command controller based on index.
         var curCommand = currentCommand();
-        if(lastCommand != curCommand){
+        if (lastCommand != curCommand) {
             lastCommand = curCommand;
             commandController = (curCommand == null ? null : curCommand.controller.get(unit));
         }
 
         //use the command controller if it is provided, and bail out.
-        if(commandController != null){
-            if(commandController.unit() != unit) commandController.unit(unit);
+        if (commandController != null) {
+            if (commandController.unit() != unit) commandController.unit(unit);
             commandController.updateUnit();
             return;
         }
@@ -70,14 +80,14 @@ public class CommandAI extends AIController{
         updateVisuals();
         updateTargeting();
 
-        if(attackTarget != null && invalid(attackTarget)){
+        if (attackTarget != null && invalid(attackTarget)) {
             attackTarget = null;
             targetPos = null;
         }
 
-        if(targetPos != null){
-            if(timer.get(timerTarget3, localInterval) || !flocked){
-                if(!flocked){
+        if (targetPos != null) {
+            if (timer.get(timerTarget3, localInterval) || !flocked) {
+                if (!flocked) {
                     //make sure updates are staggered randomly
                     timer.reset(timerTarget3, Mathf.random(localInterval));
                 }
@@ -85,133 +95,133 @@ public class CommandAI extends AIController{
                 local.clear();
                 //TODO experiment with 2/3/4
                 float size = unit.hitSize * 3f;
-                unit.team.data().tree().intersect(unit.x - size / 2f, unit.y - size/2f, size, size, local);
+                unit.team.data().tree().intersect(unit.x - size / 2f, unit.y - size / 2f, size, size, local);
                 local.remove(unit);
                 flocked = true;
             }
-        }else{
+        } else {
             flocked = false;
         }
 
-        if(attackTarget != null){
-            if(targetPos == null){
+        if (attackTarget != null) {
+            if (targetPos == null) {
                 targetPos = new Vec2();
                 lastTargetPos = targetPos;
             }
             targetPos.set(attackTarget);
 
-            if(unit.isGrounded() && attackTarget instanceof Building build && build.tile.solid() && unit.pathType() != Pathfinder.costLegs){
+            if (unit.isGrounded() && attackTarget instanceof Building build && build.tile.solid() && unit.pathType() != Pathfinder.costLegs) {
                 Tile best = build.findClosestEdge(unit, Tile::solid);
-                if(best != null){
+                if (best != null) {
                     targetPos.set(best);
                 }
             }
         }
 
-        if(targetPos != null){
+        if (targetPos != null) {
             boolean move = true;
             vecOut.set(targetPos);
 
-            if(unit.isGrounded()){
+            if (unit.isGrounded()) {
                 move = Vars.controlPath.getPathPosition(unit, pathId, targetPos, vecOut);
             }
 
             float engageRange = unit.type.range - 10f;
 
-            if(move){
-                if(unit.type.circleTarget && attackTarget != null){
+            if (move) {
+                if (unit.type.circleTarget && attackTarget != null) {
                     target = attackTarget;
                     circleAttack(80f);
-                }else{
+                } else {
                     moveTo(vecOut,
-                        attackTarget != null && unit.within(attackTarget, engageRange) ? engageRange :
-                        unit.isGrounded() ? 0f :
-                        attackTarget != null ? engageRange :
-                        0f, unit.isFlying() ? 40f : 100f, false, null, true);
+                            attackTarget != null && unit.within(attackTarget, engageRange) ? engageRange :
+                                    unit.isGrounded() ? 0f :
+                                            attackTarget != null ? engageRange :
+                                                    0f, unit.isFlying() ? 40f : 100f, false, null, true);
                 }
 
                 //calculateFlock().limit(unit.speed() * flockMult)
             }
 
             //if stopAtTarget is set, stop trying to move to the target once it is reached - used for defending
-            if(attackTarget != null && stopAtTarget && unit.within(attackTarget, engageRange - 1f)){
+            if (attackTarget != null && stopAtTarget && unit.within(attackTarget, engageRange - 1f)) {
                 attackTarget = null;
             }
 
-            if(unit.isFlying()){
+            if (unit.isFlying()) {
                 unit.lookAt(targetPos);
-            }else{
+            } else {
                 faceTarget();
             }
 
-            if(attackTarget == null){
+            if (attackTarget == null) {
                 //TODO overshoot.
-                if(unit.within(targetPos, Math.max(5f, unit.hitSize / 2f))){
+                if (unit.within(targetPos, Math.max(5f, unit.hitSize / 2f))) {
                     targetPos = null;
-                }else if(local.size > 1){
+                } else if (local.size > 1) {
                     int count = 0;
-                    for(var near : local){
+                    for (var near : local) {
                         //has arrived - no current command, but last one is equal
-                        if(near.isCommandable() && !near.command().hasCommand() && targetPos.epsilonEquals(near.command().lastTargetPos, 0.001f)){
-                            count ++;
+                        if (near.isCommandable() && !near.command().hasCommand() && targetPos.epsilonEquals(near.command().lastTargetPos, 0.001f)) {
+                            count++;
                         }
                     }
 
                     //others have arrived at destination, so this one will too
-                    if(count >= Math.max(3, local.size / 2)){
+                    if (count >= Math.max(3, local.size / 2)) {
                         targetPos = null;
                     }
                 }
             }
 
-        }else if(target != null){
+        } else if (target != null) {
             faceTarget();
         }
     }
 
     @Override
-    public void hit(Bullet bullet){
-        if(unit.team.isAI() && bullet.owner instanceof Teamc teamc && teamc.team() != unit.team && attackTarget == null && !(teamc instanceof Unit u && !u.checkTarget(unit.type.targetAir, unit.type.targetGround))){
+    public void hit(Bullet bullet) {
+        if (unit.team.isAI() && bullet.owner instanceof Teamc teamc && teamc.team() != unit.team && attackTarget == null && !(teamc instanceof Unit u && !u.checkTarget(unit.type.targetAir, unit.type.targetGround))) {
             commandTarget(teamc, true);
         }
     }
 
     @Override
-    public boolean keepState(){
+    public boolean keepState() {
         return true;
     }
 
     @Override
-    public Teamc findTarget(float x, float y, float range, boolean air, boolean ground){
-        return attackTarget == null || !attackTarget.within(x, y, range + 3f + (attackTarget instanceof Sized s ? s.hitSize()/2f : 0f)) ? super.findTarget(x, y, range, air, ground) : attackTarget;
+    public Teamc findTarget(float x, float y, float range, boolean air, boolean ground) {
+        return attackTarget == null || !attackTarget.within(x, y, range + 3f + (attackTarget instanceof Sized s ? s.hitSize() / 2f : 0f)) ? super.findTarget(x, y, range, air, ground) : attackTarget;
     }
 
     @Override
-    public boolean retarget(){
+    public boolean retarget() {
         //retarget faster when there is an explicit target
         return attackTarget != null ? timer.get(timerTarget, 10) : timer.get(timerTarget, 20);
     }
 
-    public boolean hasCommand(){
+    public boolean hasCommand() {
         return targetPos != null;
     }
 
-    public void setupLastPos(){
+    public void setupLastPos() {
         lastTargetPos = targetPos;
     }
 
-    public void commandPosition(Vec2 pos){
+    public void commandPosition(Vec2 pos) {
         targetPos = pos;
         lastTargetPos = pos;
         attackTarget = null;
         pathId = Vars.controlPath.nextTargetId();
     }
 
-    public void commandTarget(Teamc moveTo){
+    public void commandTarget(Teamc moveTo) {
         commandTarget(moveTo, false);
     }
 
-    public void commandTarget(Teamc moveTo, boolean stopAtTarget){
+    public void commandTarget(Teamc moveTo, boolean stopAtTarget) {
         attackTarget = moveTo;
         this.stopAtTarget = stopAtTarget;
         pathId = Vars.controlPath.nextTargetId();

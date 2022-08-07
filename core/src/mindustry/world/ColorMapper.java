@@ -1,21 +1,21 @@
 package mindustry.world;
 
-import arc.graphics.*;
-import arc.struct.*;
-import mindustry.*;
-import mindustry.content.*;
+import arc.graphics.Color;
+import arc.struct.IntMap;
+import mindustry.Vars;
+import mindustry.content.Blocks;
 
-public class ColorMapper{
+public class ColorMapper {
     private static final IntMap<Block> color2block = new IntMap<>();
 
-    public static Block get(int color){
+    public static Block get(int color) {
         return color2block.get(color, Blocks.air);
     }
 
-    public static void load(){
+    public static void load() {
         color2block.clear();
 
-        for(Block block : Vars.content.blocks()){
+        for (Block block : Vars.content.blocks()) {
             color2block.put(block.mapColor.rgba(), block);
         }
 

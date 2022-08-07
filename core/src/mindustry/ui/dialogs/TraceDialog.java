@@ -1,20 +1,20 @@
 package mindustry.ui.dialogs;
 
-import arc.*;
-import arc.scene.ui.layout.*;
+import arc.Core;
+import arc.scene.ui.layout.Table;
 import mindustry.gen.*;
-import mindustry.net.Administration.*;
+import mindustry.net.Administration.TraceInfo;
 
-public class TraceDialog extends BaseDialog{
+public class TraceDialog extends BaseDialog {
 
-    public TraceDialog(){
+    public TraceDialog() {
         super("@trace");
 
         addCloseButton();
         setFillParent(false);
     }
 
-    public void show(Player player, TraceInfo info){
+    public void show(Player player, TraceInfo info) {
         cont.clear();
 
         Table table = new Table(Tex.clear);

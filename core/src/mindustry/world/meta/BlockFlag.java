@@ -1,34 +1,58 @@
 package mindustry.world.meta;
 
-/** Stores special flags of blocks for easy querying. */
-public enum BlockFlag{
-    /** Enemy core; primary target for all units. */
+/**
+ * Stores special flags of blocks for easy querying.
+ */
+public enum BlockFlag {
+    /**
+     * Enemy core; primary target for all units.
+     */
     core,
-    /** Vault/container/etc */
+    /**
+     * Vault/container/etc
+     */
     storage,
-    /** Something that generates power. */
+    /**
+     * Something that generates power.
+     */
     generator,
-    /** Any turret. */
+    /**
+     * Any turret.
+     */
     turret,
-    /** A block that transforms resources. */
+    /**
+     * A block that transforms resources.
+     */
     factory,
-    /** Repair point. */
+    /**
+     * Repair point.
+     */
     repair,
-    /** Block that stored power for resupply. */
+    /**
+     * Block that stored power for resupply.
+     */
     battery,
-    /** Any reactor block. */
+    /**
+     * Any reactor block.
+     */
     reactor,
-    /** Blocks that extinguishes fires. */
+    /**
+     * Blocks that extinguishes fires.
+     */
     extinguisher,
 
-    //special, internal identifiers
+    // special, internal identifiers
     launchPad,
     unitCargoUnloadPoint,
     unitAssembler,
     hasFogRadius;
 
-    public final static BlockFlag[] all = values();
+    public static final BlockFlag[] all = values();
 
-    /** Values for logic only. Filters out some internal flags. */
-    public final static BlockFlag[] allLogic = {core, storage, generator, turret, factory, repair, battery, reactor};
+    /**
+     * Values for logic only. Filters out some internal flags.
+     */
+    public static final BlockFlag[] allLogic = {
+            core, storage, generator, turret, factory, repair, battery, reactor
+    };
 }

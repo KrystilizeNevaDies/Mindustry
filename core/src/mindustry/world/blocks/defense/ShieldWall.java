@@ -1,17 +1,23 @@
 package mindustry.world.blocks.defense;
 
-import arc.graphics.*;
-import arc.graphics.g2d.*;
-import arc.math.*;
-import arc.util.*;
-import arc.util.io.*;
-import mindustry.annotations.Annotations.*;
-import mindustry.graphics.*;
-import mindustry.world.meta.*;
+import arc.graphics.Color;
+import arc.graphics.g2d.Draw;
+import arc.graphics.g2d.Fill;
+import arc.graphics.g2d.Lines;
+import arc.graphics.g2d.TextureRegion;
+import arc.math.Mathf;
+import arc.util.Time;
+import arc.util.io.Reads;
+import arc.util.io.Writes;
+import mindustry.annotations.Annotations.Load;
+import mindustry.graphics.Drawf;
+import mindustry.graphics.Layer;
+import mindustry.world.meta.Stat;
 
-import static mindustry.Vars.*;
+import static mindustry.Vars.renderer;
+import static mindustry.Vars.tilesize;
 
-public class ShieldWall extends Wall{
+public class ShieldWall extends Wall {
     public float shieldHealth = 900f;
     public float breakCooldown = 60f * 10f;
     public float regenSpeed = 2f;
@@ -21,37 +27,37 @@ public class ShieldWall extends Wall{
 
     public @Load("@-glow") TextureRegion glowRegion;
 
-    public ShieldWall(String name){
+    public ShieldWall(String name) {
         super(name);
 
         update = true;
     }
 
     @Override
-    public void setStats(){
+    public void setStats() {
         super.setStats();
 
         stats.add(Stat.shieldHealth, shieldHealth);
     }
 
-    public class ShieldWallBuild extends WallBuild{
+    public class ShieldWallBuild extends WallBuild {
         public float shield = shieldHealth, shieldRadius = 0f;
         public float breakTimer;
 
         @Override
-        public void draw(){
+        public void draw() {
             Draw.rect(block.region, x, y);
 
-            if(shieldRadius > 0){
+            if (shieldRadius > 0) {
                 float radius = shieldRadius * tilesize;
 
                 Draw.z(Layer.shields);
 
                 Draw.color(team.color, Color.white, Mathf.clamp(hit));
 
-                if(renderer.animateShields){
+                if (renderer.animateShields) {
                     Fill.square(x, y, radius);
-                }else{
+                } else {
                     Lines.stroke(1.5f);
                     Draw.alpha(0.09f + Mathf.clamp(0.08f * hit));
                     Fill.square(x, y, radius);
@@ -62,20 +68,27 @@ public class ShieldWall extends Wall{
 
                 Draw.reset();
 
-                Drawf.additive(glowRegion, glowColor, (1f - glowMag + Mathf.absin(glowScl, glowMag)) * shieldRadius, x, y, 0f, Layer.blockAdditive);
+                Drawf.additive(
+                        glowRegion,
+                        glowColor,
+                        (1f - glowMag + Mathf.absin(glowScl, glowMag)) * shieldRadius,
+                        x,
+                        y,
+                        0f,
+                        Layer.blockAdditive);
             }
         }
 
         @Override
-        public void updateTile(){
-            if(breakTimer > 0){
+        public void updateTile() {
+            if (breakTimer > 0) {
                 breakTimer -= Time.delta;
-            }else{
-                //regen when not broken
+            } else {
+                // regen when not broken
                 shield = Mathf.clamp(shield + regenSpeed * edelta(), 0f, shieldHealth);
             }
 
-            if(hit > 0){
+            if (hit > 0) {
                 hit -= Time.delta / 10f;
                 hit = Math.max(hit, 0f);
             }
@@ -83,45 +96,45 @@ public class ShieldWall extends Wall{
             shieldRadius = Mathf.lerpDelta(shieldRadius, broken() ? 0f : 1f, 0.12f);
         }
 
-        public boolean broken(){
+        public boolean broken() {
             return breakTimer > 0 || !canConsume();
         }
 
         @Override
-        public void pickedUp(){
+        public void pickedUp() {
             shieldRadius = 0f;
         }
 
         @Override
-        public void damage(float damage){
+        public void damage(float damage) {
             float shieldTaken = broken() ? 0f : Math.min(shield, damage);
 
             shield -= shieldTaken;
-            if(shieldTaken > 0){
+            if (shieldTaken > 0) {
                 hit = 1f;
             }
 
-            //shield was destroyed, needs to go down
-            if(shield <= 0.00001f && shieldTaken > 0){
+            // shield was destroyed, needs to go down
+            if (shield <= 0.00001f && shieldTaken > 0) {
                 breakTimer = breakCooldown;
             }
 
-            if(damage - shieldTaken > 0){
+            if (damage - shieldTaken > 0) {
                 super.damage(damage - shieldTaken);
             }
         }
 
         @Override
-        public void write(Writes write){
+        public void write(Writes write) {
             super.write(write);
             write.f(shield);
         }
 
         @Override
-        public void read(Reads read, byte revision){
+        public void read(Reads read, byte revision) {
             super.read(read, revision);
             shield = read.f();
-            if(shield > 0) shieldRadius = 1f;
+            if (shield > 0) shieldRadius = 1f;
         }
     }
 }

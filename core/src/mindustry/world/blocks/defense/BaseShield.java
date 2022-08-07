@@ -1,60 +1,72 @@
 package mindustry.world.blocks.defense;
 
-import arc.func.*;
-import arc.graphics.*;
-import arc.graphics.g2d.*;
-import arc.math.*;
-import arc.util.*;
-import arc.util.io.*;
-import mindustry.content.*;
-import mindustry.entities.*;
-import mindustry.game.*;
+import arc.func.Cons;
+import arc.graphics.Color;
+import arc.graphics.g2d.Draw;
+import arc.graphics.g2d.Fill;
+import arc.graphics.g2d.Lines;
+import arc.math.Mathf;
+import arc.util.Time;
+import arc.util.Tmp;
+import arc.util.io.Reads;
+import arc.util.io.Writes;
+import mindustry.content.Fx;
+import mindustry.entities.Units;
+import mindustry.game.Team;
 import mindustry.gen.*;
-import mindustry.graphics.*;
-import mindustry.world.*;
+import mindustry.graphics.Drawf;
+import mindustry.graphics.Layer;
+import mindustry.world.Block;
 
 import static mindustry.Vars.*;
 
-public class BaseShield extends Block{
-    //TODO game rule? or field? should vary by base.
+public class BaseShield extends Block {
+    // TODO game rule? or field? should vary by base.
     public float radius = 200f;
     public int sides = 24;
 
     protected static BaseShieldBuild paramBuild;
-    //protected static Effect paramEffect;
-    protected static final Cons<Bullet> bulletConsumer = bullet -> {
-        if(bullet.team != paramBuild.team && bullet.type.absorbable && bullet.within(paramBuild, paramBuild.radius())){
-            bullet.absorb();
-            //paramEffect.at(bullet);
+    // protected static Effect paramEffect;
+    protected static final Cons<Bullet> bulletConsumer =
+            bullet -> {
+                if (bullet.team != paramBuild.team
+                        && bullet.type.absorbable
+                        && bullet.within(paramBuild, paramBuild.radius())) {
+                    bullet.absorb();
+                    // paramEffect.at(bullet);
 
-            //TODO effect, shield health go down?
-            //paramBuild.hit = 1f;
-            //paramBuild.buildup += bullet.damage;
-        }
-    };
-
-    protected static final Cons<Unit> unitConsumer = unit -> {
-        //if this is positive, repel the unit; if it exceeds the unit radius * 2, it's inside the forcefield and must be killed
-        float overlapDst = (unit.hitSize/2f + paramBuild.radius()) - unit.dst(paramBuild);
-
-        if(overlapDst > 0){
-            if(overlapDst > unit.hitSize * 1.5f){
-                //instakill units that are stuck inside the shield (TODO or maybe damage them instead?)
-                unit.kill();
-            }else{
-                //stop
-                unit.vel.setZero();
-                //get out
-                unit.move(Tmp.v1.set(unit).sub(paramBuild).setLength(overlapDst + 0.01f));
-
-                if(Mathf.chanceDelta(0.12f * Time.delta)){
-                    Fx.circleColorSpark.at(unit.x, unit.y, paramBuild.team.color);
+                    // TODO effect, shield health go down?
+                    // paramBuild.hit = 1f;
+                    // paramBuild.buildup += bullet.damage;
                 }
-            }
-        }
-    };
+            };
 
-    public BaseShield(String name){
+    protected static final Cons<Unit> unitConsumer =
+            unit -> {
+                // if this is positive, repel the unit; if it exceeds the unit radius * 2, it's
+                // inside the
+                // forcefield and must be killed
+                float overlapDst = (unit.hitSize / 2f + paramBuild.radius()) - unit.dst(paramBuild);
+
+                if (overlapDst > 0) {
+                    if (overlapDst > unit.hitSize * 1.5f) {
+                        // instakill units that are stuck inside the shield (TODO or maybe damage
+                        // them instead?)
+                        unit.kill();
+                    } else {
+                        // stop
+                        unit.vel.setZero();
+                        // get out
+                        unit.move(Tmp.v1.set(unit).sub(paramBuild).setLength(overlapDst + 0.01f));
+
+                        if (Mathf.chanceDelta(0.12f * Time.delta)) {
+                            Fx.circleColorSpark.at(unit.x, unit.y, paramBuild.team.color);
+                        }
+                    }
+                }
+            };
+
+    public BaseShield(String name) {
         super(name);
 
         hasPower = true;
@@ -63,73 +75,73 @@ public class BaseShield extends Block{
     }
 
     @Override
-    public void init(){
+    public void init() {
         super.init();
 
         updateClipRadius(radius);
     }
 
     @Override
-    public void drawPlace(int x, int y, int rotation, boolean valid){
+    public void drawPlace(int x, int y, int rotation, boolean valid) {
         super.drawPlace(x, y, rotation, valid);
 
         Drawf.dashCircle(x * tilesize + offset, y * tilesize + offset, radius, player.team().color);
     }
 
-    public class BaseShieldBuild extends Building{
-        public boolean broken = false; //TODO
+    public class BaseShieldBuild extends Building {
+        public boolean broken = false; // TODO
         public float hit = 0f;
         public float smoothRadius;
 
         @Override
-        public void updateTile(){
+        public void updateTile() {
             smoothRadius = Mathf.lerpDelta(smoothRadius, radius * efficiency, 0.05f);
 
             float rad = radius();
 
-            if(rad > 1){
+            if (rad > 1) {
                 paramBuild = this;
-                //paramEffect = absorbEffect;
+                // paramEffect = absorbEffect;
                 Groups.bullet.intersect(x - rad, y - rad, rad * 2f, rad * 2f, bulletConsumer);
                 Units.nearbyEnemies(team, x, y, rad + 10f, unitConsumer);
             }
         }
 
-        public float radius(){
+        public float radius() {
             return smoothRadius;
         }
 
         @Override
-        public void drawSelect(){
+        public void drawSelect() {
             super.drawSelect();
 
             Drawf.dashCircle(x, y, radius, team.color);
         }
 
         @Override
-        public void draw(){
+        public void draw() {
             super.draw();
 
             drawShield();
         }
 
-        //always visible due to their shield nature
+        // always visible due to their shield nature
         @Override
-        public boolean inFogTo(Team viewer){
+        public boolean inFogTo(Team viewer) {
             return false;
         }
 
-        public void drawShield(){
-            if(!broken){
+        public void drawShield() {
+            if (!broken) {
                 float radius = radius();
 
                 Draw.z(Layer.shields);
 
                 Draw.color(team.color, Color.white, Mathf.clamp(hit));
 
-                if(renderer.animateShields){
+                if (renderer.animateShields) {
                     Fill.poly(x, y, sides, radius);
-                }else{
+                } else {
                     Lines.stroke(1.5f);
                     Draw.alpha(0.09f + Mathf.clamp(0.08f * hit));
                     Fill.poly(x, y, sides, radius);
@@ -143,12 +155,12 @@ public class BaseShield extends Block{
         }
 
         @Override
-        public byte version(){
+        public byte version() {
             return 1;
         }
 
         @Override
-        public void write(Writes write){
+        public void write(Writes write) {
             super.write(write);
 
             write.f(smoothRadius);
@@ -156,10 +168,10 @@ public class BaseShield extends Block{
         }
 
         @Override
-        public void read(Reads read, byte revision){
+        public void read(Reads read, byte revision) {
             super.read(read);
 
-            if(revision >= 1){
+            if (revision >= 1) {
                 smoothRadius = read.f();
                 broken = read.bool();
             }

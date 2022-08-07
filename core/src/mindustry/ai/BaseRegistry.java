@@ -1,109 +1,121 @@
 package mindustry.ai;
 
-import arc.*;
-import arc.math.*;
-import arc.struct.*;
-import arc.util.*;
-import mindustry.ctype.*;
-import mindustry.game.*;
-import mindustry.game.Schematic.*;
-import mindustry.type.*;
-import mindustry.world.*;
-import mindustry.world.blocks.environment.*;
-import mindustry.world.blocks.production.*;
-import mindustry.world.blocks.sandbox.*;
-import mindustry.world.blocks.storage.*;
-import mindustry.world.meta.*;
+import arc.Core;
+import arc.math.Mathf;
+import arc.struct.ObjectMap;
+import arc.struct.Seq;
+import arc.util.Nullable;
+import arc.util.Tmp;
+import mindustry.ctype.Content;
+import mindustry.game.Schematic;
+import mindustry.game.Schematic.Stile;
+import mindustry.game.Schematics;
+import mindustry.type.Item;
+import mindustry.type.Liquid;
+import mindustry.world.Block;
+import mindustry.world.blocks.environment.Floor;
+import mindustry.world.blocks.environment.OreBlock;
+import mindustry.world.blocks.production.Drill;
+import mindustry.world.blocks.production.Pump;
+import mindustry.world.blocks.sandbox.ItemSource;
+import mindustry.world.blocks.sandbox.LiquidSource;
+import mindustry.world.blocks.storage.CoreBlock;
+import mindustry.world.meta.BuildVisibility;
 
-import java.io.*;
+import java.io.IOException;
 
-import static mindustry.Vars.*;
+import static mindustry.Vars.content;
+import static mindustry.Vars.tilesize;
 
-public class BaseRegistry{
-    /** cores, sorted by tier */
+public class BaseRegistry {
+    /**
+     * cores, sorted by tier
+     */
     public Seq<BasePart> cores = new Seq<>();
-    /** parts with no requirement */
+    /**
+     * parts with no requirement
+     */
     public Seq<BasePart> parts = new Seq<>();
     public ObjectMap<Content, Seq<BasePart>> reqParts = new ObjectMap<>();
     public ObjectMap<Item, OreBlock> ores = new ObjectMap<>();
     public ObjectMap<Item, Floor> oreFloors = new ObjectMap<>();
 
-    public Seq<BasePart> forResource(Content item){
+    public Seq<BasePart> forResource(Content item) {
         return reqParts.get(item, Seq::new);
     }
 
-    public void load(){
+    public void load() {
         cores.clear();
         parts.clear();
         reqParts.clear();
 
         //load ore types and corresponding items
-        for(Block block : content.blocks()){
-            if(block instanceof OreBlock ore && ore.itemDrop != null && !ore.wallOre && !ores.containsKey(ore.itemDrop)){
+        for (Block block : content.blocks()) {
+            if (block instanceof OreBlock ore && ore.itemDrop != null && !ore.wallOre && !ores.containsKey(ore.itemDrop)) {
                 ores.put(ore.itemDrop, ore);
-            }else if(block.isFloor() && block.asFloor().itemDrop != null && !oreFloors.containsKey(block.asFloor().itemDrop)){
+            } else if (block.isFloor() && block.asFloor().itemDrop != null && !oreFloors.containsKey(block.asFloor().itemDrop)) {
                 oreFloors.put(block.asFloor().itemDrop, block.asFloor());
             }
         }
 
         String[] names = Core.files.internal("basepartnames").readString().split("\n");
 
-        for(String name : names){
-            try{
+        for (String name : names) {
+            try {
                 Schematic schem = Schematics.read(Core.files.internal("baseparts/" + name));
 
                 BasePart part = new BasePart(schem);
                 Tmp.v1.setZero();
                 int drills = 0;
 
-                for(Stile tile : schem.tiles){
+                for (Stile tile : schem.tiles) {
                     //keep track of core type
-                    if(tile.block instanceof CoreBlock){
+                    if (tile.block instanceof CoreBlock) {
                         part.core = tile.block;
                     }
 
                     //save the required resource based on item source - multiple sources are not allowed
-                    if(tile.block instanceof ItemSource){
-                        Item config = (Item)tile.config;
-                        if(config != null) part.required = config;
+                    if (tile.block instanceof ItemSource) {
+                        Item config = (Item) tile.config;
+                        if (config != null) part.required = config;
                     }
 
                     //same for liquids - this is not used yet
-                    if(tile.block instanceof LiquidSource){
-                        Liquid config = (Liquid)tile.config;
-                        if(config != null) part.required = config;
+                    if (tile.block instanceof LiquidSource) {
+                        Liquid config = (Liquid) tile.config;
+                        if (config != null) part.required = config;
                     }
 
                     //calculate averages
-                    if(tile.block instanceof Drill || tile.block instanceof Pump){
-                        Tmp.v1.add(tile.x*tilesize + tile.block.offset, tile.y*tilesize + tile.block.offset);
-                        drills ++;
+                    if (tile.block instanceof Drill || tile.block instanceof Pump) {
+                        Tmp.v1.add(tile.x * tilesize + tile.block.offset, tile.y * tilesize + tile.block.offset);
+                        drills++;
                     }
                 }
                 schem.tiles.removeAll(s -> s.block.buildVisibility == BuildVisibility.sandboxOnly);
 
                 part.tier = schem.tiles.sumf(s -> Mathf.pow(s.block.buildCost / s.block.buildCostMultiplier, 1.4f));
 
-                if(part.core != null){
+                if (part.core != null) {
                     cores.add(part);
-                }else if(part.required == null){
+                } else if (part.required == null) {
                     parts.add(part);
                 }
 
-                if(drills > 0){
+                if (drills > 0) {
                     Tmp.v1.scl(1f / drills).scl(1f / tilesize);
-                    part.centerX = (int)Tmp.v1.x;
-                    part.centerY = (int)Tmp.v1.y;
-                }else{
-                    part.centerX = part.schematic.width/2;
-                    part.centerY = part.schematic.height/2;
+                    part.centerX = (int) Tmp.v1.x;
+                    part.centerY = (int) Tmp.v1.y;
+                } else {
+                    part.centerX = part.schematic.width / 2;
+                    part.centerY = part.schematic.height / 2;
                 }
 
-                if(part.required != null && part.core == null){
+                if (part.required != null && part.core == null) {
                     reqParts.get(part.required, Seq::new).add(part);
                 }
 
-            }catch(IOException e){
+            } catch (IOException e) {
                 throw new RuntimeException(e);
             }
         }
@@ -113,7 +125,7 @@ public class BaseRegistry{
         reqParts.each((key, arr) -> arr.sort());
     }
 
-    public static class BasePart implements Comparable<BasePart>{
+    public static class BasePart implements Comparable<BasePart> {
         public final Schematic schematic;
 
         //offsets for drills
@@ -125,12 +137,12 @@ public class BaseRegistry{
         //total build cost
         public float tier;
 
-        public BasePart(Schematic schematic){
+        public BasePart(Schematic schematic) {
             this.schematic = schematic;
         }
 
         @Override
-        public int compareTo(BasePart other){
+        public int compareTo(BasePart other) {
             return Float.compare(tier, other.tier);
         }
     }

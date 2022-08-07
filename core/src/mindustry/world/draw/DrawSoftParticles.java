@@ -1,28 +1,36 @@
 package mindustry.world.draw;
 
-import arc.*;
-import arc.graphics.*;
-import arc.graphics.g2d.*;
-import arc.math.*;
-import arc.math.Interp.*;
-import arc.util.*;
+import arc.Core;
+import arc.graphics.Blending;
+import arc.graphics.Color;
+import arc.graphics.g2d.Draw;
+import arc.graphics.g2d.TextureRegion;
+import arc.math.Angles;
+import arc.math.Interp;
+import arc.math.Interp.PowIn;
+import arc.math.Mathf;
+import arc.util.Time;
 import mindustry.gen.*;
-import mindustry.world.*;
+import mindustry.world.Block;
 
-public class DrawSoftParticles extends DrawBlock{
+public class DrawSoftParticles extends DrawBlock {
     public TextureRegion region;
 
     public Color color = Color.valueOf("e3ae6f"), color2 = Color.valueOf("d04d46");
 
     public float alpha = 0.5f;
     public int particles = 30;
-    public float particleLife = 70f, particleRad = 7f, particleSize = 3f, fadeMargin = 0.4f, rotateScl = 1.5f;
+    public float particleLife = 70f,
+            particleRad = 7f,
+            particleSize = 3f,
+            fadeMargin = 0.4f,
+            rotateScl = 1.5f;
     public Interp particleInterp = new PowIn(1.5f);
 
     @Override
-    public void draw(Building build){
+    public void draw(Building build) {
 
-        if(build.warmup() > 0f && color.a > 0.001f){
+        if (build.warmup() > 0f && color.a > 0.001f) {
             float a = alpha * build.warmup();
 
             Draw.color(color, a);
@@ -30,7 +38,7 @@ public class DrawSoftParticles extends DrawBlock{
 
             float base = (Time.time / particleLife);
             rand.setSeed(build.id);
-            for(int i = 0; i < particles; i++){
+            for (int i = 0; i < particles; i++) {
                 float fin = (rand.random(1f) + base) % 1f, fout = 1f - fin;
                 fin = 1f - fin;
                 fout = 1f - fout;
@@ -40,13 +48,13 @@ public class DrawSoftParticles extends DrawBlock{
                 Draw.tint(color, color2, col);
                 float len = particleRad * particleInterp.apply(fout);
                 Draw.alpha(a * (1f - Mathf.curve(fin, 1f - fadeMargin)));
-                float r = particleSize * fin * build.warmup()*2f;
+                float r = particleSize * fin * build.warmup() * 2f;
                 Draw.rect(
-                    region,
-                    build.x + Angles.trnsx(angle, len),
-                    build.y + Angles.trnsy(angle, len),
-                    r, r
-                );
+                        region,
+                        build.x + Angles.trnsx(angle, len),
+                        build.y + Angles.trnsy(angle, len),
+                        r,
+                        r);
             }
 
             Draw.blend();
@@ -55,7 +63,7 @@ public class DrawSoftParticles extends DrawBlock{
     }
 
     @Override
-    public void load(Block block){
+    public void load(Block block) {
         super.load(block);
 
         region = Core.atlas.find("circle-shadow");

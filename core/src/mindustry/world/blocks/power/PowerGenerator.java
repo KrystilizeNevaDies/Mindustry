@@ -1,28 +1,40 @@
 package mindustry.world.blocks.power;
 
-import arc.*;
-import arc.audio.*;
-import arc.graphics.g2d.*;
-import arc.math.*;
-import arc.struct.*;
-import arc.util.*;
-import arc.util.io.*;
-import mindustry.content.*;
-import mindustry.entities.*;
-import mindustry.entities.units.*;
+import arc.Core;
+import arc.audio.Sound;
+import arc.graphics.g2d.TextureRegion;
+import arc.math.Mathf;
+import arc.struct.EnumSet;
+import arc.util.Eachable;
+import arc.util.Nullable;
+import arc.util.Strings;
+import arc.util.Tmp;
+import arc.util.io.Reads;
+import arc.util.io.Writes;
+import mindustry.content.Fx;
+import mindustry.entities.Damage;
+import mindustry.entities.Effect;
+import mindustry.entities.Puddles;
+import mindustry.entities.units.BuildPlan;
 import mindustry.gen.*;
-import mindustry.graphics.*;
-import mindustry.type.*;
-import mindustry.ui.*;
-import mindustry.world.*;
-import mindustry.world.draw.*;
-import mindustry.world.meta.*;
+import mindustry.graphics.Pal;
+import mindustry.type.Liquid;
+import mindustry.ui.Bar;
+import mindustry.world.Tile;
+import mindustry.world.draw.DrawBlock;
+import mindustry.world.draw.DrawDefault;
+import mindustry.world.meta.BlockFlag;
+import mindustry.world.meta.Stat;
+import mindustry.world.meta.StatUnit;
 
 import static mindustry.Vars.*;
 
-public class PowerGenerator extends PowerDistributor{
-    /** The amount of power produced per tick in case of an efficiency of 1.0, which represents 100%. */
+public class PowerGenerator extends PowerDistributor {
+    /**
+     * The amount of power produced per tick in case of an efficiency of 1.0, which represents 100%.
+     */
     public float powerProduction;
+
     public Stat generationType = Stat.basePowerGeneration;
     public DrawBlock drawer = new DrawDefault();
 
@@ -39,7 +51,7 @@ public class PowerGenerator extends PowerDistributor{
 
     public float explosionShake = 0f, explosionShakeDuration = 6f;
 
-    public PowerGenerator(String name){
+    public PowerGenerator(String name) {
         super(name);
         sync = true;
         baseExplosiveness = 5f;
@@ -47,125 +59,136 @@ public class PowerGenerator extends PowerDistributor{
     }
 
     @Override
-    public TextureRegion[] icons(){
+    public TextureRegion[] icons() {
         return drawer.finalIcons(this);
     }
 
     @Override
-    public void load(){
+    public void load() {
         super.load();
         drawer.load(this);
     }
 
     @Override
-    public void setStats(){
+    public void setStats() {
         super.setStats();
         stats.add(generationType, powerProduction * 60.0f, StatUnit.powerSecond);
     }
 
     @Override
-    public void setBars(){
+    public void setBars() {
         super.setBars();
 
-        if(hasPower && outputsPower){
-            addBar("power", (GeneratorBuild entity) -> new Bar(() ->
-            Core.bundle.format("bar.poweroutput",
-            Strings.fixed(entity.getPowerProduction() * 60 * entity.timeScale(), 1)),
-            () -> Pal.powerBar,
-            () -> entity.productionEfficiency));
+        if (hasPower && outputsPower) {
+            addBar(
+                    "power",
+                    (GeneratorBuild entity) ->
+                            new Bar(
+                                    () ->
+                                            Core.bundle.format(
+                                                    "bar.poweroutput",
+                                                    Strings.fixed(
+                                                            entity.getPowerProduction()
+                                                                    * 60
+                                                                    * entity.timeScale(),
+                                                            1)),
+                                    () -> Pal.powerBar,
+                                    () -> entity.productionEfficiency));
         }
     }
 
     @Override
-    public void drawPlanRegion(BuildPlan plan, Eachable<BuildPlan> list){
+    public void drawPlanRegion(BuildPlan plan, Eachable<BuildPlan> list) {
         drawer.drawPlan(this, plan, list);
     }
 
     @Override
-    public boolean outputsItems(){
+    public boolean outputsItems() {
         return false;
     }
 
-    public class GeneratorBuild extends Building{
+    public class GeneratorBuild extends Building {
         public float generateTime;
-        /** The efficiency of the producer. An efficiency of 1.0 means 100% */
+        /**
+         * The efficiency of the producer. An efficiency of 1.0 means 100%
+         */
         public float productionEfficiency = 0.0f;
 
         @Override
-        public void draw(){
+        public void draw() {
             drawer.draw(this);
         }
 
         @Override
-        public float warmup(){
+        public float warmup() {
             return productionEfficiency;
         }
 
         @Override
-        public void onDestroyed(){
+        public void onDestroyed() {
             super.onDestroyed();
 
-            if(state.rules.reactorExplosions){
+            if (state.rules.reactorExplosions) {
                 createExplosion();
             }
         }
 
-        public void createExplosion(){
-            if(warmup() >= explosionMinWarmup){
-                if(explosionDamage > 0){
+        public void createExplosion() {
+            if (warmup() >= explosionMinWarmup) {
+                if (explosionDamage > 0) {
                     Damage.damage(x, y, explosionRadius * tilesize, explosionDamage);
                 }
 
                 explodeEffect.at(this);
                 explodeSound.at(this);
 
-                if(explosionPuddleLiquid != null){
-                    for(int i = 0; i < explosionPuddles; i++){
+                if (explosionPuddleLiquid != null) {
+                    for (int i = 0; i < explosionPuddles; i++) {
                         Tmp.v1.trns(Mathf.random(360f), Mathf.random(explosionPuddleRange));
                         Tile tile = world.tileWorld(x + Tmp.v1.x, y + Tmp.v1.y);
                         Puddles.deposit(tile, explosionPuddleLiquid, explosionPuddleAmount);
                     }
                 }
 
-                if(explosionShake > 0){
+                if (explosionShake > 0) {
                     Effect.shake(explosionShake, explosionShakeDuration, this);
                 }
             }
         }
 
         @Override
-        public void drawLight(){
+        public void drawLight() {
             super.drawLight();
             drawer.drawLight(this);
         }
 
         @Override
-        public float ambientVolume(){
+        public float ambientVolume() {
             return Mathf.clamp(productionEfficiency);
         }
 
         @Override
-        public float getPowerProduction(){
+        public float getPowerProduction() {
             return powerProduction * productionEfficiency;
         }
 
         @Override
-        public byte version(){
+        public byte version() {
             return 1;
         }
 
         @Override
-        public void write(Writes write){
+        public void write(Writes write) {
             super.write(write);
             write.f(productionEfficiency);
             write.f(generateTime);
         }
 
         @Override
-        public void read(Reads read, byte revision){
+        public void read(Reads read, byte revision) {
             super.read(read, revision);
             productionEfficiency = read.f();
-            if(revision >= 1){
+            if (revision >= 1) {
                 generateTime = read.f();
             }
         }

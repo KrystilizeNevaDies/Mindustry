@@ -1,37 +1,48 @@
 package mindustry.world.blocks.units;
 
-import arc.graphics.*;
-import arc.graphics.g2d.*;
-import arc.math.*;
-import arc.struct.*;
-import arc.util.*;
-import mindustry.annotations.Annotations.*;
-import mindustry.entities.*;
+import arc.graphics.Color;
+import arc.graphics.g2d.Draw;
+import arc.graphics.g2d.Fill;
+import arc.graphics.g2d.Lines;
+import arc.graphics.g2d.TextureRegion;
+import arc.math.Mathf;
+import arc.struct.Seq;
+import arc.util.Time;
+import mindustry.annotations.Annotations.Load;
+import mindustry.entities.Units;
 import mindustry.gen.*;
-import mindustry.graphics.*;
-import mindustry.logic.*;
-import mindustry.world.*;
-import mindustry.world.meta.*;
+import mindustry.graphics.Drawf;
+import mindustry.graphics.Layer;
+import mindustry.graphics.Pal;
+import mindustry.logic.Ranged;
+import mindustry.world.Block;
+import mindustry.world.meta.Stat;
+import mindustry.world.meta.StatUnit;
 
-import static mindustry.Vars.*;
+import static mindustry.Vars.tilesize;
 
-public class RepairTower extends Block{
+public class RepairTower extends Block {
     static final float refreshInterval = 6f;
 
     public float range = 80f;
     public Color circleColor = Pal.heal, glowColor = Pal.heal.cpy().a(0.5f);
-    public float circleSpeed = 120f, circleStroke = 3f, squareRad = 3f, squareSpinScl = 0.8f, glowMag = 0.5f, glowScl = 8f;
+    public float circleSpeed = 120f,
+            circleStroke = 3f,
+            squareRad = 3f,
+            squareSpinScl = 0.8f,
+            glowMag = 0.5f,
+            glowScl = 8f;
     public float healAmount = 1f;
     public @Load("@-glow") TextureRegion glow;
 
-    public RepairTower(String name){
+    public RepairTower(String name) {
         super(name);
         update = true;
         solid = true;
     }
 
     @Override
-    public void setStats(){
+    public void setStats() {
         super.setStats();
 
         stats.add(Stat.range, range / tilesize, StatUnit.blocks);
@@ -39,35 +50,40 @@ public class RepairTower extends Block{
     }
 
     @Override
-    public void drawPlace(int x, int y, int rotation, boolean valid){
+    public void drawPlace(int x, int y, int rotation, boolean valid) {
         super.drawPlace(x, y, rotation, valid);
 
         Drawf.dashCircle(x * tilesize + offset, y * tilesize + offset, range, Pal.placing);
     }
 
-    public class RepairTowerBuild extends Building implements Ranged{
+    public class RepairTowerBuild extends Building implements Ranged {
         public float refresh = Mathf.random(refreshInterval);
         public float warmup = 0f;
         public float totalProgress = 0f;
         public Seq<Unit> targets = new Seq<>();
 
         @Override
-        public void updateTile(){
+        public void updateTile() {
 
-            if(potentialEfficiency > 0 && (refresh += Time.delta) >= refreshInterval){
+            if (potentialEfficiency > 0 && (refresh += Time.delta) >= refreshInterval) {
                 targets.clear();
                 refresh = 0f;
-                Units.nearby(team, x, y, range, u -> {
-                    if(u.damaged()){
-                        targets.add(u);
-                    }
-                });
+                Units.nearby(
+                        team,
+                        x,
+                        y,
+                        range,
+                        u -> {
+                            if (u.damaged()) {
+                                targets.add(u);
+                            }
+                        });
             }
 
             boolean any = false;
-            if(efficiency > 0){
-                for(var target : targets){
-                    if(target.damaged()){
+            if (efficiency > 0) {
+                for (var target : targets) {
+                    if (target.damaged()) {
                         target.heal(healAmount * efficiency);
                         any = true;
                     }
@@ -79,15 +95,15 @@ public class RepairTower extends Block{
         }
 
         @Override
-        public boolean shouldConsume(){
+        public boolean shouldConsume() {
             return targets.size > 0;
         }
 
         @Override
-        public void draw(){
+        public void draw() {
             super.draw();
 
-            if(warmup <= 0.001f) return;
+            if (warmup <= 0.001f) return;
 
             Draw.z(Layer.effect);
             float mod = totalProgress % 1f;
@@ -98,16 +114,23 @@ public class RepairTower extends Block{
             Fill.square(x, y, squareRad * warmup, Time.time / squareSpinScl);
             Draw.reset();
 
-            Drawf.additive(glow, glowColor, warmup * (1f - glowMag + Mathf.absin(Time.time, glowScl, glowMag)), x, y, 0f, Layer.blockAdditive);
+            Drawf.additive(
+                    glow,
+                    glowColor,
+                    warmup * (1f - glowMag + Mathf.absin(Time.time, glowScl, glowMag)),
+                    x,
+                    y,
+                    0f,
+                    Layer.blockAdditive);
         }
 
         @Override
-        public float range(){
+        public float range() {
             return range;
         }
 
         @Override
-        public float warmup(){
+        public float warmup() {
             return warmup;
         }
     }

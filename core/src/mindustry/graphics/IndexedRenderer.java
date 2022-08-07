@@ -1,38 +1,39 @@
 package mindustry.graphics;
 
 import arc.graphics.*;
-import arc.graphics.g2d.*;
-import arc.graphics.gl.*;
-import arc.math.*;
-import arc.util.*;
+import arc.graphics.g2d.TextureRegion;
+import arc.graphics.gl.Shader;
+import arc.math.Mat;
+import arc.math.Mathf;
+import arc.util.Disposable;
 
-public class IndexedRenderer implements Disposable{
+public class IndexedRenderer implements Disposable {
     private static final int vsize = 5;
 
     private final static Shader program = new Shader(
-    """
-    attribute vec4 a_position;
-    attribute vec4 a_color;
-    attribute vec2 a_texCoord0;
-    uniform mat4 u_projTrans;
-    varying vec4 v_color;
-    varying vec2 v_texCoords;
-    void main(){
-       v_color = a_color;
-       v_color.a = v_color.a * (255.0/254.0);
-       v_texCoords = a_texCoord0;
-       gl_Position = u_projTrans * a_position;
-    }
-    """,
+            """
+                    attribute vec4 a_position;
+                    attribute vec4 a_color;
+                    attribute vec2 a_texCoord0;
+                    uniform mat4 u_projTrans;
+                    varying vec4 v_color;
+                    varying vec2 v_texCoords;
+                    void main(){
+                       v_color = a_color;
+                       v_color.a = v_color.a * (255.0/254.0);
+                       v_texCoords = a_texCoord0;
+                       gl_Position = u_projTrans * a_position;
+                    }
+                    """,
 
-    """
-    varying lowp vec4 v_color;
-    varying vec2 v_texCoords;
-    uniform sampler2D u_texture;
-    void main(){
-      gl_FragColor = v_color * texture2D(u_texture, v_texCoords);
-    }
-    """
+            """
+                    varying lowp vec4 v_color;
+                    varying vec2 v_texCoords;
+                    uniform sampler2D u_texture;
+                    void main(){
+                      gl_FragColor = v_color * texture2D(u_texture, v_texCoords);
+                    }
+                    """
     );
     private static final float[] tmpVerts = new float[vsize * 6];
 
@@ -43,11 +44,11 @@ public class IndexedRenderer implements Disposable{
     private Mat combined = new Mat();
     private float color = Color.white.toFloatBits();
 
-    public IndexedRenderer(int sprites){
+    public IndexedRenderer(int sprites) {
         resize(sprites);
     }
 
-    public void render(Texture texture){
+    public void render(Texture texture) {
         Gl.enable(Gl.blend);
 
         updateMatrix();
@@ -60,11 +61,11 @@ public class IndexedRenderer implements Disposable{
         mesh.render(program, Gl.triangles, 0, mesh.getMaxVertices());
     }
 
-    public void setColor(Color color){
+    public void setColor(Color color) {
         this.color = color.toFloatBits();
     }
 
-    public void draw(int index, TextureRegion region, float x, float y, float w, float h){
+    public void draw(int index, TextureRegion region, float x, float y, float w, float h) {
         float fx2 = x + w;
         float fy2 = y + h;
         float u = region.u;
@@ -116,7 +117,7 @@ public class IndexedRenderer implements Disposable{
         mesh.updateVertices(index * vsize * 6, vertices);
     }
 
-    public void draw(int index, TextureRegion region, float x, float y, float w, float h, float rotation){
+    public void draw(int index, TextureRegion region, float x, float y, float w, float h, float rotation) {
         float u = region.u;
         float v = region.v2;
         float u2 = region.u2;
@@ -188,32 +189,32 @@ public class IndexedRenderer implements Disposable{
         mesh.updateVertices(index * vsize * 6, vertices);
     }
 
-    public Mat getTransformMatrix(){
+    public Mat getTransformMatrix() {
         return transMatrix;
     }
 
-    public void setProjectionMatrix(Mat matrix){
+    public void setProjectionMatrix(Mat matrix) {
         projMatrix = matrix;
     }
 
-    public void resize(int sprites){
-        if(mesh != null) mesh.dispose();
+    public void resize(int sprites) {
+        if (mesh != null) mesh.dispose();
 
         mesh = new Mesh(true, 6 * sprites, 0,
-        VertexAttribute.position,
-        VertexAttribute.color,
-        VertexAttribute.texCoords);
+                VertexAttribute.position,
+                VertexAttribute.color,
+                VertexAttribute.texCoords);
 
         //TODO why is this the only way to get it working properly? it should not need an array
         mesh.setVertices(new float[6 * sprites * vsize]);
     }
 
-    private void updateMatrix(){
+    private void updateMatrix() {
         combined.set(projMatrix).mul(transMatrix);
     }
 
     @Override
-    public void dispose(){
+    public void dispose() {
         mesh.dispose();
     }
 }

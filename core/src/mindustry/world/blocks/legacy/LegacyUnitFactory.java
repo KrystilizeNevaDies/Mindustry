@@ -1,14 +1,15 @@
 package mindustry.world.blocks.legacy;
 
-import arc.util.io.*;
-import mindustry.content.*;
+import arc.util.io.Reads;
+import mindustry.content.Blocks;
 import mindustry.gen.*;
-import mindustry.world.*;
+import mindustry.world.Block;
+import mindustry.world.Tile;
 
-public class LegacyUnitFactory extends LegacyBlock{
+public class LegacyUnitFactory extends LegacyBlock {
     public Block replacement = Blocks.air;
 
-    public LegacyUnitFactory(String name){
+    public LegacyUnitFactory(String name) {
         super(name);
         update = true;
         hasPower = true;
@@ -17,21 +18,21 @@ public class LegacyUnitFactory extends LegacyBlock{
     }
 
     @Override
-    public void removeSelf(Tile tile){
+    public void removeSelf(Tile tile) {
         int rot = tile.build == null ? 0 : tile.build.rotation;
         tile.setBlock(replacement, tile.team(), rot);
     }
 
-    public class LegacyUnitFactoryBuild extends Building{
+    public class LegacyUnitFactoryBuild extends Building {
 
         @Override
-        public void read(Reads read, byte revision){
+        public void read(Reads read, byte revision) {
             super.read(read, revision);
-            //build time
+            // build time
             read.f();
 
-            if(revision == 0){
-                //spawn count
+            if (revision == 0) {
+                // spawn count
                 read.i();
             }
         }

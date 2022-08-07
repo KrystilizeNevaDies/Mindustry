@@ -1,12 +1,14 @@
 package mindustry.ctype;
 
-import arc.util.*;
-import mindustry.entities.bullet.*;
+import arc.util.Nullable;
+import mindustry.entities.bullet.BulletType;
 import mindustry.type.*;
-import mindustry.world.*;
+import mindustry.world.Block;
 
-/** Do not rearrange, ever! */
-public enum ContentType{
+/**
+ * Do not rearrange, ever!
+ */
+public enum ContentType {
     item(Item.class),
     block(Block.class),
     mech_UNUSED(null),
@@ -28,7 +30,7 @@ public enum ContentType{
 
     public final @Nullable Class<? extends Content> contentClass;
 
-    ContentType(Class<? extends Content> contentClass){
+    ContentType(Class<? extends Content> contentClass) {
         this.contentClass = contentClass;
     }
 }

@@ -1,11 +1,12 @@
 package mindustry.world.blocks.sandbox;
 
-import mindustry.world.blocks.power.*;
-import mindustry.world.meta.*;
+import mindustry.world.blocks.power.PowerBlock;
+import mindustry.world.meta.Env;
+import mindustry.world.meta.Stat;
 
-public class PowerVoid extends PowerBlock{
+public class PowerVoid extends PowerBlock {
 
-    public PowerVoid(String name){
+    public PowerVoid(String name) {
         super(name);
         consumePower(Float.MAX_VALUE);
         envEnabled = Env.any;
@@ -13,7 +14,7 @@ public class PowerVoid extends PowerBlock{
     }
 
     @Override
-    public void setStats(){
+    public void setStats() {
         super.setStats();
         stats.remove(Stat.powerUse);
     }

@@ -1,22 +1,26 @@
 package mindustry.world.blocks.sandbox;
 
-import arc.graphics.g2d.*;
-import arc.scene.ui.layout.*;
-import arc.util.*;
-import arc.util.io.*;
-import mindustry.entities.units.*;
+import arc.graphics.g2d.Draw;
+import arc.scene.ui.layout.Table;
+import arc.util.Eachable;
+import arc.util.io.Reads;
+import arc.util.io.Writes;
+import mindustry.entities.units.BuildPlan;
 import mindustry.gen.*;
-import mindustry.type.*;
-import mindustry.world.*;
-import mindustry.world.blocks.*;
-import mindustry.world.meta.*;
+import mindustry.type.Item;
+import mindustry.world.Block;
+import mindustry.world.blocks.ItemSelection;
+import mindustry.world.meta.BlockGroup;
+import mindustry.world.meta.Env;
+import mindustry.world.meta.Stat;
+import mindustry.world.meta.StatUnit;
 
-import static mindustry.Vars.*;
+import static mindustry.Vars.content;
 
-public class ItemSource extends Block{
+public class ItemSource extends Block {
     public int itemsPerSecond = 100;
 
-    public ItemSource(String name){
+    public ItemSource(String name) {
         super(name);
         hasItems = true;
         update = true;
@@ -33,39 +37,39 @@ public class ItemSource extends Block{
     }
 
     @Override
-    public void setBars(){
+    public void setBars() {
         super.setBars();
         removeBar("items");
     }
 
     @Override
-    public void setStats(){
+    public void setStats() {
         super.setStats();
 
         stats.add(Stat.output, itemsPerSecond, StatUnit.itemsSecond);
     }
 
     @Override
-    public void drawPlanConfig(BuildPlan plan, Eachable<BuildPlan> list){
+    public void drawPlanConfig(BuildPlan plan, Eachable<BuildPlan> list) {
         drawPlanConfigCenter(plan, plan.config, "center", true);
     }
 
     @Override
-    public boolean outputsItems(){
+    public boolean outputsItems() {
         return true;
     }
 
-    public class ItemSourceBuild extends Building{
+    public class ItemSourceBuild extends Building {
         public float counter;
         public Item outputItem;
 
         @Override
-        public void draw(){
+        public void draw() {
             super.draw();
 
-            if(outputItem == null){
+            if (outputItem == null) {
                 Draw.rect("cross", x, y);
-            }else{
+            } else {
                 Draw.color(outputItem.color);
                 Draw.rect("center", x, y);
                 Draw.color();
@@ -73,13 +77,13 @@ public class ItemSource extends Block{
         }
 
         @Override
-        public void updateTile(){
-            if(outputItem == null) return;
+        public void updateTile() {
+            if (outputItem == null) return;
 
             counter += edelta();
             float limit = 60f / itemsPerSecond;
 
-            while(counter >= limit){
+            while (counter >= limit) {
                 items.set(outputItem, 1);
                 dump(outputItem);
                 items.set(outputItem, 0);
@@ -88,28 +92,29 @@ public class ItemSource extends Block{
         }
 
         @Override
-        public void buildConfiguration(Table table){
-            ItemSelection.buildTable(ItemSource.this, table, content.items(), () -> outputItem, this::configure);
+        public void buildConfiguration(Table table) {
+            ItemSelection.buildTable(
+                    ItemSource.this, table, content.items(), () -> outputItem, this::configure);
         }
 
         @Override
-        public boolean acceptItem(Building source, Item item){
+        public boolean acceptItem(Building source, Item item) {
             return false;
         }
 
         @Override
-        public Item config(){
+        public Item config() {
             return outputItem;
         }
 
         @Override
-        public void write(Writes write){
+        public void write(Writes write) {
             super.write(write);
             write.s(outputItem == null ? -1 : outputItem.id);
         }
 
         @Override
-        public void read(Reads read, byte revision){
+        public void read(Reads read, byte revision) {
             super.read(read, revision);
             outputItem = content.item(read.s());
         }

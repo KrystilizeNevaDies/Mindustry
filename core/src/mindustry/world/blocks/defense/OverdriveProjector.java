@@ -1,23 +1,31 @@
 package mindustry.world.blocks.defense;
 
-import arc.*;
-import arc.graphics.*;
-import arc.graphics.g2d.*;
-import arc.math.*;
-import arc.math.geom.*;
-import arc.util.*;
-import arc.util.io.*;
-import mindustry.annotations.Annotations.*;
+import arc.Core;
+import arc.graphics.Color;
+import arc.graphics.g2d.Draw;
+import arc.graphics.g2d.Lines;
+import arc.graphics.g2d.TextureRegion;
+import arc.math.Mathf;
+import arc.math.geom.Geometry;
+import arc.util.Time;
+import arc.util.Tmp;
+import arc.util.io.Reads;
+import arc.util.io.Writes;
+import mindustry.annotations.Annotations.Load;
 import mindustry.gen.*;
-import mindustry.graphics.*;
-import mindustry.logic.*;
-import mindustry.ui.*;
-import mindustry.world.*;
-import mindustry.world.meta.*;
+import mindustry.graphics.Drawf;
+import mindustry.graphics.Pal;
+import mindustry.logic.Ranged;
+import mindustry.ui.Bar;
+import mindustry.world.Block;
+import mindustry.world.meta.BlockGroup;
+import mindustry.world.meta.Env;
+import mindustry.world.meta.Stat;
+import mindustry.world.meta.StatUnit;
 
 import static mindustry.Vars.*;
 
-public class OverdriveProjector extends Block{
+public class OverdriveProjector extends Block {
     public final int timerUse = timers++;
 
     public @Load("@-top") TextureRegion topRegion;
@@ -31,7 +39,7 @@ public class OverdriveProjector extends Block{
     public Color baseColor = Color.valueOf("feb380");
     public Color phaseColor = Color.valueOf("ffd59e");
 
-    public OverdriveProjector(String name){
+    public OverdriveProjector(String name) {
         super(name);
         solid = true;
         update = true;
@@ -45,90 +53,122 @@ public class OverdriveProjector extends Block{
     }
 
     @Override
-    public boolean outputsItems(){
+    public boolean outputsItems() {
         return false;
     }
 
     @Override
-    public void drawPlace(int x, int y, int rotation, boolean valid){
+    public void drawPlace(int x, int y, int rotation, boolean valid) {
         super.drawPlace(x, y, rotation, valid);
 
         Drawf.dashCircle(x * tilesize + offset, y * tilesize + offset, range, baseColor);
 
-        indexer.eachBlock(player.team(), x * tilesize + offset, y * tilesize + offset, range, other -> other.block.canOverdrive, other -> Drawf.selected(other, Tmp.c1.set(baseColor).a(Mathf.absin(4f, 1f))));
+        indexer.eachBlock(
+                player.team(),
+                x * tilesize + offset,
+                y * tilesize + offset,
+                range,
+                other -> other.block.canOverdrive,
+                other -> Drawf.selected(other, Tmp.c1.set(baseColor).a(Mathf.absin(4f, 1f))));
     }
 
     @Override
-    public void setStats(){
+    public void setStats() {
         stats.timePeriod = useTime;
         super.setStats();
 
-        stats.add(Stat.speedIncrease, "+" + (int)(speedBoost * 100f - 100) + "%");
+        stats.add(Stat.speedIncrease, "+" + (int) (speedBoost * 100f - 100) + "%");
         stats.add(Stat.range, range / tilesize, StatUnit.blocks);
         stats.add(Stat.productionTime, useTime / 60f, StatUnit.seconds);
 
-        if(hasBoost){
+        if (hasBoost) {
             stats.add(Stat.boostEffect, (range + phaseRangeBoost) / tilesize, StatUnit.blocks);
-            stats.add(Stat.boostEffect, "+" + (int)((speedBoost + speedBoostPhase) * 100f - 100) + "%");
+            stats.add(
+                    Stat.boostEffect,
+                    "+" + (int) ((speedBoost + speedBoostPhase) * 100f - 100) + "%");
         }
     }
-    
+
     @Override
-    public void setBars(){
+    public void setBars() {
         super.setBars();
-        addBar("boost", (OverdriveBuild entity) -> new Bar(() -> Core.bundle.format("bar.boost", Mathf.round(Math.max((entity.realBoost() * 100 - 100), 0))), () -> Pal.accent, () -> entity.realBoost() / (hasBoost ? speedBoost + speedBoostPhase : speedBoost)));
+        addBar(
+                "boost",
+                (OverdriveBuild entity) ->
+                        new Bar(
+                                () ->
+                                        Core.bundle.format(
+                                                "bar.boost",
+                                                Mathf.round(
+                                                        Math.max(
+                                                                (entity.realBoost() * 100 - 100),
+                                                                0))),
+                                () -> Pal.accent,
+                                () ->
+                                        entity.realBoost()
+                                                / (hasBoost
+                                                ? speedBoost + speedBoostPhase
+                                                : speedBoost)));
     }
 
-    public class OverdriveBuild extends Building implements Ranged{
+    public class OverdriveBuild extends Building implements Ranged {
         public float heat, charge = Mathf.random(reload), phaseHeat, smoothEfficiency;
 
         @Override
-        public float range(){
+        public float range() {
             return range;
         }
 
         @Override
-        public void drawLight(){
+        public void drawLight() {
             Drawf.light(x, y, lightRadius * smoothEfficiency, baseColor, 0.7f * smoothEfficiency);
         }
 
         @Override
-        public void updateTile(){
+        public void updateTile() {
             smoothEfficiency = Mathf.lerpDelta(smoothEfficiency, efficiency, 0.08f);
             heat = Mathf.lerpDelta(heat, efficiency > 0 ? 1f : 0f, 0.08f);
             charge += heat * Time.delta;
 
-            if(hasBoost){
+            if (hasBoost) {
                 phaseHeat = Mathf.lerpDelta(phaseHeat, optionalEfficiency, 0.1f);
             }
 
-            if(charge >= reload){
+            if (charge >= reload) {
                 float realRange = range + phaseHeat * phaseRangeBoost;
 
                 charge = 0f;
-                indexer.eachBlock(this, realRange, other -> other.block.canOverdrive, other -> other.applyBoost(realBoost(), reload + 1f));
+                indexer.eachBlock(
+                        this,
+                        realRange,
+                        other -> other.block.canOverdrive,
+                        other -> other.applyBoost(realBoost(), reload + 1f));
             }
 
-            if(timer(timerUse, useTime) && efficiency > 0){
+            if (timer(timerUse, useTime) && efficiency > 0) {
                 consume();
             }
         }
 
-        public float realBoost(){
+        public float realBoost() {
             return (speedBoost + phaseHeat * speedBoostPhase) * efficiency;
         }
 
         @Override
-        public void drawSelect(){
+        public void drawSelect() {
             float realRange = range + phaseHeat * phaseRangeBoost;
 
-            indexer.eachBlock(this, realRange, other -> other.block.canOverdrive, other -> Drawf.selected(other, Tmp.c1.set(baseColor).a(Mathf.absin(4f, 1f))));
+            indexer.eachBlock(
+                    this,
+                    realRange,
+                    other -> other.block.canOverdrive,
+                    other -> Drawf.selected(other, Tmp.c1.set(baseColor).a(Mathf.absin(4f, 1f))));
 
             Drawf.dashCircle(x, y, realRange, baseColor);
         }
 
         @Override
-        public void draw(){
+        public void draw() {
             super.draw();
 
             float f = 1f - (Time.time / 100f) % 1f;
@@ -139,11 +179,17 @@ public class OverdriveProjector extends Block{
             Draw.alpha(1f);
             Lines.stroke((2f * f + 0.1f) * heat);
 
-            float r = Math.max(0f, Mathf.clamp(2f - f * 2f) * size * tilesize / 2f - f - 0.2f), w = Mathf.clamp(0.5f - f) * size * tilesize;
+            float r = Math.max(0f, Mathf.clamp(2f - f * 2f) * size * tilesize / 2f - f - 0.2f),
+                    w = Mathf.clamp(0.5f - f) * size * tilesize;
             Lines.beginLine();
-            for(int i = 0; i < 4; i++){
-                Lines.linePoint(x + Geometry.d4(i).x * r + Geometry.d4(i).y * w, y + Geometry.d4(i).y * r - Geometry.d4(i).x * w);
-                if(f < 0.5f) Lines.linePoint(x + Geometry.d4(i).x * r - Geometry.d4(i).y * w, y + Geometry.d4(i).y * r + Geometry.d4(i).x * w);
+            for (int i = 0; i < 4; i++) {
+                Lines.linePoint(
+                        x + Geometry.d4(i).x * r + Geometry.d4(i).y * w,
+                        y + Geometry.d4(i).y * r - Geometry.d4(i).x * w);
+                if (f < 0.5f)
+                    Lines.linePoint(
+                            x + Geometry.d4(i).x * r - Geometry.d4(i).y * w,
+                            y + Geometry.d4(i).y * r + Geometry.d4(i).x * w);
             }
             Lines.endLine(true);
 
@@ -151,14 +197,14 @@ public class OverdriveProjector extends Block{
         }
 
         @Override
-        public void write(Writes write){
+        public void write(Writes write) {
             super.write(write);
             write.f(heat);
             write.f(phaseHeat);
         }
 
         @Override
-        public void read(Reads read, byte revision){
+        public void read(Reads read, byte revision) {
             super.read(read, revision);
             heat = read.f();
             phaseHeat = read.f();

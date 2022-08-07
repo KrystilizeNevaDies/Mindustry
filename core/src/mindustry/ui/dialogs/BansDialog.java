@@ -1,15 +1,16 @@
 package mindustry.ui.dialogs;
 
-import arc.scene.ui.*;
-import arc.scene.ui.layout.*;
+import arc.scene.ui.ScrollPane;
+import arc.scene.ui.layout.Table;
 import mindustry.gen.*;
-import mindustry.net.Administration.*;
+import mindustry.net.Administration.PlayerInfo;
 
-import static mindustry.Vars.*;
+import static mindustry.Vars.netServer;
+import static mindustry.Vars.ui;
 
-public class BansDialog extends BaseDialog{
+public class BansDialog extends BaseDialog {
 
-    public BansDialog(){
+    public BansDialog() {
         super("@server.bans");
 
         addCloseButton();
@@ -19,7 +20,7 @@ public class BansDialog extends BaseDialog{
         shown(this::setup);
     }
 
-    private void setup(){
+    private void setup() {
         cont.clear();
 
         float w = 400f, h = 80f;
@@ -29,22 +30,30 @@ public class BansDialog extends BaseDialog{
         ScrollPane pane = new ScrollPane(table);
         pane.setFadeScrollBars(false);
 
-        if(netServer.admins.getBanned().size == 0){
+        if (netServer.admins.getBanned().size == 0) {
             table.add("@server.bans.none");
         }
 
-        for(PlayerInfo info : netServer.admins.getBanned()){
+        for (PlayerInfo info : netServer.admins.getBanned()) {
             Table res = new Table(Tex.button);
             res.margin(14f);
 
-            res.labelWrap("IP: [lightgray]" + info.lastIP + "\n[]Name: [lightgray]" + info.lastName).width(w - h - 24f);
+            res.labelWrap("IP: [lightgray]" + info.lastIP + "\n[]Name: [lightgray]" + info.lastName)
+                    .width(w - h - 24f);
             res.add().growX();
-            res.button(Icon.cancel, () -> {
-                ui.showConfirm("@confirm", "@confirmunban", () -> {
-                    netServer.admins.unbanPlayerID(info.id);
-                    setup();
-                });
-            }).size(h).pad(-14f);
+            res.button(
+                            Icon.cancel,
+                            () -> {
+                                ui.showConfirm(
+                                        "@confirm",
+                                        "@confirmunban",
+                                        () -> {
+                                            netServer.admins.unbanPlayerID(info.id);
+                                            setup();
+                                        });
+                            })
+                    .size(h)
+                    .pad(-14f);
 
             table.add(res).width(w).height(h);
             table.row();

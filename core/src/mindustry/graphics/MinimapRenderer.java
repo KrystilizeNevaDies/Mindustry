@@ -1,26 +1,39 @@
 package mindustry.graphics;
 
-import arc.*;
-import arc.graphics.*;
-import arc.graphics.Texture.*;
+import arc.Core;
+import arc.Events;
+import arc.graphics.Color;
+import arc.graphics.Pixmap;
+import arc.graphics.Pixmaps;
+import arc.graphics.Texture;
+import arc.graphics.Texture.TextureFilter;
 import arc.graphics.g2d.*;
-import arc.math.*;
-import arc.math.geom.*;
-import arc.scene.ui.layout.*;
-import arc.struct.*;
-import arc.util.*;
-import arc.util.pooling.*;
-import mindustry.content.*;
-import mindustry.entities.*;
-import mindustry.game.EventType.*;
+import arc.math.Interp;
+import arc.math.Mathf;
+import arc.math.geom.Rect;
+import arc.math.geom.Vec2;
+import arc.scene.ui.layout.Scl;
+import arc.struct.Seq;
+import arc.util.Align;
+import arc.util.Nullable;
+import arc.util.Time;
+import arc.util.Tmp;
+import arc.util.pooling.Pools;
+import mindustry.content.Blocks;
+import mindustry.entities.Units;
+import mindustry.game.EventType.BuildTeamChangeEvent;
+import mindustry.game.EventType.TileChangeEvent;
+import mindustry.game.EventType.TilePreChangeEvent;
+import mindustry.game.EventType.WorldLoadEvent;
 import mindustry.gen.*;
-import mindustry.io.*;
-import mindustry.ui.*;
-import mindustry.world.*;
+import mindustry.io.MapIO;
+import mindustry.ui.Fonts;
+import mindustry.world.Block;
+import mindustry.world.Tile;
 
 import static mindustry.Vars.*;
 
-public class MinimapRenderer{
+public class MinimapRenderer {
     private static final float baseSize = 16f;
     private final Seq<Unit> units = new Seq<>();
     private Pixmap pixmap;
@@ -32,64 +45,71 @@ public class MinimapRenderer{
     private float lastX, lastY, lastW, lastH, lastScl;
     private boolean worldSpace;
 
-    public MinimapRenderer(){
-        Events.on(WorldLoadEvent.class, event -> {
-            reset();
-            updateAll();
-        });
+    public MinimapRenderer() {
+        Events.on(
+                WorldLoadEvent.class,
+                event -> {
+                    reset();
+                    updateAll();
+                });
 
-        Events.on(TileChangeEvent.class, event -> {
-            if(!ui.editor.isShown()){
-                update(event.tile);
+        Events.on(
+                TileChangeEvent.class,
+                event -> {
+                    if (!ui.editor.isShown()) {
+                        update(event.tile);
 
-                //update floor below block.
-                if(event.tile.block().solid && event.tile.y > 0 && event.tile.isCenter()){
-                    event.tile.getLinkedTiles(t -> {
-                        Tile tile = world.tile(t.x, t.y - 1);
-                        if(tile != null && tile.block() == Blocks.air){
-                            update(tile);
+                        // update floor below block.
+                        if (event.tile.block().solid && event.tile.y > 0 && event.tile.isCenter()) {
+                            event.tile.getLinkedTiles(
+                                    t -> {
+                                        Tile tile = world.tile(t.x, t.y - 1);
+                                        if (tile != null && tile.block() == Blocks.air) {
+                                            update(tile);
+                                        }
+                                    });
                         }
-                    });
-                }
-            }
-        });
+                    }
+                });
 
-        Events.on(TilePreChangeEvent.class, e -> {
-            //update floor below a *recently removed* block.
-            if(e.tile.block().solid && e.tile.y > 0){
-                Tile tile = world.tile(e.tile.x, e.tile.y - 1);
-                if(tile.block() == Blocks.air){
-                    Core.app.post(() -> update(tile));
-                }
-            }
-        });
+        Events.on(
+                TilePreChangeEvent.class,
+                e -> {
+                    // update floor below a *recently removed* block.
+                    if (e.tile.block().solid && e.tile.y > 0) {
+                        Tile tile = world.tile(e.tile.x, e.tile.y - 1);
+                        if (tile.block() == Blocks.air) {
+                            Core.app.post(() -> update(tile));
+                        }
+                    }
+                });
 
         Events.on(BuildTeamChangeEvent.class, event -> update(event.build.tile));
     }
 
-    public Pixmap getPixmap(){
+    public Pixmap getPixmap() {
         return pixmap;
     }
 
-    public @Nullable Texture getTexture(){
+    public @Nullable Texture getTexture() {
         return texture;
     }
 
-    public void zoomBy(float amount){
+    public void zoomBy(float amount) {
         zoom += amount;
         setZoom(zoom);
     }
 
-    public void setZoom(float amount){
+    public void setZoom(float amount) {
         zoom = Mathf.clamp(amount, 1f, Math.min(world.width(), world.height()) / baseSize / 2f);
     }
 
-    public float getZoom(){
+    public float getZoom() {
         return zoom;
     }
 
-    public void reset(){
-        if(pixmap != null){
+    public void reset() {
+        if (pixmap != null) {
             pixmap.dispose();
             texture.dispose();
         }
@@ -99,7 +119,8 @@ public class MinimapRenderer{
         region = new TextureRegion(texture);
     }
 
-    public void drawEntities(float x, float y, float w, float h, float scaling, boolean withLabels){
+    public void drawEntities(
+            float x, float y, float w, float h, float scaling, boolean withLabels) {
         lastX = x;
         lastY = y;
         lastW = w;
@@ -107,9 +128,9 @@ public class MinimapRenderer{
         lastScl = scaling;
         worldSpace = withLabels;
 
-        if(!withLabels){
+        if (!withLabels) {
             updateUnitArray();
-        }else{
+        } else {
             units.clear();
             Groups.unit.copy(units);
         }
@@ -122,22 +143,34 @@ public class MinimapRenderer{
 
         rect.set((dx - sz) * tilesize, (dy - sz) * tilesize, sz * 2 * tilesize, sz * 2 * tilesize);
 
-        for(Unit unit : units){
-            if(unit.inFogTo(player.team())) continue;
+        for (Unit unit : units) {
+            if (unit.inFogTo(player.team())) continue;
 
-            float rx = !withLabels ? (unit.x - rect.x) / rect.width * w : unit.x / (world.width() * tilesize) * w;
-            float ry = !withLabels ? (unit.y - rect.y) / rect.width * h : unit.y / (world.height() * tilesize) * h;
+            float rx =
+                    !withLabels
+                            ? (unit.x - rect.x) / rect.width * w
+                            : unit.x / (world.width() * tilesize) * w;
+            float ry =
+                    !withLabels
+                            ? (unit.y - rect.y) / rect.width * h
+                            : unit.y / (world.height() * tilesize) * h;
 
             Draw.mixcol(unit.team.color, 1f);
             float scale = Scl.scl(1f) / 2f * scaling * 32f;
             var region = unit.icon();
-            Draw.rect(region, x + rx, y + ry, scale, scale * (float)region.height / region.width, unit.rotation() - 90);
+            Draw.rect(
+                    region,
+                    x + rx,
+                    y + ry,
+                    scale,
+                    scale * (float) region.height / region.width,
+                    unit.rotation() - 90);
             Draw.reset();
         }
 
-        if(withLabels && net.active()){
-            for(Player player : Groups.player){
-                if(!player.dead()){
+        if (withLabels && net.active()) {
+            for (Player player : Groups.player) {
+                if (!player.dead()) {
                     float rx = player.x / (world.width() * tilesize) * w;
                     float ry = player.y / (world.height() * tilesize) * h;
 
@@ -148,21 +181,22 @@ public class MinimapRenderer{
 
         Draw.reset();
 
-        if(state.rules.fog){
-            if(withLabels){
+        if (state.rules.fog) {
+            if (withLabels) {
                 float z = zoom;
-                //max zoom out fixes everything, somehow?
+                // max zoom out fixes everything, somehow?
                 setZoom(99999f);
                 getRegion();
                 zoom = z;
             }
             Draw.shader(Shaders.fog);
-            Texture staticTex = renderer.fog.getStaticTexture(), dynamicTex = renderer.fog.getDynamicTexture();
+            Texture staticTex = renderer.fog.getStaticTexture(),
+                    dynamicTex = renderer.fog.getDynamicTexture();
 
-            //crisp pixels
+            // crisp pixels
             dynamicTex.setFilter(TextureFilter.nearest);
 
-            if(worldSpace){
+            if (worldSpace) {
                 region.set(0f, 0f, 1f, 1f);
             }
 
@@ -170,72 +204,76 @@ public class MinimapRenderer{
             Tmp.tr1.set(region.u, 1f - region.v, region.u2, 1f - region.v2);
 
             Draw.color(state.rules.dynamicColor);
-            Draw.rect(Tmp.tr1, x + w/2f, y + h/2f, w, h);
+            Draw.rect(Tmp.tr1, x + w / 2f, y + h / 2f, w, h);
 
-            if(state.rules.staticFog){
+            if (state.rules.staticFog) {
                 staticTex.setFilter(TextureFilter.nearest);
 
                 Tmp.tr1.texture = staticTex;
-                //must be black to fit with borders
+                // must be black to fit with borders
                 Draw.color(0f, 0f, 0f, state.rules.staticColor.a);
-                Draw.rect(Tmp.tr1, x + w/2f, y + h/2f, w, h);
+                Draw.rect(Tmp.tr1, x + w / 2f, y + h / 2f, w, h);
             }
 
             Draw.color();
             Draw.shader();
         }
 
-        //TODO might be useful in the standard minimap too
-        if(withLabels){
+        // TODO might be useful in the standard minimap too
+        if (withLabels) {
             drawSpawns(x, y, w, h, scaling);
         }
 
-        state.rules.objectives.eachRunning(obj -> {
-            for(var marker : obj.markers) marker.drawMinimap(this);
-        });
+        state.rules.objectives.eachRunning(
+                obj -> {
+                    for (var marker : obj.markers) marker.drawMinimap(this);
+                });
     }
 
-    public void drawSpawns(float x, float y, float w, float h, float scaling){
-        if(!state.rules.showSpawns || !state.hasSpawns() || !state.rules.waves) return;
+    public void drawSpawns(float x, float y, float w, float h, float scaling) {
+        if (!state.rules.showSpawns || !state.hasSpawns() || !state.rules.waves) return;
 
         TextureRegion icon = Icon.units.getRegion();
 
         Lines.stroke(Scl.scl(3f));
 
-        Draw.color(state.rules.waveTeam.color, Tmp.c2.set(state.rules.waveTeam.color).value(1.2f), Mathf.absin(Time.time, 16f, 1f));
+        Draw.color(
+                state.rules.waveTeam.color,
+                Tmp.c2.set(state.rules.waveTeam.color).value(1.2f),
+                Mathf.absin(Time.time, 16f, 1f));
 
         float rad = scale(state.rules.dropZoneRadius);
         float curve = Mathf.curve(Time.time % 240f, 120f, 240f);
 
-        for(Tile tile : spawner.getSpawns()){
+        for (Tile tile : spawner.getSpawns()) {
             float tx = ((tile.x + 0.5f) / world.width()) * w;
             float ty = ((tile.y + 0.5f) / world.height()) * h;
 
             Draw.rect(icon, x + tx, y + ty, icon.width, icon.height);
             Lines.circle(x + tx, y + ty, rad);
-            if(curve > 0f) Lines.circle(x + tx, y + ty, rad * Interp.pow3Out.apply(curve));
+            if (curve > 0f) Lines.circle(x + tx, y + ty, rad * Interp.pow3Out.apply(curve));
         }
 
         Draw.reset();
     }
 
-    //TODO horrible code, everywhere.
-    public Vec2 transform(Vec2 position){
-        if(!worldSpace){
+    // TODO horrible code, everywhere.
+    public Vec2 transform(Vec2 position) {
+        if (!worldSpace) {
             position.sub(rect.x, rect.y).scl(lastW / rect.width, lastH / rect.height);
-        }else{
+        } else {
             position.scl(1f / world.unitWidth(), 1f / world.unitHeight()).scl(lastW, lastH);
         }
 
         return position.add(lastX, lastY);
     }
 
-    public float scale(float radius){
+    public float scale(float radius) {
         return worldSpace ? (radius / (baseSize / 2f)) * 5f * lastScl : lastW / rect.width * radius;
     }
 
-    public @Nullable TextureRegion getRegion(){
-        if(texture == null) return null;
+    public @Nullable TextureRegion getRegion() {
+        if (texture == null) return null;
 
         float sz = Mathf.clamp(baseSize * zoom, baseSize, Math.min(world.width(), world.height()));
         float dx = (Core.camera.position.x / tilesize);
@@ -245,46 +283,51 @@ public class MinimapRenderer{
         float invTexWidth = 1f / texture.width;
         float invTexHeight = 1f / texture.height;
         float x = dx - sz, y = world.height() - dy - sz, width = sz * 2, height = sz * 2;
-        region.set(x * invTexWidth, y * invTexHeight, (x + width) * invTexWidth, (y + height) * invTexHeight);
+        region.set(
+                x * invTexWidth,
+                y * invTexHeight,
+                (x + width) * invTexWidth,
+                (y + height) * invTexHeight);
         return region;
     }
 
-    public void updateAll(){
-        for(Tile tile : world.tiles){
+    public void updateAll() {
+        for (Tile tile : world.tiles) {
             pixmap.set(tile.x, pixmap.height - 1 - tile.y, colorFor(tile));
         }
         texture.draw(pixmap);
     }
 
-    public void update(Tile tile){
-        if(world.isGenerating() || !state.isGame()) return;
+    public void update(Tile tile) {
+        if (world.isGenerating() || !state.isGame()) return;
 
-        if(tile.build != null && tile.isCenter()){
-            tile.getLinkedTiles(other -> {
-                if(!other.isCenter()){
-                    updatePixel(other);
-                }
+        if (tile.build != null && tile.isCenter()) {
+            tile.getLinkedTiles(
+                    other -> {
+                        if (!other.isCenter()) {
+                            updatePixel(other);
+                        }
 
-                if(tile.block().solid && other.y > 0){
-                    Tile low = world.tile(other.x, other.y - 1);
-                    if(!low.solid()){
-                        updatePixel(low);
-                    }
-                }
-            });
+                        if (tile.block().solid && other.y > 0) {
+                            Tile low = world.tile(other.x, other.y - 1);
+                            if (!low.solid()) {
+                                updatePixel(low);
+                            }
+                        }
+                    });
         }
 
         updatePixel(tile);
     }
 
-    void updatePixel(Tile tile){
+    void updatePixel(Tile tile) {
         int color = colorFor(tile);
         pixmap.set(tile.x, pixmap.height - 1 - tile.y, color);
 
         Pixmaps.drawPixel(texture, tile.x, pixmap.height - 1 - tile.y, color);
     }
 
-    public void updateUnitArray(){
+    public void updateUnitArray() {
         float sz = baseSize * zoom;
         float dx = (Core.camera.position.x / tilesize);
         float dy = (Core.camera.position.y / tilesize);
@@ -292,32 +335,47 @@ public class MinimapRenderer{
         dy = Mathf.clamp(dy, sz, world.height() - sz);
 
         units.clear();
-        Units.nearby((dx - sz) * tilesize, (dy - sz) * tilesize, sz * 2 * tilesize, sz * 2 * tilesize, units::add);
+        Units.nearby(
+                (dx - sz) * tilesize,
+                (dy - sz) * tilesize,
+                sz * 2 * tilesize,
+                sz * 2 * tilesize,
+                units::add);
     }
 
-    private Block realBlock(Tile tile){
-        //TODO doesn't work properly until player goes and looks at block
-        return tile.build == null ? tile.block() : state.rules.fog && !tile.build.wasVisible ? Blocks.air : tile.block();
+    private Block realBlock(Tile tile) {
+        // TODO doesn't work properly until player goes and looks at block
+        return tile.build == null
+                ? tile.block()
+                : state.rules.fog && !tile.build.wasVisible ? Blocks.air : tile.block();
     }
 
-    private int colorFor(Tile tile){
-        if(tile == null) return 0;
+    private int colorFor(Tile tile) {
+        if (tile == null) return 0;
         Block real = realBlock(tile);
         int bc = real.minimapColor(tile);
 
-        Color color = Tmp.c1.set(bc == 0 ? MapIO.colorFor(real, tile.floor(), tile.overlay(), tile.team()) : bc);
+        Color color =
+                Tmp.c1.set(
+                        bc == 0
+                                ? MapIO.colorFor(real, tile.floor(), tile.overlay(), tile.team())
+                                : bc);
         color.mul(1f - Mathf.clamp(world.getDarkness(tile.x, tile.y) / 4f));
 
-        if(real == Blocks.air && tile.y < world.height() - 1 && realBlock(world.tile(tile.x, tile.y + 1)).solid){
+        if (real == Blocks.air
+                && tile.y < world.height() - 1
+                && realBlock(world.tile(tile.x, tile.y + 1)).solid) {
             color.mul(0.7f);
-        }else if(tile.floor().isLiquid && (tile.y >= world.height() - 1 || !world.tile(tile.x, tile.y + 1).floor().isLiquid)){
+        } else if (tile.floor().isLiquid
+                && (tile.y >= world.height() - 1
+                || !world.tile(tile.x, tile.y + 1).floor().isLiquid)) {
             color.mul(0.84f, 0.84f, 0.9f, 1f);
         }
 
         return color.rgba();
     }
 
-    public void drawLabel(float x, float y, String text, Color color){
+    public void drawLabel(float x, float y, String text, Color color) {
         Font font = Fonts.outline;
         GlyphLayout l = Pools.obtain(GlyphLayout.class, GlyphLayout::new);
         boolean ints = font.usesIntegerPositions();
@@ -329,10 +387,10 @@ public class MinimapRenderer{
         float margin = 3f;
 
         Draw.color(0f, 0f, 0f, 0.2f);
-        Fill.rect(x, y + yOffset - l.height/2f, l.width + margin, l.height + margin);
+        Fill.rect(x, y + yOffset - l.height / 2f, l.width + margin, l.height + margin);
         Draw.color();
         font.setColor(color);
-        font.draw(text, x - l.width/2f, y + yOffset, 90f, Align.left, true);
+        font.draw(text, x - l.width / 2f, y + yOffset, 90f, Align.left, true);
         font.setUseIntegerPositions(ints);
 
         font.getData().setScale(1f);

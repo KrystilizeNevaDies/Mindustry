@@ -1,43 +1,52 @@
 package mindustry.graphics;
 
-import arc.*;
+import arc.Core;
+import arc.Events;
 import arc.graphics.*;
-import arc.graphics.g2d.*;
-import arc.graphics.gl.*;
-import arc.math.*;
-import arc.math.geom.*;
-import arc.struct.*;
-import arc.struct.IntSet.*;
-import arc.util.*;
-import mindustry.game.EventType.*;
-import mindustry.world.*;
-import mindustry.world.blocks.environment.*;
+import arc.graphics.g2d.Batch;
+import arc.graphics.g2d.Draw;
+import arc.graphics.g2d.TextureRegion;
+import arc.graphics.gl.IndexBufferObject;
+import arc.graphics.gl.Shader;
+import arc.graphics.gl.VertexBufferObject;
+import arc.math.Mathf;
+import arc.math.geom.Point2;
+import arc.struct.IntSeq;
+import arc.struct.IntSet;
+import arc.struct.IntSet.IntSetIterator;
+import arc.struct.ObjectSet;
+import arc.util.Log;
+import arc.util.Structs;
+import arc.util.Time;
+import mindustry.game.EventType.WorldLoadEvent;
+import mindustry.world.Tile;
+import mindustry.world.blocks.environment.Floor;
 
-import static mindustry.Vars.*;
+import static mindustry.Vars.tilesize;
+import static mindustry.Vars.world;
 
 /**
  * general implementation:
- *
+ * <p>
  * caching:
  * 1. create fixed-size float array for rendering into
  * 2. for each chunk, cache each layer into buffer; record layer boundary indices (alternatively, create mesh per layer for fast recache)
  * 3. create mesh for this chunk based on buffer size, copy buffer into mesh
- *
+ * <p>
  * rendering:
  * 1. iterate through visible chunks
  * 2. activate the shader vertex attributes beforehand
  * 3. bind each mesh individually, draw it
- *
- * */
-public class FloorRenderer{
+ */
+public class FloorRenderer {
     private static final VertexAttribute[] attributes = {VertexAttribute.position, VertexAttribute.color, VertexAttribute.texCoords};
     private static final int
-        chunksize = 30, //todo 32?
-        chunkunits = chunksize * tilesize,
-        vertexSize = 2 + 1 + 2,
-        spriteSize = vertexSize * 4,
-        maxSprites = chunksize * chunksize * 9;
-    private static final float pad = tilesize/2f;
+            chunksize = 30, //todo 32?
+            chunkunits = chunksize * tilesize,
+            vertexSize = 2 + 1 + 2,
+            spriteSize = vertexSize * 4,
+            maxSprites = chunksize * chunksize * 9;
+    private static final float pad = tilesize / 2f;
     //if true, chunks are rendered on-demand; this causes small lag spikes and is generally not needed for most maps
     private static final boolean dynamic = false;
 
@@ -55,66 +64,68 @@ public class FloorRenderer{
     private IntSeq drawnLayers = new IntSeq();
     private ObjectSet<CacheLayer> used = new ObjectSet<>();
 
-    public FloorRenderer(){
+    public FloorRenderer() {
         short j = 0;
-        for(int i = 0; i < indices.length; i += 6, j += 4){
+        for (int i = 0; i < indices.length; i += 6, j += 4) {
             indices[i] = j;
-            indices[i + 1] = (short)(j + 1);
-            indices[i + 2] = (short)(j + 2);
-            indices[i + 3] = (short)(j + 2);
-            indices[i + 4] = (short)(j + 3);
+            indices[i + 1] = (short) (j + 1);
+            indices[i + 2] = (short) (j + 2);
+            indices[i + 3] = (short) (j + 2);
+            indices[i + 4] = (short) (j + 3);
             indices[i + 5] = j;
         }
 
         shader = new Shader(
-        """
-        attribute vec4 a_position;
-        attribute vec4 a_color;
-        attribute vec2 a_texCoord0;
-        uniform mat4 u_projectionViewMatrix;
-        varying vec4 v_color;
-        varying vec2 v_texCoords;
+                """
+                        attribute vec4 a_position;
+                        attribute vec4 a_color;
+                        attribute vec2 a_texCoord0;
+                        uniform mat4 u_projectionViewMatrix;
+                        varying vec4 v_color;
+                        varying vec2 v_texCoords;
 
-        void main(){
-           v_color = a_color;
-           v_color.a = v_color.a * (255.0/254.0);
-           v_texCoords = a_texCoord0;
-           gl_Position =  u_projectionViewMatrix * a_position;
-        }
-        """,
-        """
-        varying vec4 v_color;
-        varying vec2 v_texCoords;
-        uniform sampler2D u_texture;
+                        void main(){
+                           v_color = a_color;
+                           v_color.a = v_color.a * (255.0/254.0);
+                           v_texCoords = a_texCoord0;
+                           gl_Position =  u_projectionViewMatrix * a_position;
+                        }
+                        """,
+                """
+                        varying vec4 v_color;
+                        varying vec2 v_texCoords;
+                        uniform sampler2D u_texture;
 
-        void main(){
-          gl_FragColor = v_color * texture2D(u_texture, v_texCoords);
-        }
-        """);
+                        void main(){
+                          gl_FragColor = v_color * texture2D(u_texture, v_texCoords);
+                        }
+                        """);
 
         Events.on(WorldLoadEvent.class, event -> clearTiles());
     }
 
-    /** Queues up a cache change for a tile. Only runs in render loop. */
-    public void recacheTile(Tile tile){
+    /**
+     * Queues up a cache change for a tile. Only runs in render loop.
+     */
+    public void recacheTile(Tile tile) {
         //recaching all layers may not be necessary
         recacheSet.add(Point2.pack(tile.x / chunksize, tile.y / chunksize));
     }
 
-    public void drawFloor(){
-        if(cache == null){
+    public void drawFloor() {
+        if (cache == null) {
             return;
         }
 
         Camera camera = Core.camera;
 
-        float pad = tilesize/2f;
+        float pad = tilesize / 2f;
 
         int
-            minx = (int)((camera.position.x - camera.width/2f - pad) / chunkunits),
-            miny = (int)((camera.position.y - camera.height/2f - pad) / chunkunits),
-            maxx = Mathf.ceil((camera.position.x + camera.width/2f + pad) / chunkunits),
-            maxy = Mathf.ceil((camera.position.y + camera.height/2f + pad) / chunkunits);
+                minx = (int) ((camera.position.x - camera.width / 2f - pad) / chunkunits),
+                miny = (int) ((camera.position.y - camera.height / 2f - pad) / chunkunits),
+                maxx = Mathf.ceil((camera.position.x + camera.width / 2f + pad) / chunkunits),
+                maxy = Mathf.ceil((camera.position.y + camera.height / 2f + pad) / chunkunits);
 
         int layers = CacheLayer.all.length;
 
@@ -122,20 +133,20 @@ public class FloorRenderer{
         drawnLayerSet.clear();
 
         //preliminary layer check
-        for(int x = minx; x <= maxx; x++){
-            for(int y = miny; y <= maxy; y++){
+        for (int x = minx; x <= maxx; x++) {
+            for (int y = miny; y <= maxy; y++) {
 
-                if(!Structs.inBounds(x, y, cache)) continue;
+                if (!Structs.inBounds(x, y, cache)) continue;
 
-                if(cache[x][y].length == 0){
+                if (cache[x][y].length == 0) {
                     cacheChunk(x, y);
                 }
 
                 Mesh[] chunk = cache[x][y];
 
                 //loop through all layers, and add layer index if it exists
-                for(int i = 0; i < layers; i++){
-                    if(chunk[i] != null && i != CacheLayer.walls.id){
+                for (int i = 0; i < layers; i++) {
+                    if (chunk[i] != null && i != CacheLayer.walls.id) {
                         drawnLayerSet.add(i);
                     }
                 }
@@ -143,7 +154,7 @@ public class FloorRenderer{
         }
 
         IntSetIterator it = drawnLayerSet.iterator();
-        while(it.hasNext){
+        while (it.hasNext) {
             drawnLayers.add(it.next());
         }
 
@@ -152,7 +163,7 @@ public class FloorRenderer{
         Draw.flush();
         beginDraw();
 
-        for(int i = 0; i < drawnLayers.size; i++){
+        for (int i = 0; i < drawnLayers.size; i++) {
             CacheLayer layer = CacheLayer.all[drawnLayers.get(i)];
 
             drawLayer(layer);
@@ -161,7 +172,7 @@ public class FloorRenderer{
         endDraw();
     }
 
-    public void beginc(){
+    public void beginc() {
         shader.bind();
         shader.setUniformMatrix4("u_projectionViewMatrix", Core.camera.mat);
 
@@ -169,21 +180,21 @@ public class FloorRenderer{
         texture.bind(0);
 
         //enable all mesh attributes; TODO remove once the attribute cache bug is fixed
-        if(Core.gl30 == null){
-            for(VertexAttribute attribute : attributes){
+        if (Core.gl30 == null) {
+            for (VertexAttribute attribute : attributes) {
                 int loc = shader.getAttributeLocation(attribute.alias);
-                if(loc != -1) Gl.enableVertexAttribArray(loc);
+                if (loc != -1) Gl.enableVertexAttribArray(loc);
             }
         }
 
     }
 
-    public void endc(){
+    public void endc() {
         //disable all mesh attributes; TODO remove once the attribute cache bug is fixed
-        if(Core.gl30 == null){
-            for(VertexAttribute attribute : attributes){
+        if (Core.gl30 == null) {
+            for (VertexAttribute attribute : attributes) {
                 int loc = shader.getAttributeLocation(attribute.alias);
-                if(loc != -1) Gl.disableVertexAttribArray(loc);
+                if (loc != -1) Gl.disableVertexAttribArray(loc);
             }
         }
 
@@ -192,11 +203,11 @@ public class FloorRenderer{
         Gl.bindBuffer(Gl.elementArrayBuffer, 0);
     }
 
-    public void checkChanges(){
-        if(recacheSet.size > 0){
+    public void checkChanges() {
+        if (recacheSet.size > 0) {
             //recache one chunk at a time
             IntSetIterator iterator = recacheSet.iterator();
-            while(iterator.hasNext){
+            while (iterator.hasNext) {
                 int chunk = iterator.next();
                 cacheChunk(Point2.x(chunk), Point2.y(chunk));
             }
@@ -205,8 +216,8 @@ public class FloorRenderer{
         }
     }
 
-    public void beginDraw(){
-        if(cache == null){
+    public void beginDraw() {
+        if (cache == null) {
             return;
         }
 
@@ -217,50 +228,50 @@ public class FloorRenderer{
         Gl.enable(Gl.blend);
     }
 
-    public void endDraw(){
-        if(cache == null){
+    public void endDraw() {
+        if (cache == null) {
             return;
         }
 
         endc();
     }
 
-    public void drawLayer(CacheLayer layer){
-        if(cache == null){
+    public void drawLayer(CacheLayer layer) {
+        if (cache == null) {
             return;
         }
 
         Camera camera = Core.camera;
 
         int
-            minx = (int)((camera.position.x - camera.width/2f - pad) / chunkunits),
-            miny = (int)((camera.position.y - camera.height/2f - pad) / chunkunits),
-            maxx = Mathf.ceil((camera.position.x + camera.width/2f + pad) / chunkunits),
-            maxy = Mathf.ceil((camera.position.y + camera.height/2f + pad) / chunkunits);
+                minx = (int) ((camera.position.x - camera.width / 2f - pad) / chunkunits),
+                miny = (int) ((camera.position.y - camera.height / 2f - pad) / chunkunits),
+                maxx = Mathf.ceil((camera.position.x + camera.width / 2f + pad) / chunkunits),
+                maxy = Mathf.ceil((camera.position.y + camera.height / 2f + pad) / chunkunits);
 
         layer.begin();
 
-        for(int x = minx; x <= maxx; x++){
-            for(int y = miny; y <= maxy; y++){
+        for (int x = minx; x <= maxx; x++) {
+            for (int y = miny; y <= maxy; y++) {
 
-                if(!Structs.inBounds(x, y, cache) || cache[x][y].length == 0){
+                if (!Structs.inBounds(x, y, cache) || cache[x][y].length == 0) {
                     continue;
                 }
 
                 var mesh = cache[x][y][layer.id];
 
                 //this *must* be a vertexbufferobject on gles2, so cast it and render it directly
-                if(mesh != null && mesh.vertices instanceof VertexBufferObject vbo && mesh.indices instanceof IndexBufferObject ibo){
+                if (mesh != null && mesh.vertices instanceof VertexBufferObject vbo && mesh.indices instanceof IndexBufferObject ibo) {
 
                     //bindi the buffer and update its contents, but do not unnecessarily enable all the attributes again
                     vbo.bind();
                     //set up vertex attribute pointers for this specific VBO
                     int offset = 0;
-                    for(VertexAttribute attribute : attributes){
+                    for (VertexAttribute attribute : attributes) {
                         int location = shader.getAttributeLocation(attribute.alias);
                         int aoffset = offset;
                         offset += attribute.size;
-                        if(location < 0) continue;
+                        if (location < 0) continue;
 
                         Gl.vertexAttribPointer(location, attribute.components, attribute.type, attribute.normalized, vertexSize * 4, aoffset);
                     }
@@ -268,7 +279,7 @@ public class FloorRenderer{
                     ibo.bind();
 
                     mesh.vertices.render(mesh.indices, Gl.triangles, 0, mesh.getNumIndices());
-                }else if(mesh != null){
+                } else if (mesh != null) {
                     //TODO this should be the default branch!
                     mesh.bind(shader);
                     mesh.render(shader, Gl.triangles);
@@ -279,64 +290,64 @@ public class FloorRenderer{
         layer.end();
     }
 
-    private void cacheChunk(int cx, int cy){
+    private void cacheChunk(int cx, int cy) {
         used.clear();
 
-        for(int tilex = Math.max(cx * chunksize - 1, 0); tilex < (cx + 1) * chunksize + 1 && tilex < world.width(); tilex++){
-            for(int tiley = Math.max(cy * chunksize - 1, 0); tiley < (cy + 1) * chunksize + 1 && tiley < world.height(); tiley++){
+        for (int tilex = Math.max(cx * chunksize - 1, 0); tilex < (cx + 1) * chunksize + 1 && tilex < world.width(); tilex++) {
+            for (int tiley = Math.max(cy * chunksize - 1, 0); tiley < (cy + 1) * chunksize + 1 && tiley < world.height(); tiley++) {
                 Tile tile = world.rawTile(tilex, tiley);
                 boolean wall = tile.block().cacheLayer != CacheLayer.normal;
 
-                if(wall){
+                if (wall) {
                     used.add(tile.block().cacheLayer);
                 }
 
-                if(!wall || world.isAccessible(tilex, tiley)){
+                if (!wall || world.isAccessible(tilex, tiley)) {
                     used.add(tile.floor().cacheLayer);
                 }
             }
         }
 
-        if(cache[cx][cy].length == 0){
+        if (cache[cx][cy].length == 0) {
             cache[cx][cy] = new Mesh[CacheLayer.all.length];
         }
 
         var meshes = cache[cx][cy];
 
-        for(CacheLayer layer : CacheLayer.all){
-            if(meshes[layer.id] != null){
+        for (CacheLayer layer : CacheLayer.all) {
+            if (meshes[layer.id] != null) {
                 meshes[layer.id].dispose();
             }
             meshes[layer.id] = null;
         }
 
-        for(CacheLayer layer : used){
+        for (CacheLayer layer : used) {
             meshes[layer.id] = cacheChunkLayer(cx, cy, layer);
         }
     }
 
-    private Mesh cacheChunkLayer(int cx, int cy, CacheLayer layer){
+    private Mesh cacheChunkLayer(int cx, int cy, CacheLayer layer) {
         vidx = 0;
 
         Batch current = Core.batch;
         Core.batch = batch;
 
-        for(int tilex = cx * chunksize; tilex < (cx + 1) * chunksize; tilex++){
-            for(int tiley = cy * chunksize; tiley < (cy + 1) * chunksize; tiley++){
+        for (int tilex = cx * chunksize; tilex < (cx + 1) * chunksize; tilex++) {
+            for (int tiley = cy * chunksize; tiley < (cy + 1) * chunksize; tiley++) {
                 Tile tile = world.tile(tilex, tiley);
                 Floor floor;
 
-                if(tile == null){
+                if (tile == null) {
                     continue;
-                }else{
+                } else {
                     floor = tile.floor();
                 }
 
-                if(tile.block().cacheLayer == layer && layer == CacheLayer.walls && !(tile.isDarkened() && tile.data >= 5)){
+                if (tile.block().cacheLayer == layer && layer == CacheLayer.walls && !(tile.isDarkened() && tile.data >= 5)) {
                     tile.block().drawBase(tile);
-                }else if(floor.cacheLayer == layer && (world.isAccessible(tile.x, tile.y) || tile.block().cacheLayer != CacheLayer.walls || !tile.block().fillsTile)){
+                } else if (floor.cacheLayer == layer && (world.isAccessible(tile.x, tile.y) || tile.block().cacheLayer != CacheLayer.walls || !tile.block().fillsTile)) {
                     floor.drawBase(tile);
-                }else if(floor.cacheLayer != layer && layer != CacheLayer.walls){
+                } else if (floor.cacheLayer != layer && layer != CacheLayer.walls) {
                     floor.drawNonLayer(tile, layer);
                 }
             }
@@ -346,7 +357,7 @@ public class FloorRenderer{
 
         int floats = vidx;
         //every 4 vertices need 6 indices
-        int vertCount = floats / vertexSize, indCount = vertCount * 6/4;
+        int vertCount = floats / vertexSize, indCount = vertCount * 6 / 4;
 
         Mesh mesh = new Mesh(true, vertCount, indCount, attributes);
         mesh.setVertices(vertices, 0, vidx);
@@ -356,13 +367,13 @@ public class FloorRenderer{
         return mesh;
     }
 
-    public void clearTiles(){
+    public void clearTiles() {
         //dispose all old meshes
-        if(cache != null){
-            for(var x : cache){
-                for(var y : x){
-                    for(var mesh : y){
-                        if(mesh != null){
+        if (cache != null) {
+            for (var x : cache) {
+                for (var y : x) {
+                    for (var mesh : y) {
+                        if (mesh != null) {
                             mesh.dispose();
                         }
                     }
@@ -371,18 +382,18 @@ public class FloorRenderer{
         }
 
         recacheSet.clear();
-        int chunksx = Mathf.ceil((float)(world.width()) / chunksize), chunksy = Mathf.ceil((float)(world.height()) / chunksize);
+        int chunksx = Mathf.ceil((float) (world.width()) / chunksize), chunksy = Mathf.ceil((float) (world.height()) / chunksize);
         cache = new Mesh[chunksx][chunksy][dynamic ? 0 : CacheLayer.all.length];
 
         texture = Core.atlas.find("grass1").texture;
         error = Core.atlas.find("env-error");
 
         //pre-cache chunks
-        if(!dynamic){
+        if (!dynamic) {
             Time.mark();
 
-            for(int x = 0; x < chunksx; x++){
-                for(int y = 0; y < chunksy; y++){
+            for (int x = 0; x < chunksx; x++) {
+                for (int y = 0; y < chunksy; y++) {
                     cacheChunk(x, y);
                 }
             }
@@ -391,13 +402,13 @@ public class FloorRenderer{
         }
     }
 
-    class FloorRenderBatch extends Batch{
+    class FloorRenderBatch extends Batch {
 
         @Override
-        protected void draw(TextureRegion region, float x, float y, float originX, float originY, float width, float height, float rotation){
+        protected void draw(TextureRegion region, float x, float y, float originX, float originY, float width, float height, float rotation) {
 
             //substitute invalid regions with error
-            if(region.texture != texture && region != error){
+            if (region.texture != texture && region != error) {
                 draw(error, x, y, originX, originY, width, height, rotation);
                 return;
             }
@@ -406,7 +417,7 @@ public class FloorRenderer{
             int idx = vidx;
             vidx += spriteSize;
 
-            if(!Mathf.zero(rotation)){
+            if (!Mathf.zero(rotation)) {
                 //bottom left and top right corner points relative to origin
                 float worldOriginX = x + originX;
                 float worldOriginY = y + originY;
@@ -458,7 +469,7 @@ public class FloorRenderer{
                 verts[idx + 17] = color;
                 verts[idx + 18] = u2;
                 verts[idx + 19] = v;
-            }else{
+            } else {
                 float fx2 = x + width;
                 float fy2 = y + height;
                 float u = region.u;
@@ -496,17 +507,17 @@ public class FloorRenderer{
         }
 
         @Override
-        public void flush(){
+        public void flush() {
 
         }
 
         @Override
-        public void setShader(Shader shader, boolean apply){
+        public void setShader(Shader shader, boolean apply) {
             throw new IllegalArgumentException("cache shader unsupported");
         }
 
         @Override
-        protected void draw(Texture texture, float[] spriteVertices, int offset, int count){
+        protected void draw(Texture texture, float[] spriteVertices, int offset, int count) {
             throw new IllegalArgumentException("cache vertices unsupported");
         }
     }

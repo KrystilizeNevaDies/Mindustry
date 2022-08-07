@@ -1,10 +1,13 @@
 package mindustry.maps.generators;
 
-import mindustry.world.*;
+import mindustry.world.Tiles;
 
-public interface WorldGenerator{
+public interface WorldGenerator {
     void generate(Tiles tiles);
 
-    /** Do not modify tiles here. This is only for specialized configuration. */
-    default void postGenerate(Tiles tiles){}
+    /**
+     * Do not modify tiles here. This is only for specialized configuration.
+     */
+    default void postGenerate(Tiles tiles) {
+    }
 }

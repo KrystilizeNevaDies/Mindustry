@@ -1,25 +1,29 @@
 package mindustry.world.blocks.sandbox;
 
-import arc.graphics.g2d.*;
-import arc.scene.ui.layout.*;
-import arc.util.*;
-import arc.util.io.*;
-import mindustry.annotations.Annotations.*;
-import mindustry.entities.units.*;
+import arc.graphics.g2d.Draw;
+import arc.graphics.g2d.TextureRegion;
+import arc.scene.ui.layout.Table;
+import arc.util.Eachable;
+import arc.util.Nullable;
+import arc.util.io.Reads;
+import arc.util.io.Writes;
+import mindustry.annotations.Annotations.Load;
+import mindustry.entities.units.BuildPlan;
 import mindustry.gen.*;
-import mindustry.type.*;
-import mindustry.world.*;
-import mindustry.world.blocks.*;
-import mindustry.world.blocks.liquid.*;
-import mindustry.world.meta.*;
+import mindustry.type.Liquid;
+import mindustry.world.Block;
+import mindustry.world.blocks.ItemSelection;
+import mindustry.world.blocks.liquid.LiquidBlock;
+import mindustry.world.meta.BlockGroup;
+import mindustry.world.meta.Env;
 
-import static mindustry.Vars.*;
+import static mindustry.Vars.content;
 
-public class LiquidSource extends Block{
+public class LiquidSource extends Block {
     public @Load("cross") TextureRegion crossRegion;
     public @Load("source-bottom") TextureRegion bottomRegion;
 
-    public LiquidSource(String name){
+    public LiquidSource(String name) {
         super(name);
         update = true;
         solid = true;
@@ -39,44 +43,44 @@ public class LiquidSource extends Block{
     }
 
     @Override
-    public void setBars(){
+    public void setBars() {
         super.setBars();
 
         removeBar("liquid");
     }
 
     @Override
-    public void drawPlanConfig(BuildPlan plan, Eachable<BuildPlan> list){
+    public void drawPlanConfig(BuildPlan plan, Eachable<BuildPlan> list) {
         drawPlanConfigCenter(plan, plan.config, "center", true);
     }
 
     @Override
-    public TextureRegion[] icons(){
+    public TextureRegion[] icons() {
         return new TextureRegion[]{bottomRegion, region};
     }
 
-    public class LiquidSourceBuild extends Building{
+    public class LiquidSourceBuild extends Building {
         public @Nullable Liquid source = null;
 
         @Override
-        public void updateTile(){
-            if(source == null){
+        public void updateTile() {
+            if (source == null) {
                 liquids.clear();
-            }else{
+            } else {
                 liquids.add(source, liquidCapacity);
                 dumpLiquid(source);
             }
         }
 
         @Override
-        public void draw(){
+        public void draw() {
             super.draw();
 
             Draw.rect(bottomRegion, x, y);
 
-            if(source == null){
+            if (source == null) {
                 Draw.rect(crossRegion, x, y);
-            }else{
+            } else {
                 LiquidBlock.drawTiledFrames(size, x, y, 0f, source, 1f);
             }
 
@@ -84,28 +88,29 @@ public class LiquidSource extends Block{
         }
 
         @Override
-        public void buildConfiguration(Table table){
-            ItemSelection.buildTable(LiquidSource.this, table, content.liquids(), () -> source, this::configure);
+        public void buildConfiguration(Table table) {
+            ItemSelection.buildTable(
+                    LiquidSource.this, table, content.liquids(), () -> source, this::configure);
         }
 
         @Override
-        public Liquid config(){
+        public Liquid config() {
             return source;
         }
 
         @Override
-        public byte version(){
+        public byte version() {
             return 1;
         }
 
         @Override
-        public void write(Writes write){
+        public void write(Writes write) {
             super.write(write);
             write.s(source == null ? -1 : source.id);
         }
 
         @Override
-        public void read(Reads read, byte revision){
+        public void read(Reads read, byte revision) {
             super.read(read, revision);
             int id = revision == 1 ? read.s() : read.b();
             source = id == -1 ? null : content.liquid(id);

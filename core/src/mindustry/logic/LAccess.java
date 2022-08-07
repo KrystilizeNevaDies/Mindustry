@@ -1,9 +1,11 @@
 package mindustry.logic;
 
-import arc.struct.*;
+import arc.struct.Seq;
 
-/** Setter/getter enum for logic-controlled objects. */
-public enum LAccess{
+/**
+ * Setter/getter enum for logic-controlled objects.
+ */
+public enum LAccess {
     totalItems,
     firstItem,
     totalLiquids,
@@ -30,7 +32,7 @@ public enum LAccess{
     shootY,
     size,
     dead,
-    range, 
+    range,
     shooting,
     boosting,
     mineX,
@@ -46,8 +48,8 @@ public enum LAccess{
     payloadCount,
     payloadType,
 
-    //values with parameters are considered controllable
-    enabled("to"), //"to" is standard for single parameter access
+    // values with parameters are considered controllable
+    enabled("to"), // "to" is standard for single parameter access
     shoot("x", "y", "shoot"),
     shootp(true, "unit", "shoot"),
     config(true, "to"),
@@ -56,19 +58,17 @@ public enum LAccess{
     public final String[] params;
     public final boolean isObj;
 
-    public static final LAccess[]
-        all = values(),
-        senseable = Seq.select(all, t -> t.params.length <= 1).toArray(LAccess.class),
-        controls = Seq.select(all, t -> t.params.length > 0).toArray(LAccess.class);
+    public static final LAccess[] all = values(),
+            senseable = Seq.select(all, t -> t.params.length <= 1).toArray(LAccess.class),
+            controls = Seq.select(all, t -> t.params.length > 0).toArray(LAccess.class);
 
-    LAccess(String... params){
+    LAccess(String... params) {
         this.params = params;
         isObj = false;
     }
 
-    LAccess(boolean obj, String... params){
+    LAccess(boolean obj, String... params) {
         this.params = params;
         isObj = obj;
     }
-
 }

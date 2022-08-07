@@ -1,14 +1,15 @@
 package mindustry.entities.bullet;
 
-import arc.graphics.g2d.*;
+import arc.graphics.g2d.Draw;
+import arc.graphics.g2d.Lines;
+import mindustry.content.Fx;
 import mindustry.gen.*;
-import mindustry.content.*;
-import mindustry.graphics.*;
+import mindustry.graphics.Pal;
 
-public class LaserBoltBulletType extends BasicBulletType{
+public class LaserBoltBulletType extends BasicBulletType {
     public float width = 2f, height = 7f;
 
-    public LaserBoltBulletType(float speed, float damage){
+    public LaserBoltBulletType(float speed, float damage) {
         super(speed, damage);
 
         smokeEffect = Fx.hitLaser;
@@ -20,12 +21,12 @@ public class LaserBoltBulletType extends BasicBulletType{
         lightOpacity = 0.6f;
     }
 
-    public LaserBoltBulletType(){
+    public LaserBoltBulletType() {
         this(1f, 1f);
     }
 
     @Override
-    public void draw(Bullet b){
+    public void draw(Bullet b) {
         super.draw(b);
         Draw.color(backColor);
         Lines.stroke(width);

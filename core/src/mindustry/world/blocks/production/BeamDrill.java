@@ -1,28 +1,40 @@
 package mindustry.world.blocks.production;
 
-import arc.*;
-import arc.graphics.*;
-import arc.graphics.g2d.*;
-import arc.math.*;
-import arc.math.geom.*;
-import arc.struct.*;
+import arc.Core;
+import arc.graphics.Blending;
+import arc.graphics.Color;
+import arc.graphics.g2d.Draw;
+import arc.graphics.g2d.Lines;
+import arc.graphics.g2d.TextureRegion;
+import arc.math.Angles;
+import arc.math.Mathf;
+import arc.math.Rand;
+import arc.math.geom.Geometry;
+import arc.math.geom.Point2;
 import arc.util.*;
-import arc.util.io.*;
-import mindustry.annotations.Annotations.*;
-import mindustry.content.*;
-import mindustry.entities.units.*;
-import mindustry.game.*;
+import arc.util.io.Reads;
+import arc.util.io.Writes;
+import mindustry.annotations.Annotations.Load;
+import mindustry.entities.units.BuildPlan;
+import mindustry.game.Team;
 import mindustry.gen.*;
-import mindustry.graphics.*;
-import mindustry.type.*;
-import mindustry.ui.*;
-import mindustry.world.*;
-import mindustry.world.blocks.environment.*;
-import mindustry.world.meta.*;
+import mindustry.graphics.Drawf;
+import mindustry.graphics.Layer;
+import mindustry.graphics.Pal;
+import mindustry.type.Item;
+import mindustry.ui.Bar;
+import mindustry.world.Block;
+import mindustry.world.Tile;
+import mindustry.world.blocks.environment.Floor;
+import mindustry.world.blocks.environment.StaticWall;
+import mindustry.world.meta.Env;
+import mindustry.world.meta.Stat;
+import mindustry.world.meta.StatUnit;
+import mindustry.world.meta.StatValues;
 
 import static mindustry.Vars.*;
 
-public class BeamDrill extends Block{
+public class BeamDrill extends Block {
     protected Rand rand = new Rand();
 
     public @Load("drill-laser") TextureRegion laser;
@@ -40,7 +52,9 @@ public class BeamDrill extends Block{
     public int range = 5;
     public int tier = 1;
     public float laserWidth = 0.65f;
-    /** How many times faster the drill will progress when boosted by an optional consumer. */
+    /**
+     * How many times faster the drill will progress when boosted by an optional consumer.
+     */
     public float optionalBoostIntensity = 2.5f;
 
     public Color sparkColor = Color.valueOf("fd9e81"), glowColor = Color.white;
@@ -53,7 +67,7 @@ public class BeamDrill extends Block{
     public Color heatColor = new Color(1f, 0.35f, 0.35f, 0.9f);
     public float heatPulse = 0.3f, heatPulseScl = 7f;
 
-    public BeamDrill(String name){
+    public BeamDrill(String name) {
         super(name);
 
         hasItems = true;
@@ -67,73 +81,73 @@ public class BeamDrill extends Block{
     }
 
     @Override
-    public void init(){
+    public void init() {
         updateClipRadius((range + 2) * tilesize);
         super.init();
     }
 
     @Override
-    public void setBars(){
+    public void setBars() {
         super.setBars();
 
         addBar("drillspeed", (BeamDrillBuild e) ->
-            new Bar(() -> Core.bundle.format("bar.drillspeed", Strings.fixed(e.lastDrillSpeed * 60, 2)), () -> Pal.ammo, () -> e.warmup));
+                new Bar(() -> Core.bundle.format("bar.drillspeed", Strings.fixed(e.lastDrillSpeed * 60, 2)), () -> Pal.ammo, () -> e.warmup));
     }
 
     @Override
-    public boolean outputsItems(){
+    public boolean outputsItems() {
         return true;
     }
 
     @Override
-    public boolean rotatedOutput(int x, int y){
+    public boolean rotatedOutput(int x, int y) {
         return false;
     }
 
     @Override
-    public TextureRegion[] icons(){
+    public TextureRegion[] icons() {
         return new TextureRegion[]{region, topRegion};
     }
 
     @Override
-    public void drawPlanRegion(BuildPlan plan, Eachable<BuildPlan> list){
+    public void drawPlanRegion(BuildPlan plan, Eachable<BuildPlan> list) {
         Draw.rect(region, plan.drawx(), plan.drawy());
         Draw.rect(topRegion, plan.drawx(), plan.drawy(), plan.rotation * 90);
     }
 
     @Override
-    public void setStats(){
+    public void setStats() {
         super.setStats();
 
         stats.add(Stat.drillTier, StatValues.blocks(b -> (b instanceof Floor f && f.wallOre && f.itemDrop != null && f.itemDrop.hardness <= tier) || (b instanceof StaticWall w && w.itemDrop != null && w.itemDrop.hardness <= tier)));
 
         stats.add(Stat.drillSpeed, 60f / drillTime * size, StatUnit.itemsSecond);
-        if(optionalBoostIntensity != 1){
+        if (optionalBoostIntensity != 1) {
             stats.add(Stat.boostEffect, optionalBoostIntensity, StatUnit.timesSpeed);
         }
     }
 
     @Override
-    public void drawPlace(int x, int y, int rotation, boolean valid){
+    public void drawPlace(int x, int y, int rotation, boolean valid) {
         Item item = null, invalidItem = null;
         boolean multiple = false;
         int count = 0;
 
-        for(int i = 0; i < size; i++){
+        for (int i = 0; i < size; i++) {
             nearbySide(x, y, rotation, i, Tmp.p1);
 
             int j = 0;
             Item found = null;
-            for(; j < range; j++){
-                int rx = Tmp.p1.x + Geometry.d4x(rotation)*j, ry = Tmp.p1.y + Geometry.d4y(rotation)*j;
+            for (; j < range; j++) {
+                int rx = Tmp.p1.x + Geometry.d4x(rotation) * j, ry = Tmp.p1.y + Geometry.d4y(rotation) * j;
                 Tile other = world.tile(rx, ry);
-                if(other != null && other.solid()){
+                if (other != null && other.solid()) {
                     Item drop = other.wallDrop();
-                    if(drop != null){
-                        if(drop.hardness <= tier){
+                    if (drop != null) {
+                        if (drop.hardness <= tier) {
                             found = drop;
                             count++;
-                        }else{
+                        } else {
                             invalidItem = drop;
                         }
                     }
@@ -141,9 +155,9 @@ public class BeamDrill extends Block{
                 }
             }
 
-            if(found != null){
+            if (found != null) {
                 //check if multiple items will be drilled
-                if(item != found && item != null){
+                if (item != found && item != null) {
                     multiple = true;
                 }
                 item = found;
@@ -151,37 +165,37 @@ public class BeamDrill extends Block{
 
             int len = Math.min(j, range - 1);
             Drawf.dashLine(found == null ? Pal.remove : Pal.placing,
-            Tmp.p1.x * tilesize,
-            Tmp.p1.y *tilesize,
-            (Tmp.p1.x + Geometry.d4x(rotation)*len) * tilesize,
-            (Tmp.p1.y + Geometry.d4y(rotation)*len) * tilesize
+                    Tmp.p1.x * tilesize,
+                    Tmp.p1.y * tilesize,
+                    (Tmp.p1.x + Geometry.d4x(rotation) * len) * tilesize,
+                    (Tmp.p1.y + Geometry.d4y(rotation) * len) * tilesize
             );
         }
 
-        if(item != null){
+        if (item != null) {
             float width = drawPlaceText(Core.bundle.formatFloat("bar.drillspeed", 60f / drillTime * count, 2), x, y, valid);
-            if(!multiple){
-                float dx = x * tilesize + offset - width/2f - 4f, dy = y * tilesize + offset + size * tilesize / 2f + 5, s = iconSmall / 4f;
+            if (!multiple) {
+                float dx = x * tilesize + offset - width / 2f - 4f, dy = y * tilesize + offset + size * tilesize / 2f + 5, s = iconSmall / 4f;
                 Draw.mixcol(Color.darkGray, 1f);
                 Draw.rect(item.fullIcon, dx, dy - 1, s, s);
                 Draw.reset();
                 Draw.rect(item.fullIcon, dx, dy, s, s);
             }
-        }else if(invalidItem != null){
+        } else if (invalidItem != null) {
             drawPlaceText(Core.bundle.get("bar.drilltierreq"), x, y, false);
         }
 
     }
 
     @Override
-    public boolean canPlaceOn(Tile tile, Team team, int rotation){
-        for(int i = 0; i < size; i++){
+    public boolean canPlaceOn(Tile tile, Team team, int rotation) {
+        for (int i = 0; i < size; i++) {
             nearbySide(tile.x, tile.y, rotation, i, Tmp.p1);
-            for(int j = 0; j < range; j++){
-                Tile other = world.tile(Tmp.p1.x + Geometry.d4x(rotation)*j, Tmp.p1.y + Geometry.d4y(rotation)*j);
-                if(other != null && other.solid()){
+            for (int j = 0; j < range; j++) {
+                Tile other = world.tile(Tmp.p1.x + Geometry.d4x(rotation) * j, Tmp.p1.y + Geometry.d4y(rotation) * j);
+                if (other != null && other.solid()) {
                     Item drop = other.wallDrop();
-                    if(drop != null && drop.hardness <= tier){
+                    if (drop != null && drop.hardness <= tier) {
                         return true;
                     }
                     break;
@@ -192,7 +206,7 @@ public class BeamDrill extends Block{
         return false;
     }
 
-    public class BeamDrillBuild extends Building{
+    public class BeamDrillBuild extends Building {
         public Tile[] facing = new Tile[size];
         public Point2[] lasers = new Point2[size];
         public @Nullable Item lastItem;
@@ -202,10 +216,10 @@ public class BeamDrill extends Block{
         public float lastDrillSpeed;
 
         @Override
-        public void drawSelect(){
+        public void drawSelect() {
 
-            if(lastItem != null){
-                float dx = x - size * tilesize/2f, dy = y + size * tilesize/2f, s = iconSmall / 4f;
+            if (lastItem != null) {
+                float dx = x - size * tilesize / 2f, dy = y + size * tilesize / 2f, s = iconSmall / 4f;
                 Draw.mixcol(Color.darkGray, 1f);
                 Draw.rect(lastItem.fullIcon, dx, dy - 1, s, s);
                 Draw.reset();
@@ -214,10 +228,10 @@ public class BeamDrill extends Block{
         }
 
         @Override
-        public void updateTile(){
+        public void updateTile() {
             super.updateTile();
 
-            if(lasers[0] == null) updateLasers();
+            if (lasers[0] == null) updateLasers();
 
             warmup = Mathf.approachDelta(warmup, Mathf.num(efficiency > 0), 1f / 60f);
             lastItem = null;
@@ -225,18 +239,18 @@ public class BeamDrill extends Block{
             int dx = Geometry.d4x(rotation), dy = Geometry.d4y(rotation), facingAmount = 0;
 
             //update facing tiles
-            for(int p = 0; p < size; p++){
+            for (int p = 0; p < size; p++) {
                 Point2 l = lasers[p];
                 Tile dest = null;
-                for(int i = 0; i < range; i++){
-                    int rx = l.x + dx*i, ry = l.y + dy*i;
+                for (int i = 0; i < range; i++) {
+                    int rx = l.x + dx * i, ry = l.y + dy * i;
                     Tile other = world.tile(rx, ry);
-                    if(other != null){
-                        if(other.solid()){
+                    if (other != null) {
+                        if (other.solid()) {
                             Item drop = other.wallDrop();
-                            if(drop != null && drop.hardness <= tier){
-                                facingAmount ++;
-                                if(lastItem != drop && lastItem != null){
+                            if (drop != null && drop.hardness <= tier) {
+                                facingAmount++;
+                                if (lastItem != drop && lastItem != null) {
                                     multiple = true;
                                 }
                                 lastItem = drop;
@@ -251,7 +265,7 @@ public class BeamDrill extends Block{
             }
 
             //when multiple items are present, count that as no item
-            if(multiple){
+            if (multiple) {
                 lastItem = null;
             }
 
@@ -261,10 +275,10 @@ public class BeamDrill extends Block{
 
             time += edelta() * multiplier;
 
-            if(time >= drillTime){
-                for(Tile tile : facing){
+            if (time >= drillTime) {
+                for (Tile tile : facing) {
                     Item drop = tile == null ? null : tile.wallDrop();
-                    if(items.total() < itemCapacity && drop != null){
+                    if (items.total() < itemCapacity && drop != null) {
                         items.add(drop, 1);
                         produced(drop);
                     }
@@ -272,59 +286,59 @@ public class BeamDrill extends Block{
                 time %= drillTime;
             }
 
-            if(timer(timerDump, dumpTime)){
+            if (timer(timerDump, dumpTime)) {
                 dump();
             }
         }
 
         @Override
-        public boolean shouldConsume(){
+        public boolean shouldConsume() {
             return items.total() < itemCapacity && enabled;
         }
 
         @Override
-        public void draw(){
+        public void draw() {
             Draw.rect(block.region, x, y);
             Draw.rect(topRegion, x, y, rotdeg());
 
-            if(isPayload()) return;
+            if (isPayload()) return;
 
             var dir = Geometry.d4(rotation);
             int ddx = Geometry.d4x(rotation + 1), ddy = Geometry.d4y(rotation + 1);
 
-            for(int i = 0; i < size; i++){
+            for (int i = 0; i < size; i++) {
                 Tile face = facing[i];
-                if(face != null){
+                if (face != null) {
                     Point2 p = lasers[i];
-                    float lx = face.worldx() - (dir.x/2f)*tilesize, ly = face.worldy() - (dir.y/2f)*tilesize;
+                    float lx = face.worldx() - (dir.x / 2f) * tilesize, ly = face.worldy() - (dir.y / 2f) * tilesize;
 
-                    float width = (laserWidth + Mathf.absin(Time.time + i*5 + id*9, glowScl, pulseIntensity)) * warmup;
+                    float width = (laserWidth + Mathf.absin(Time.time + i * 5 + id * 9, glowScl, pulseIntensity)) * warmup;
 
                     Draw.z(Layer.power - 1);
-                    Draw.mixcol(glowColor, Mathf.absin(Time.time + i*5 + id*9, glowScl, glowIntensity));
-                    if(Math.abs(p.x - face.x) + Math.abs(p.y - face.y) == 0){
+                    Draw.mixcol(glowColor, Mathf.absin(Time.time + i * 5 + id * 9, glowScl, glowIntensity));
+                    if (Math.abs(p.x - face.x) + Math.abs(p.y - face.y) == 0) {
                         Draw.scl(width);
 
-                        if(boostWarmup < 0.99f){
+                        if (boostWarmup < 0.99f) {
                             Draw.alpha(1f - boostWarmup);
                             Draw.rect(laserCenter, lx, ly);
                         }
 
-                        if(boostWarmup > 0.01f){
+                        if (boostWarmup > 0.01f) {
                             Draw.alpha(boostWarmup);
                             Draw.rect(laserCenterBoost, lx, ly);
                         }
 
                         Draw.scl();
-                    }else{
-                        float lsx = (p.x - dir.x/2f) * tilesize, lsy = (p.y - dir.y/2f) * tilesize;
+                    } else {
+                        float lsx = (p.x - dir.x / 2f) * tilesize, lsy = (p.y - dir.y / 2f) * tilesize;
 
-                        if(boostWarmup < 0.99f){
+                        if (boostWarmup < 0.99f) {
                             Draw.alpha(1f - boostWarmup);
                             Drawf.laser(laser, laserEnd, lsx, lsy, lx, ly, width);
                         }
 
-                        if(boostWarmup > 0.001f){
+                        if (boostWarmup > 0.001f) {
                             Draw.alpha(boostWarmup);
                             Drawf.laser(laserBoost, laserEndBoost, lsx, lsy, lx, ly, width);
                         }
@@ -337,20 +351,21 @@ public class BeamDrill extends Block{
                     rand.setState(i, id);
                     Color col = face.wallDrop().color;
                     Color spark = Tmp.c3.set(sparkColor).lerp(boostHeatColor, boostWarmup);
-                    for(int j = 0; j < sparks; j++){
+                    for (int j = 0; j < sparks; j++) {
                         float fin = (Time.time / sparkLife + rand.random(sparkRecurrence + 1f)) % sparkRecurrence;
                         float or = rand.range(2f);
                         Tmp.v1.set(sparkRange * fin, 0).rotate(rotdeg() + rand.range(sparkSpread));
 
                         Draw.color(spark, col, fin);
                         float px = Tmp.v1.x, py = Tmp.v1.y;
-                        if(fin <= 1f) Lines.lineAngle(lx + px + or * ddx, ly + py + or * ddy, Angles.angle(px, py), Mathf.slope(fin) * sparkSize);
+                        if (fin <= 1f)
+                            Lines.lineAngle(lx + px + or * ddx, ly + py + or * ddy, Angles.angle(px, py), Mathf.slope(fin) * sparkSize);
                     }
                     Draw.reset();
                 }
             }
 
-            if(glowRegion.found()){
+            if (glowRegion.found()) {
                 Draw.z(Layer.blockAdditive);
                 Draw.blend(Blending.additive);
                 Draw.color(Tmp.c1.set(heatColor).lerp(boostHeatColor, boostWarmup), warmup * (heatColor.a * (1f - heatPulse + Mathf.absin(heatPulseScl, heatPulse))));
@@ -364,34 +379,34 @@ public class BeamDrill extends Block{
         }
 
         @Override
-        public void onProximityUpdate(){
+        public void onProximityUpdate() {
             //when rotated.
             updateLasers();
         }
 
-        void updateLasers(){
-            for(int i = 0; i < size; i++){
-                if(lasers[i] == null) lasers[i] = new Point2();
+        void updateLasers() {
+            for (int i = 0; i < size; i++) {
+                if (lasers[i] == null) lasers[i] = new Point2();
                 nearbySide(tileX(), tileY(), rotation, i, lasers[i]);
             }
         }
 
         @Override
-        public byte version(){
+        public byte version() {
             return 1;
         }
 
         @Override
-        public void write(Writes write){
+        public void write(Writes write) {
             super.write(write);
             write.f(time);
             write.f(warmup);
         }
 
         @Override
-        public void read(Reads read, byte revision){
+        public void read(Reads read, byte revision) {
             super.read(read, revision);
-            if(revision >= 1){
+            if (revision >= 1) {
                 time = read.f();
                 warmup = read.f();
             }

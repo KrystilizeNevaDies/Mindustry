@@ -1,11 +1,12 @@
 package mindustry.entities.abilities;
 
-import arc.util.*;
-import mindustry.content.*;
-import mindustry.entities.*;
+import arc.util.Time;
+import mindustry.content.Fx;
+import mindustry.entities.Effect;
+import mindustry.entities.Units;
 import mindustry.gen.*;
 
-public class RepairFieldAbility extends Ability{
+public class RepairFieldAbility extends Ability {
     public float amount = 1, reload = 100, range = 60;
     public Effect healEffect = Fx.heal;
     public Effect activeEffect = Fx.healWaveDynamic;
@@ -14,30 +15,36 @@ public class RepairFieldAbility extends Ability{
     protected float timer;
     protected boolean wasHealed = false;
 
-    RepairFieldAbility(){}
+    RepairFieldAbility() {
+    }
 
-    public RepairFieldAbility(float amount, float reload, float range){
+    public RepairFieldAbility(float amount, float reload, float range) {
         this.amount = amount;
         this.reload = reload;
         this.range = range;
     }
 
     @Override
-    public void update(Unit unit){
+    public void update(Unit unit) {
         timer += Time.delta;
 
-        if(timer >= reload){
+        if (timer >= reload) {
             wasHealed = false;
 
-            Units.nearby(unit.team, unit.x, unit.y, range, other -> {
-                if(other.damaged()){
-                    healEffect.at(other, parentizeEffects);
-                    wasHealed = true;
-                }
-                other.heal(amount);
-            });
+            Units.nearby(
+                    unit.team,
+                    unit.x,
+                    unit.y,
+                    range,
+                    other -> {
+                        if (other.damaged()) {
+                            healEffect.at(other, parentizeEffects);
+                            wasHealed = true;
+                        }
+                        other.heal(amount);
+                    });
 
-            if(wasHealed){
+            if (wasHealed) {
                 activeEffect.at(unit, range);
             }
 

@@ -1,10 +1,11 @@
 package mindustry.logic;
 
-import arc.math.*;
-import arc.util.*;
-import arc.util.noise.*;
+import arc.math.Angles;
+import arc.math.Mathf;
+import arc.util.Structs;
+import arc.util.noise.Simplex;
 
-public enum LogicOp{
+public enum LogicOp {
     add("+", (a, b) -> a + b),
     sub("-", (a, b) -> a - b),
     mul("*", (a, b) -> a * b),
@@ -14,27 +15,32 @@ public enum LogicOp{
     pow("^", Math::pow),
 
     equal("==", (a, b) -> Math.abs(a - b) < 0.000001 ? 1 : 0, (a, b) -> Structs.eq(a, b) ? 1 : 0),
-    notEqual("not", (a, b) -> Math.abs(a - b) < 0.000001 ? 0 : 1, (a, b) -> !Structs.eq(a, b) ? 1 : 0),
+    notEqual(
+            "not",
+            (a, b) -> Math.abs(a - b) < 0.000001 ? 0 : 1,
+            (a, b) -> !Structs.eq(a, b) ? 1 : 0),
     land("and", (a, b) -> a != 0 && b != 0 ? 1 : 0),
     lessThan("<", (a, b) -> a < b ? 1 : 0),
     lessThanEq("<=", (a, b) -> a <= b ? 1 : 0),
     greaterThan(">", (a, b) -> a > b ? 1 : 0),
     greaterThanEq(">=", (a, b) -> a >= b ? 1 : 0),
-    strictEqual("===", (a, b) -> 0), //this lambda is not actually used
+    strictEqual("===", (a, b) -> 0), // this lambda is not actually used
 
-    shl("<<", (a, b) -> (long)a << (long)b),
-    shr(">>", (a, b) -> (long)a >> (long)b),
-    or("or", (a, b) -> (long)a | (long)b),
-    and("b-and", (a, b) -> (long)a & (long)b),
-    xor("xor", (a, b) -> (long)a ^ (long)b),
-    not("flip", a -> ~(long)(a)),
+    shl("<<", (a, b) -> (long) a << (long) b),
+    shr(">>", (a, b) -> (long) a >> (long) b),
+    or("or", (a, b) -> (long) a | (long) b),
+    and("b-and", (a, b) -> (long) a & (long) b),
+    xor("xor", (a, b) -> (long) a ^ (long) b),
+    not("flip", a -> ~(long) (a)),
 
     max("max", true, Math::max),
     min("min", true, Math::min),
-    angle("angle", true, (x, y) -> Angles.angle((float)x, (float)y)),
-    len("len", true, (x, y) -> Mathf.dst((float)x, (float)y)),
+    angle("angle", true, (x, y) -> Angles.angle((float) x, (float) y)),
+    len("len", true, (x, y) -> Mathf.dst((float) x, (float) y)),
     noise("noise", true, (x, y) -> Simplex.raw2d(0, x, y)),
-    abs("abs", a -> Math.abs(a)), //not a method reference because it fails to compile for some reason
+    abs(
+            "abs",
+            a -> Math.abs(a)), // not a method reference because it fails to compile for some reason
     log("log", Math::log),
     log10("log10", Math::log10),
     floor("floor", Math::floor),
@@ -49,7 +55,6 @@ public enum LogicOp{
     asin("asin", d -> Math.asin(d) * Mathf.doubleRadDeg),
     acos("acos", d -> Math.acos(d) * Mathf.doubleRadDeg),
     atan("atan", d -> Math.atan(d) * Mathf.doubleRadDeg),
-
     ;
 
     public static final LogicOp[] all = values();
@@ -60,11 +65,11 @@ public enum LogicOp{
     public final boolean unary, func;
     public final String symbol;
 
-    LogicOp(String symbol, OpLambda2 function){
+    LogicOp(String symbol, OpLambda2 function) {
         this(symbol, function, null);
     }
 
-    LogicOp(String symbol, boolean func, OpLambda2 function){
+    LogicOp(String symbol, boolean func, OpLambda2 function) {
         this.symbol = symbol;
         this.function2 = function;
         this.function1 = null;
@@ -73,7 +78,7 @@ public enum LogicOp{
         this.func = func;
     }
 
-    LogicOp(String symbol, OpLambda2 function, OpObjLambda2 objFunction){
+    LogicOp(String symbol, OpLambda2 function, OpObjLambda2 objFunction) {
         this.symbol = symbol;
         this.function2 = function;
         this.function1 = null;
@@ -82,7 +87,7 @@ public enum LogicOp{
         this.func = false;
     }
 
-    LogicOp(String symbol, OpLambda1 function){
+    LogicOp(String symbol, OpLambda1 function) {
         this.symbol = symbol;
         this.function1 = function;
         this.function2 = null;
@@ -92,19 +97,19 @@ public enum LogicOp{
     }
 
     @Override
-    public String toString(){
+    public String toString() {
         return symbol;
     }
 
-    interface OpObjLambda2{
+    interface OpObjLambda2 {
         double get(Object a, Object b);
     }
 
-    interface OpLambda2{
+    interface OpLambda2 {
         double get(double a, double b);
     }
 
-    interface OpLambda1{
+    interface OpLambda1 {
         double get(double a);
     }
 }

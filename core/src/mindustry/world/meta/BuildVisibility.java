@@ -1,10 +1,10 @@
 package mindustry.world.meta;
 
-import arc.func.*;
-import mindustry.*;
-import mindustry.content.*;
+import arc.func.Boolp;
+import mindustry.Vars;
+import mindustry.content.Items;
 
-public enum BuildVisibility{
+public enum BuildVisibility {
     hidden(() -> false),
     shown(() -> true),
     debugOnly(() -> false),
@@ -18,11 +18,11 @@ public enum BuildVisibility{
 
     private final Boolp visible;
 
-    public boolean visible(){
+    public boolean visible() {
         return visible.get();
     }
 
-    BuildVisibility(Boolp visible){
+    BuildVisibility(Boolp visible) {
         this.visible = visible;
     }
 }

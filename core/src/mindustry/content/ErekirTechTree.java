@@ -1,53 +1,58 @@
 package mindustry.content;
 
-import arc.struct.*;
-import arc.util.*;
-import mindustry.entities.bullet.*;
+import arc.struct.IntSet;
+import arc.struct.ObjectFloatMap;
+import arc.struct.Seq;
+import arc.util.Structs;
+import mindustry.entities.bullet.BulletType;
 import mindustry.game.Objectives.*;
-import mindustry.type.*;
-import mindustry.type.unit.*;
-import mindustry.world.blocks.defense.turrets.*;
+import mindustry.type.Item;
+import mindustry.type.unit.ErekirUnitType;
+import mindustry.world.blocks.defense.turrets.ContinuousLiquidTurret;
+import mindustry.world.blocks.defense.turrets.ContinuousTurret;
+import mindustry.world.blocks.defense.turrets.ItemTurret;
+import mindustry.world.blocks.defense.turrets.Turret;
 
-import static mindustry.Vars.*;
+import static mindustry.Vars.content;
 import static mindustry.content.Blocks.*;
 import static mindustry.content.SectorPresets.*;
 import static mindustry.content.TechTree.*;
 
-public class ErekirTechTree{
+public class ErekirTechTree {
     static IntSet balanced = new IntSet();
 
-    static void rebalanceBullet(BulletType bullet){
-        if(balanced.add(bullet.id)){
+    static void rebalanceBullet(BulletType bullet) {
+        if (balanced.add(bullet.id)) {
             bullet.damage *= 0.75f;
         }
     }
 
     //TODO remove this
-    public static void rebalance(){
-        for(var unit : content.units().select(u -> u instanceof ErekirUnitType)){
-            for(var weapon : unit.weapons){
+    public static void rebalance() {
+        for (var unit : content.units().select(u -> u instanceof ErekirUnitType)) {
+            for (var weapon : unit.weapons) {
                 rebalanceBullet(weapon.bullet);
             }
         }
 
-        for(var block : content.blocks()){
-            if(block instanceof Turret turret && Structs.contains(block.requirements, i -> !Items.serpuloItems.contains(i.item))){
-                if(turret instanceof ItemTurret item){
-                    for(var bullet : item.ammoTypes.values()){
+        for (var block : content.blocks()) {
+            if (block instanceof Turret turret && Structs.contains(block.requirements, i -> !Items.serpuloItems.contains(i.item))) {
+                if (turret instanceof ItemTurret item) {
+                    for (var bullet : item.ammoTypes.values()) {
                         rebalanceBullet(bullet);
                     }
-                }else if(turret instanceof ContinuousLiquidTurret cont){
-                    for(var bullet : cont.ammoTypes.values()){
+                } else if (turret instanceof ContinuousLiquidTurret cont) {
+                    for (var bullet : cont.ammoTypes.values()) {
                         rebalanceBullet(bullet);
                     }
-                }else if(turret instanceof ContinuousTurret cont){
+                } else if (turret instanceof ContinuousTurret cont) {
                     rebalanceBullet(cont.shootType);
                 }
             }
         }
     }
 
-    public static void load(){
+    public static void load() {
         rebalance();
 
         //TODO might be unnecessary with no asteroids
@@ -203,7 +208,7 @@ public class ErekirTechTree{
                                     node(slagHeater, () -> {
 
                                     });
-                                    
+
                                     node(atmosphericConcentrator, Seq.with(new OnSector(basin)), () -> {
                                         node(cyanogenSynthesizer, Seq.with(new OnSector(basin)), () -> {
 

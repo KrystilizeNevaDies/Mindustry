@@ -1,40 +1,45 @@
 package mindustry.entities.comp;
 
-import arc.util.*;
-import mindustry.annotations.Annotations.*;
-import mindustry.game.*;
+import arc.util.Nullable;
+import mindustry.annotations.Annotations.Component;
+import mindustry.annotations.Annotations.Import;
+import mindustry.game.Team;
 import mindustry.gen.*;
-import mindustry.world.blocks.storage.CoreBlock.*;
+import mindustry.world.blocks.storage.CoreBlock.CoreBuild;
 
-import static mindustry.Vars.*;
+import static mindustry.Vars.fogControl;
+import static mindustry.Vars.state;
 
 @Component
-abstract class TeamComp implements Posc{
-    @Import float x, y;
+abstract class TeamComp implements Posc {
+    @Import
+    float x, y;
 
     Team team = Team.derelict;
 
-    public boolean cheating(){
+    public boolean cheating() {
         return team.rules().cheat;
     }
 
-    /** @return whether the center of this entity is visible to the viewing team. */
-    boolean inFogTo(Team viewer){
+    /**
+     * @return whether the center of this entity is visible to the viewing team.
+     */
+    boolean inFogTo(Team viewer) {
         return this.team != viewer && !fogControl.isVisible(viewer, x, y);
     }
 
     @Nullable
-    public CoreBuild core(){
+    public CoreBuild core() {
         return team.core();
     }
 
     @Nullable
-    public CoreBuild closestCore(){
+    public CoreBuild closestCore() {
         return state.teams.closestCore(x, y, team);
     }
 
     @Nullable
-    public CoreBuild closestEnemyCore(){
+    public CoreBuild closestEnemyCore() {
         return state.teams.closestEnemyCore(x, y, team);
     }
 }
